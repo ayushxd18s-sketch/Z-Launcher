@@ -11,8 +11,8 @@ Ayrıca “Zalith Launcher” adıyla kurulmuş resmi gibi gözüken üçüncü 
 Dikkatli olun ve **kişisel gizliliğinizi koruyun**  
 
 > [!WARNING]  
-> Bu proje [ZalithLauncher](https://github.com/ZalithLauncher/ZalithLauncher) ile **bağlantıya sahiptir**.  
-> Daha çok erken geliştirme aşamasında. Birçok özellik hala yapımda. Güncellemeleri bekleyin.  
+> Bu proje [ZalithLauncher](https://github.com/ZalithLauncher/ZalithLauncher) ile **tamamen ayrı olarak geliştirilmektedir**.  
+> Daha çok erken geliştirme aşamasında. Birçok özellik hala yapımda. Güncellemeleri bekleyin.
 
 ## 📅 Geliştirme Durumu  
 
