@@ -10,8 +10,8 @@
 Ayrıca “Zalith Launcher” adıyla kurulmuş resmi gibi gözüken üçüncü taraf bir site var farkındayız. Lütfen bilin ki **bu siteyi biz yapmadık**. Sırf isimden faydalanıp reklamla para kasıyorlar. **Bizimle alakası yok güvenmeyin**.  
 Dikkatli olun ve **kişisel gizliliğinizi koruyun**  
 
-> [!UYARI]  
-> Bu proje [ZalithLauncher](https://github.com/ZalithLauncher/ZalithLauncher) ile **hiçbir bağlantıya sahip değildir**.  
+> [!WARNING]  
+> Bu proje [ZalithLauncher](https://github.com/ZalithLauncher/ZalithLauncher) ile **bağlantıya sahiptir**.  
 > Daha çok erken geliştirme aşamasında. Birçok özellik hala yapımda—güncellemeleri bekleyin.  
 
 ## 📅 Geliştirme Durumu  
