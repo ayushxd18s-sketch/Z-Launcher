@@ -87,3 +87,29 @@ Uygulamanın adını gradle.properties dosyasından değiştirebilirsin.
 
 
 2. Programda görünen telif bildirimleri kaldırılamaz. (GPLv3, 7(b))
+
+
+
+
+
+
+---
+
+### 📚 Lisanslar
+
+Bu proje aşağıdaki lisansları ve kaynakları kullanmaktadır:
+
+GPL-3.0 Lisansı
+
+PojavLauncher (GPL-3.0)
+
+Jetpack Compose (Apache-2.0)
+
+Material Design 3
+
+
+
+---
+
+
+**testo taylan bu launcher için ev ziyareti yapıcak**
