@@ -3,7 +3,7 @@
 [![QQ](https://img.shields.io/badge/QQ-blue)](https://qm.qq.com/q/2MVxS0B29y)  
 [![Sponsor](https://img.shields.io/badge/sponsor-30363D?logo=GitHub-Sponsors)](https://afdian.com/a/MovTery)  
 
-[简体中文](README_ZH_CN.md) | [繁體中文](README_ZH_TW.md)  
+[简体中文](README_ZH_CN.md) | [繁體中文](README_ZH_TW.md) | [English](README.md)
 
 **Zalith Launcher 2** Android cihazlar için **Minecraft: Java Edition** uyumlu yepyeni bir başlatıcıdır. Proje, [PojavLauncher](https://github.com/PojavLauncherTeam/PojavLauncher/tree/v3_openjdk/app_pojavlauncher/src/main/jni) çekirdeğini kullanıyor ve **Jetpack Compose** ile **Material Design 3** tabanlı modern bir arayüzle geliyor.  
 Şu anda resmi sitemizi yapıyoruz [zalithlauncher.cn](https://zalithlauncher.cn)  
@@ -12,7 +12,7 @@ Dikkatli olun ve **kişisel gizliliğinizi koruyun**
 
 > [!WARNING]  
 > Bu proje [ZalithLauncher](https://github.com/ZalithLauncher/ZalithLauncher) ile **bağlantıya sahiptir**.  
-> Daha çok erken geliştirme aşamasında. Birçok özellik hala yapımda—güncellemeleri bekleyin.  
+> Daha çok erken geliştirme aşamasında. Birçok özellik hala yapımda. Güncellemeleri bekleyin.  
 
 ## 📅 Geliştirme Durumu  
 
