@@ -48,7 +48,7 @@ Zalith Launcher 2’yi daha çok dilde ve küresel yapmak için destek veren her
 ## 👨‍💻 Geliştirici  
 
 Bu proje şu an sadece [@MovTery](https://github.com/MovTery) tarafından geliştiriliyor  
-Geri bildirim öneri ve hata raporları çok değerli. Kişisel proje olduğu için geliştirme yavaş ilerleyebilir—sabır için teşekkürler  
+Geri bildirim öneri ve hata raporları çok değerli. Kişisel proje olduğu için geliştirme yavaş ilerleyebilir,sabır için teşekkürler  
 
 ## 📦 Derleme Talimatları (Geliştiriciler İçin)  
 
