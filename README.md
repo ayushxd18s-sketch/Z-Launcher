@@ -12,7 +12,7 @@ Additionally, we are aware that a third-party website has been set up using the 
 Please stay vigilant and **protect your personal privacy**!  
 
 > [!Replay Mod]
-> Running Replay Mod requires ffmeg, you can get ffmpeg [here](https://github.com/PojavLauncherTeam/FFmpegPlugin/releases/tag/v1.1).
+> Running Replay Mod requires ffmeg, you can get ffmpeg [here](https://github.com/PojavLauncherTeam/FFmpegPlugin/releases/tag/v1.1)
 
 > [!WARNING]
 > This project is **completely separate** from [ZalithLauncher](https://github.com/ZalithLauncher/ZalithLauncher).  
