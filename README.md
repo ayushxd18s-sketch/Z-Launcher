@@ -11,6 +11,9 @@ We are currently building our official website [zalithlauncher.cn](https://zalit
 Additionally, we are aware that a third-party website has been set up using the name “Zalith Launcher,” appearing to be official. Please note: **this site was not created by us**. It exploits the name to display ads for profit. We **do not participate in, endorse, or trust** such content.  
 Please stay vigilant and **protect your personal privacy**!  
 
+> [!Replay Mod]
+> Running Replay Mod requires ffmeg, you can get ffmpeg [here](https://github.com/PojavLauncherTeam/FFmpegPlugin/releases/tag/v1.1).
+
 > [!WARNING]
 > This project is **completely separate** from [ZalithLauncher](https://github.com/ZalithLauncher/ZalithLauncher).  
 > The project is in an early development stage. Many features are still under construction—stay tuned for updates!
