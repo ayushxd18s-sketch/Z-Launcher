@@ -5,8 +5,10 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,8 +22,10 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -30,6 +34,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.CircularProgressIndicator
@@ -65,6 +70,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.fastForEach
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -74,12 +80,14 @@ import com.movtery.zalithlauncher.game.version.installed.Version
 import com.movtery.zalithlauncher.game.version.installed.VersionFolders
 import com.movtery.zalithlauncher.ui.base.BaseScreen
 import com.movtery.zalithlauncher.ui.components.ContentCheckBox
+import com.movtery.zalithlauncher.ui.components.EdgeDirection
 import com.movtery.zalithlauncher.ui.components.IconTextButton
 import com.movtery.zalithlauncher.ui.components.ProgressDialog
 import com.movtery.zalithlauncher.ui.components.ScalingLabel
 import com.movtery.zalithlauncher.ui.components.SimpleAlertDialog
 import com.movtery.zalithlauncher.ui.components.SimpleTextInputField
 import com.movtery.zalithlauncher.ui.components.TooltipIconButton
+import com.movtery.zalithlauncher.ui.components.fadeEdge
 import com.movtery.zalithlauncher.ui.components.itemLayoutColor
 import com.movtery.zalithlauncher.ui.screens.NestedNavKey
 import com.movtery.zalithlauncher.ui.screens.NormalNavKey
@@ -130,6 +138,16 @@ private class ResourcePackManageViewModel(
      * 删除所有已选择文件的操作流程
      */
     var deleteAllOperation by mutableStateOf<DeleteAllOperation>(DeleteAllOperation.None)
+
+    /**
+     * 全选所有文件
+     */
+    fun selectAllFiles() {
+        allPacks.fastForEach { pack ->
+            val file = pack.file
+            if (!selectedFiles.contains(file)) selectedFiles.add(file)
+        }
+    }
 
     fun refresh() {
         viewModelScope.launch {
@@ -279,6 +297,7 @@ fun ResourcePackManageScreen(
                                 }
                             },
                             isFilesSelected = viewModel.selectedFiles.isNotEmpty(),
+                            onSelectAll = { viewModel.selectAllFiles() },
                             onClearFilesSelected = { viewModel.selectedFiles.clear() },
                             swapToDownload = swapToDownload,
                             onRefresh = {
@@ -321,102 +340,128 @@ private fun ResourcePackHeader(
     resourcePackDir: File,
     onDeleteAll: () -> Unit,
     isFilesSelected: Boolean,
+    onSelectAll: () -> Unit,
     onClearFilesSelected: () -> Unit,
     swapToDownload: () -> Unit,
     onRefresh: () -> Unit,
     submitError: (ErrorViewModel.ThrowableMessage) -> Unit
 ) {
     Column(modifier = modifier) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            SimpleTextInputField(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 4.dp),
-                value = packFilter.filterName,
-                onValueChange = { changePackFilter(packFilter.copy(filterName = it)) },
-                hint = {
-                    Text(
-                        text = stringResource(R.string.generic_search),
-                        style = TextStyle(color = LocalContentColor.current).copy(fontSize = 12.sp)
-                    )
-                },
-                color = inputFieldColor,
-                contentColor = inputFieldContentColor,
-                singleLine = true
-            )
-
-            AnimatedVisibility(
-                modifier = Modifier.height(IntrinsicSize.Min),
-                visible = isFilesSelected
-            ) {
-                Row {
-                    IconButton(
-                        onClick = onDeleteAll
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Delete,
-                            contentDescription = null
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SimpleTextInputField(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 4.dp),
+                    value = packFilter.filterName,
+                    onValueChange = { changePackFilter(packFilter.copy(filterName = it)) },
+                    hint = {
+                        Text(
+                            text = stringResource(R.string.generic_search),
+                            style = TextStyle(color = LocalContentColor.current).copy(fontSize = 12.sp)
                         )
-                    }
+                    },
+                    color = inputFieldColor,
+                    contentColor = inputFieldContentColor,
+                    singleLine = true
+                )
 
-                    IconButton(
-                        onClick = {
-                            if (isFilesSelected) onClearFilesSelected()
+                AnimatedVisibility(
+                    modifier = Modifier.height(IntrinsicSize.Min),
+                    visible = isFilesSelected
+                ) {
+                    Row {
+                        IconButton(
+                            onClick = onDeleteAll
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Delete,
+                                contentDescription = null
+                            )
                         }
+
+                        IconButton(
+                            onClick = onSelectAll
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SelectAll,
+                                contentDescription = null
+                            )
+                        }
+
+                        IconButton(
+                            onClick = {
+                                if (isFilesSelected) onClearFilesSelected()
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Deselect,
+                                contentDescription = null
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        VerticalDivider(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .padding(vertical = 12.dp),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
+
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                }
+
+                val scrollState = rememberScrollState()
+                LaunchedEffect(Unit) {
+                    scrollState.scrollTo(scrollState.maxValue)
+                }
+                Row(
+                    modifier = Modifier
+                        .fadeEdge(
+                            state = scrollState,
+                            length = 32.dp,
+                            direction = EdgeDirection.Horizontal
+                        )
+                        .widthIn(max = this@BoxWithConstraints.maxWidth / 2)
+                        .horizontalScroll(scrollState),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ContentCheckBox(
+                        checked = packFilter.onlyShowValid,
+                        onCheckedChange = { changePackFilter(packFilter.copy(onlyShowValid = it)) }
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Deselect,
-                            contentDescription = null
+                        Text(
+                            text = stringResource(R.string.manage_only_show_valid),
+                            style = MaterialTheme.typography.labelMedium
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
-                    VerticalDivider(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .padding(vertical = 12.dp),
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                    ImportFileButton(
+                        extension = "zip",
+                        targetDir = resourcePackDir,
+                        submitError = submitError,
+                        onImported = onRefresh
                     )
 
-                    Spacer(modifier = Modifier.width(6.dp))
+                    IconTextButton(
+                        onClick = swapToDownload,
+                        imageVector = Icons.Default.Download,
+                        text = stringResource(R.string.generic_download)
+                    )
+
+                    IconButton(
+                        onClick = onRefresh
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = stringResource(R.string.generic_refresh)
+                        )
+                    }
                 }
-            }
-
-            ContentCheckBox(
-                checked = packFilter.onlyShowValid,
-                onCheckedChange = { changePackFilter(packFilter.copy(onlyShowValid = it)) }
-            ) {
-                Text(
-                    text = stringResource(R.string.manage_only_show_valid),
-                    style = MaterialTheme.typography.labelMedium
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            ImportFileButton(
-                extension = "zip",
-                targetDir = resourcePackDir,
-                submitError = submitError,
-                onImported = onRefresh
-            )
-
-            IconTextButton(
-                onClick = swapToDownload,
-                imageVector = Icons.Default.Download,
-                text = stringResource(R.string.generic_download)
-            )
-
-            IconButton(
-                onClick = onRefresh
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = stringResource(R.string.generic_refresh)
-                )
             }
         }
 

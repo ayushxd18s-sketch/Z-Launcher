@@ -130,7 +130,7 @@ fun MainScreen(
             toMainScreen = toMainScreen,
             toSettingsScreen = {
                 screenBackStackModel.mainScreen.removeAndNavigateTo(
-                    remove = NestedNavKey.Settings::class,
+                    removes = screenBackStackModel.clearBeforeNavKeys,
                     screenKey = screenBackStackModel.settingsScreen
                 )
             },
@@ -333,10 +333,6 @@ private fun TopBarRailItem(
     color: Color = MaterialTheme.colorScheme.onSurface,
     textStyle: TextStyle = MaterialTheme.typography.labelMedium
 ) {
-    val paddingV by animateDpAsState(
-        if (selected) 4.dp else 8.dp
-    )
-
     TextRailItem(
         modifier = modifier,
         onClick = onClick,
@@ -358,7 +354,8 @@ private fun TopBarRailItem(
             )
         },
         selected = selected,
-        paddingValues = PaddingValues(horizontal = 8.dp, vertical = paddingV),
+        selectedPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+        unSelectedPadding = PaddingValues(all = 8.dp),
         unselectedContentColor = color
     )
 }
@@ -498,7 +495,7 @@ private fun TaskMenu(
             .offset { IntOffset(x = surfaceX.roundToPx(), y = 0) }
             .alpha(surfaceAlpha)
             .padding(all = 6.dp)
-            .width(240.dp),
+            .fillMaxWidth(0.3f),
         shape = MaterialTheme.shapes.extraLarge,
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp)
     ) {

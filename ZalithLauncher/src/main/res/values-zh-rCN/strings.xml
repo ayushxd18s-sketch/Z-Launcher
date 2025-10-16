@@ -69,6 +69,8 @@
     <string name="theme_color_urban_ash">钛影</string>
     <string name="theme_color_verdant_dawn">静林之晨</string>
     <string name="theme_color_picker_title">颜色选择器</string>
+    <string name="theme_color_picker_edit_hex">编辑 Hex</string>
+    <string name="theme_color_picker_edit_hex_invalid">无效 Hex</string>
     <!--  动画  -->
     <string name="animate_type_bounce">弹跳</string>
     <string name="animate_type_jelly_bounce">回弹</string>
@@ -434,6 +436,7 @@
     <string name="account_microsoft_authenticate_minecraft">验证 Minecraft 基本信息</string>
     <string name="account_microsoft_verify_game_ownership">验证是否拥有 Minecraft</string>
     <string name="account_microsoft_getting_player_profile">获取玩家账户信息</string>
+    <string name="account_microsoft_exit_by_user">您离开了网页屏幕，已为您取消了微软登录流程</string>
     <string name="account_local_create_account">创建离线账号</string>
     <string name="account_other_login_baseurl_not_set">未设置基础 URL</string>
     <string name="account_other_login_getting_full_url">尝试解析完整 Url 中</string>
@@ -473,6 +476,7 @@
     <string name="cape_name_common">普通披风</string>
     <string name="cape_name_pan">薄煎饼披风</string>
     <string name="cape_name_founder_s">创始人披风</string>
+    <string name="cape_name_copper">铜披风</string>
     <!--  文件管理  -->
     <string name="files_back_to_parent">返回上一级</string>
     <string name="files_create_dir">创建目录</string>

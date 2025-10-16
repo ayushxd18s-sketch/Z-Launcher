@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -42,6 +43,7 @@ import com.movtery.zalithlauncher.game.version.installed.Version
 import com.movtery.zalithlauncher.game.version.installed.VersionsManager
 import com.movtery.zalithlauncher.ui.components.MarqueeText
 import com.movtery.zalithlauncher.ui.components.SimpleAlertDialog
+import com.movtery.zalithlauncher.ui.components.fadeEdge
 import com.movtery.zalithlauncher.ui.components.itemLayoutColor
 import com.movtery.zalithlauncher.ui.screens.content.elements.CommonVersionInfoLayout
 
@@ -94,9 +96,10 @@ fun SelectVersionToDownloadDialog(
     onInstall: (List<Version>) -> Unit
 ) {
     val versions by VersionsManager.versions.collectAsState()
+    val versions1 = remember(versions) { versions.filter { it.isValid() } }
     val version = VersionsManager.currentVersion
 
-    if (version == null || versions.isEmpty()) {
+    if (version == null || versions1.isEmpty()) {
         SimpleAlertDialog(
             title = stringResource(R.string.generic_warning),
             text = stringResource(R.string.download_assets_no_installed_versions),
@@ -139,7 +142,7 @@ fun SelectVersionToDownloadDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f, fill = false),
-                            versions = versions,
+                            versions = versions1,
                             selectedVersions = selectedVersions,
                             onVersionSelected = { selectedVersions.add(it) },
                             onVersionUnSelected = { selectedVersions.remove(it) }
@@ -151,7 +154,7 @@ fun SelectVersionToDownloadDialog(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            Button(
+                            FilledTonalButton(
                                 modifier = Modifier.weight(0.5f),
                                 onClick = onDismiss
                             ) {
@@ -205,9 +208,9 @@ private fun ChoseGameVersionLayout(
 
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                contentPadding = PaddingValues(horizontal = 4.dp),
+                    .fadeEdge(state = listState)
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(all = 4.dp),
                 state = listState
             ) {
                 items(versions) { version ->

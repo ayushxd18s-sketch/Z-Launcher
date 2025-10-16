@@ -60,6 +60,8 @@
     <string name="theme_color_urban_ash">鈦影</string>
     <string name="theme_color_verdant_dawn">靜林之晨</string>
     <string name="theme_color_picker_title">顏色選擇器</string>
+    <string name="theme_color_picker_edit_hex">編輯 Hex</string>
+    <string name="theme_color_picker_edit_hex_invalid">無效 Hex</string>
     <!--  動畫  -->
     <string name="animate_type_bounce">彈跳</string>
     <string name="animate_type_jelly_bounce">回彈</string>
@@ -393,6 +395,7 @@
     <string name="account_microsoft_authenticate_minecraft">驗證 Minecraft 基本資訊</string>
     <string name="account_microsoft_verify_game_ownership">驗證是否擁有 Minecraft</string>
     <string name="account_microsoft_getting_player_profile">獲取玩家帳號資訊</string>
+    <string name="account_microsoft_exit_by_user">您離開了網頁畫面，已為您取消了微軟登入流程</string>
     <string name="account_local_create_account">建立離線帳號</string>
     <string name="account_other_login_baseurl_not_set">未設定基礎 URL</string>
     <string name="account_other_login_getting_full_url">嘗試解析完整 URL 中</string>
@@ -432,6 +435,7 @@
     <string name="cape_name_common">普通披風</string>
     <string name="cape_name_pan">薄煎餅披風</string>
     <string name="cape_name_founder_s">創始人披風</string>
+    <string name="cape_name_copper">銅披風</string>
     <!--  檔案管理  -->
     <string name="files_back_to_parent">返回上一層</string>
     <string name="files_create_dir">建立目錄</string>

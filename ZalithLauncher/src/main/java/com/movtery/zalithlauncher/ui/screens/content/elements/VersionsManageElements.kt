@@ -60,6 +60,7 @@ import com.movtery.zalithlauncher.game.version.installed.Version
 import com.movtery.zalithlauncher.game.version.installed.VersionsManager
 import com.movtery.zalithlauncher.game.version.installed.cleanup.CleanFailedException
 import com.movtery.zalithlauncher.game.version.installed.cleanup.GameAssetCleaner
+import com.movtery.zalithlauncher.ui.components.LittleTextLabel
 import com.movtery.zalithlauncher.ui.components.MarqueeText
 import com.movtery.zalithlauncher.ui.components.SimpleAlertDialog
 import com.movtery.zalithlauncher.ui.components.SimpleCheckEditDialog
@@ -67,6 +68,7 @@ import com.movtery.zalithlauncher.ui.components.SimpleEditDialog
 import com.movtery.zalithlauncher.ui.components.SimpleTaskDialog
 import com.movtery.zalithlauncher.ui.components.TextRailItem
 import com.movtery.zalithlauncher.ui.components.desaturate
+import com.movtery.zalithlauncher.ui.components.fadeEdge
 import com.movtery.zalithlauncher.ui.components.itemLayoutColor
 import com.movtery.zalithlauncher.ui.components.secondaryContainerDrawerItemColors
 import com.movtery.zalithlauncher.utils.animation.getAnimateTween
@@ -584,7 +586,12 @@ fun CleanupOperation(
                         )
                     },
                     text = {
-                        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        val scrollState = rememberScrollState()
+                        Column(
+                            modifier = Modifier
+                                .fadeEdge(state = scrollState)
+                                .verticalScroll(state = scrollState)
+                        ) {
                             Text(stringResource(R.string.versions_manage_cleanup_failed_files))
                             error.files.forEach { file ->
                                 Text(file.absolutePath)
@@ -778,32 +785,28 @@ fun CommonVersionInfoLayout(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 if (!version.isValid()) {
-                    Text(
+                    LittleTextLabel(
                         text = stringResource(R.string.versions_manage_invalid),
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.labelSmall
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        textStyle = MaterialTheme.typography.labelSmall
                     )
-                }
-                if (version.getVersionConfig().isIsolation()) {
-                    Text(
-                        text = stringResource(R.string.versions_manage_isolation_enabled),
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
-                version.getVersionInfo()?.let { versionInfo ->
-                    Text(
-                        text = versionInfo.minecraftVersion,
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                    versionInfo.loaderInfo?.let { loaderInfo ->
+                } else {
+                    version.getVersionInfo()?.let { versionInfo ->
                         Text(
-                            text = loaderInfo.loader.displayName,
-                            style = MaterialTheme.typography.labelSmall
+                            text = versionInfo.minecraftVersion,
+                            style = MaterialTheme.typography.labelSmall,
                         )
-                        Text(
-                            text = loaderInfo.version,
-                            style = MaterialTheme.typography.labelSmall
-                        )
+                        versionInfo.loaderInfo?.let { loaderInfo ->
+                            Text(
+                                text = loaderInfo.loader.displayName,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                            Text(
+                                text = loaderInfo.version,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
                     }
                 }
             }

@@ -70,6 +70,8 @@
     <string name="theme_color_urban_ash">Urban Ash</string>
     <string name="theme_color_verdant_dawn">Silent Forest Dawn</string>
     <string name="theme_color_picker_title">Color Picker</string>
+    <string name="theme_color_picker_edit_hex">Edit Hex</string>
+    <string name="theme_color_picker_edit_hex_invalid">Invalid Hex</string>
     <!-- Animations -->
     <string name="animate_type_bounce">Bounce</string>
     <string name="animate_type_jelly_bounce">Jelly Bounce</string>
@@ -435,6 +437,7 @@
     <string name="account_microsoft_authenticate_minecraft">Verifying Minecraft</string>
     <string name="account_microsoft_verify_game_ownership">Checking game ownership</string>
     <string name="account_microsoft_getting_player_profile">Fetching profile</string>
+    <string name="account_microsoft_exit_by_user">You left the webpage, so the Microsoft login process has been canceled for you.</string>
     <string name="account_local_create_account">Create Offline Account</string>
     <string name="account_other_login_baseurl_not_set">Base URL not set</string>
     <string name="account_other_login_getting_full_url">Resolving URL</string>
@@ -474,6 +477,7 @@
     <string name="cape_name_common">Common</string>
     <string name="cape_name_pan">Pan</string>
     <string name="cape_name_founder_s">Founder\'s</string>
+    <string name="cape_name_copper">Copper</string>
     <!-- File Management -->
     <string name="files_back_to_parent">Back</string>
     <string name="files_create_dir">Create Folder</string>

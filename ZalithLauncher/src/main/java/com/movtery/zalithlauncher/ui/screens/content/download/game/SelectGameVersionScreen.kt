@@ -1,14 +1,11 @@
 package com.movtery.zalithlauncher.ui.screens.content.download.game
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.expandIn
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkOut
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,15 +16,14 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -64,9 +60,12 @@ import com.movtery.zalithlauncher.game.versioninfo.MinecraftVersions
 import com.movtery.zalithlauncher.game.versioninfo.models.isType
 import com.movtery.zalithlauncher.game.versioninfo.models.mapVersion
 import com.movtery.zalithlauncher.ui.base.BaseScreen
+import com.movtery.zalithlauncher.ui.components.CheckChip
+import com.movtery.zalithlauncher.ui.components.EdgeDirection
 import com.movtery.zalithlauncher.ui.components.LittleTextLabel
 import com.movtery.zalithlauncher.ui.components.ScalingLabel
 import com.movtery.zalithlauncher.ui.components.SimpleTextInputField
+import com.movtery.zalithlauncher.ui.components.fadeEdge
 import com.movtery.zalithlauncher.ui.components.itemLayoutColor
 import com.movtery.zalithlauncher.ui.screens.NestedNavKey
 import com.movtery.zalithlauncher.ui.screens.NormalNavKey
@@ -307,71 +306,86 @@ private fun VersionHeader(
     Column(
         modifier = modifier.padding(horizontal = 12.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            //版本筛选条件
-            VersionTypeItem(
-                selected = versionFilter.release,
-                onClick = {
-                    onVersionFilterChange(versionFilter.copy(release = versionFilter.release.not()))
-                },
-                text = stringResource(R.string.download_game_type_release)
-            )
-            VersionTypeItem(
-                selected = versionFilter.snapshot,
-                onClick = {
-                    onVersionFilterChange(versionFilter.copy(snapshot = versionFilter.snapshot.not()))
-                },
-                text = stringResource(R.string.download_game_type_snapshot)
-            )
-            VersionTypeItem(
-                selected = versionFilter.aprilFools,
-                onClick = {
-                    onVersionFilterChange(versionFilter.copy(aprilFools = versionFilter.aprilFools.not()))
-                },
-                text = stringResource(R.string.download_game_type_april_fools)
-            )
-            VersionTypeItem(
-                selected = versionFilter.old,
-                onClick = {
-                    onVersionFilterChange(versionFilter.copy(old = versionFilter.old.not()))
-                },
-                text = stringResource(R.string.download_game_type_old)
-            )
-
-            //搜索、刷新
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             Row(
-                modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                SimpleTextInputField(
+                val scrollState = rememberScrollState()
+                Row(
+                    modifier = Modifier
+                        .fadeEdge(
+                            state = scrollState,
+                            direction = EdgeDirection.Horizontal
+                        )
+                        .widthIn(max = this@BoxWithConstraints.maxWidth / 5 * 3) //3/5
+                        .horizontalScroll(scrollState),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    //版本筛选条件
+                    VersionTypeItem(
+                        selected = versionFilter.release,
+                        onClick = {
+                            onVersionFilterChange(versionFilter.copy(release = versionFilter.release.not()))
+                        },
+                        text = stringResource(R.string.download_game_type_release)
+                    )
+                    VersionTypeItem(
+                        selected = versionFilter.snapshot,
+                        onClick = {
+                            onVersionFilterChange(versionFilter.copy(snapshot = versionFilter.snapshot.not()))
+                        },
+                        text = stringResource(R.string.download_game_type_snapshot)
+                    )
+                    VersionTypeItem(
+                        selected = versionFilter.aprilFools,
+                        onClick = {
+                            onVersionFilterChange(versionFilter.copy(aprilFools = versionFilter.aprilFools.not()))
+                        },
+                        text = stringResource(R.string.download_game_type_april_fools)
+                    )
+                    VersionTypeItem(
+                        selected = versionFilter.old,
+                        onClick = {
+                            onVersionFilterChange(versionFilter.copy(old = versionFilter.old.not()))
+                        },
+                        text = stringResource(R.string.download_game_type_old)
+                    )
+                }
+
+                //搜索、刷新
+                Row(
                     modifier = Modifier.weight(1f),
-                    value = versionFilter.id,
-                    onValueChange = { onVersionFilterChange(versionFilter.copy(id = it)) },
-                    color = itemContainerColor,
-                    contentColor = itemContentColor,
-                    singleLine = true,
-                    hint = {
-                        Text(
-                            text = stringResource(R.string.generic_search),
-                            style = TextStyle(color = itemContentColor).copy(fontSize = 12.sp)
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SimpleTextInputField(
+                        modifier = Modifier.weight(1f),
+                        value = versionFilter.id,
+                        onValueChange = { onVersionFilterChange(versionFilter.copy(id = it)) },
+                        color = itemContainerColor,
+                        contentColor = itemContentColor,
+                        singleLine = true,
+                        hint = {
+                            Text(
+                                text = stringResource(R.string.generic_search),
+                                style = TextStyle(color = itemContentColor).copy(fontSize = 12.sp)
+                            )
+                        }
+                    )
+
+                    IconButton(
+                        onClick = onRefreshClick,
+                        colors = IconButtonDefaults.iconButtonColors(
+                            contentColor = itemContentColor
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = stringResource(R.string.generic_refresh)
                         )
                     }
-                )
-
-                IconButton(
-                    onClick = onRefreshClick,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        contentColor = itemContentColor
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = stringResource(R.string.generic_refresh)
-                    )
                 }
             }
         }
@@ -390,23 +404,10 @@ private fun VersionTypeItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    FilterChip(
+    CheckChip(
         modifier = modifier,
         selected = selected,
         onClick = onClick,
-        leadingIcon = {
-            AnimatedVisibility(
-                visible = selected,
-                enter = expandIn(expandFrom = Alignment.CenterStart) + fadeIn(),
-                exit = shrinkOut(shrinkTowards = Alignment.CenterStart) + fadeOut()
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Check,
-                    contentDescription = text,
-                    modifier = Modifier.size(FilterChipDefaults.IconSize)
-                )
-            }
-        },
         label = {
             Text(text)
         },
@@ -472,7 +473,7 @@ private fun VersionItemLayout(
         Row(
             modifier = Modifier
                 .clip(shape = MaterialTheme.shapes.large)
-                .padding(all = 8.dp),
+                .padding(all = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             icon?.let { versionIcon ->
@@ -481,7 +482,7 @@ private fun VersionItemLayout(
                     painter = versionIcon,
                     contentDescription = null
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(12.dp))
             }
 
             Column(
