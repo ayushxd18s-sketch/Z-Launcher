@@ -124,6 +124,7 @@ import com.movtery.zalithlauncher.ui.components.CardTitleLayout
 import com.movtery.zalithlauncher.ui.components.EdgeDirection
 import com.movtery.zalithlauncher.ui.components.IconTextButton
 import com.movtery.zalithlauncher.ui.components.LittleTextLabel
+import com.movtery.zalithlauncher.ui.components.MarqueeText
 import com.movtery.zalithlauncher.ui.components.ScalingLabel
 import com.movtery.zalithlauncher.ui.components.SimpleTextInputField
 import com.movtery.zalithlauncher.ui.components.TooltipIconButton
@@ -176,7 +177,7 @@ private class ModsManageViewModel(
 
     var allMods by mutableStateOf<List<RemoteMod>>(emptyList())
         private set
-    var filteredMods by mutableStateOf<List<RemoteMod>?>(null)
+    var filteredMods by mutableStateOf<List<RemoteMod>>(emptyList())
         private set
 
     /**
@@ -231,7 +232,7 @@ private class ModsManageViewModel(
     }
 
     private fun filterMods(context: Context? = null) {
-        filteredMods = allMods.takeIf { it.isNotEmpty() }?.filterMods(nameFilter, stateFilter, context)
+        filteredMods = allMods.takeIf { it.isNotEmpty() }?.filterMods(nameFilter, stateFilter, context) ?: emptyList()
     }
 
     /** 在ViewModel的生命周期协程内调用 */
@@ -556,43 +557,58 @@ fun ModsManagerScreen(
                             submitError = submitError
                         )
 
-                        ModsList(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            modsList = viewModel.filteredMods,
-                            selectedMods = viewModel.selectedMods,
-                            removeFromSelected = { mod ->
-                                viewModel.selectedMods.remove(mod)
-                            },
-                            addToSelected = { mod ->
-                                viewModel.selectedMods.add(mod)
-                            },
-                            onLoad = { mod ->
-                                viewModel.loadMod(mod)
-                            },
-                            onForceRefresh = { mod ->
-                                viewModel.loadMod(mod, loadFromCache = false)
-                            },
-                            onEnable = { mod ->
-                                viewModel.doInScope {
-                                    withContext(Dispatchers.IO) {
-                                        mod.localMod.enable()
+                        if (viewModel.filteredMods.isNotEmpty()) {
+                            ModsList(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                                modsList = viewModel.filteredMods,
+                                selectedMods = viewModel.selectedMods,
+                                removeFromSelected = { mod ->
+                                    viewModel.selectedMods.remove(mod)
+                                },
+                                addToSelected = { mod ->
+                                    viewModel.selectedMods.add(mod)
+                                },
+                                onLoad = { mod ->
+                                    viewModel.loadMod(mod)
+                                },
+                                onForceRefresh = { mod ->
+                                    viewModel.loadMod(mod, loadFromCache = false)
+                                },
+                                onEnable = { mod ->
+                                    viewModel.doInScope {
+                                        withContext(Dispatchers.IO) {
+                                            mod.localMod.enable()
+                                        }
                                     }
-                                }
-                            },
-                            onDisable = { mod ->
-                                viewModel.doInScope {
-                                    withContext(Dispatchers.IO) {
-                                        mod.localMod.disable()
+                                },
+                                onDisable = { mod ->
+                                    viewModel.doInScope {
+                                        withContext(Dispatchers.IO) {
+                                            mod.localMod.disable()
+                                        }
                                     }
+                                },
+                                onSwapMoreInfo = onSwapMoreInfo,
+                                onDelete = { mod ->
+                                    modsOperation = ModsOperation.Delete(mod.localMod)
                                 }
-                            },
-                            onSwapMoreInfo = onSwapMoreInfo,
-                            onDelete = { mod ->
-                                modsOperation = ModsOperation.Delete(mod.localMod)
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.generic_empty_list),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
                             }
-                        )
+                        }
                     }
                 }
                 LoadingState.Loading -> {
