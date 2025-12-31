@@ -184,6 +184,15 @@ private fun JoystickManageDialog(
                                 onValueChange = { AllSettings.enableJoystickControl.save(it) }
                             )
 
+                            //启用左半屏移动
+                            InfoLayoutSwitchItem(
+                                modifier = Modifier.fillMaxWidth(),
+                                title = stringResource(R.string.settings_control_joystick_left_half_screen_title),
+                                value = AllSettings.joystickLeftHalfScreenMode.state,
+                                onValueChange = { AllSettings.joystickLeftHalfScreenMode.save(it) },
+                                enabled = AllSettings.enableJoystickControl.state
+                            )
+
                             //x
                             InfoLayoutSliderItem(
                                 modifier = Modifier.fillMaxWidth(),

@@ -175,6 +175,138 @@ fun StyleableJoystick(
 }
 
 /**
+ * 无状态的摇杆样式组件，由外部提供摇杆偏移位置
+ */
+@Composable
+fun StatelessStyleableJoystick(
+    modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = isLauncherInDarkTheme(),
+    style: ObservableJoystickStyle,
+    size: Dp = 120.dp,
+    joystickOffset: Offset, // 摇杆相对于中心的偏移
+    isLocked: Boolean = false,
+    internalCanLock: Boolean = false
+) {
+    val theme = if (isDarkTheme) style.darkStyle else style.lightStyle
+
+    val backgroundShape = remember(theme.backgroundShape) {
+        RoundedCornerShape(percent = theme.backgroundShape)
+    }
+
+    val joystickShape = remember(theme.joystickShape) {
+        RoundedCornerShape(percent = theme.joystickShape)
+    }
+
+    val borderWidthRatio = remember(theme.borderWidthRatio) {
+        (theme.borderWidthRatio.toFloat() / 100f).coerceIn(0.0f, 0.5f)
+    }
+
+    StatelessJoystick(
+        modifier = modifier,
+        alpha = theme.alpha,
+        backgroundColor = theme.backgroundColor,
+        joystickColor = theme.joystickColor,
+        joystickCanLockColor = theme.joystickCanLockColor,
+        joystickLockedColor = theme.joystickLockedColor,
+        lockMarkColor = theme.lockMarkColor,
+        borderColor = theme.borderColor,
+        borderWidthRatio = borderWidthRatio,
+        backgroundShape = backgroundShape,
+        joystickShape = joystickShape,
+        size = size,
+        joystickSize = theme.joystickSize,
+        joystickOffset = joystickOffset,
+        isLocked = isLocked,
+        internalCanLock = internalCanLock
+    )
+}
+
+/**
+ * 无状态移动摇杆控件
+ */
+@Composable
+fun StatelessJoystick(
+    modifier: Modifier = Modifier,
+    @FloatRange(from = 0.0, to = 1.0)
+    alpha: Float = 1.0f,
+    backgroundColor: Color = Color.Black.copy(alpha = 0.5f),
+    joystickColor: Color = Color.White.copy(alpha = 0.5f),
+    joystickCanLockColor: Color = Color.Yellow.copy(alpha = 0.5f),
+    joystickLockedColor: Color = Color.Green.copy(alpha = 0.5f),
+    lockMarkColor: Color = Color.White,
+    borderColor: Color = Color.White,
+    @FloatRange(from = 0.0, to = 0.5)
+    borderWidthRatio: Float = 0f,
+    backgroundShape: Shape = CircleShape,
+    joystickShape: Shape = CircleShape,
+    size: Dp = 120.dp,
+    @FloatRange(from = 0.0, to = 1.0)
+    joystickSize: Float = 0.5f,
+    joystickOffset: Offset,
+    isLocked: Boolean = false,
+    internalCanLock: Boolean = false
+) {
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+
+    // 颜色处理
+    val currentBackgroundColor = remember(backgroundColor, alpha) { backgroundColor.applyAlpha(alpha) }
+    val currentJoystickColor = remember(joystickColor, alpha) { joystickColor.applyAlpha(alpha) }
+    val currentJoystickCanLockColor = remember(joystickCanLockColor, alpha) { joystickCanLockColor.applyAlpha(alpha) }
+    val currentJoystickLockedColor = remember(joystickLockedColor, alpha) { joystickLockedColor.applyAlpha(alpha) }
+    val currentLockMarkColor = remember(lockMarkColor, alpha) { lockMarkColor.applyAlpha(alpha) }
+    val currentBorderColor = remember(borderColor, alpha) { borderColor.applyAlpha(alpha) }
+
+    // 计算尺寸
+    val backgroundSizePx = with(density) { size.toPx() }
+    val joystickSizePx = backgroundSizePx * joystickSize.coerceIn(0.0f, 1.0f)
+    val centerPoint = Offset(backgroundSizePx / 2, backgroundSizePx / 2)
+    val lockPosition = Offset(centerPoint.x, 0f)
+
+    // 计算摇杆当前的绝对位置供 Canvas 绘制
+    val joystickPosition = centerPoint + joystickOffset
+
+    Canvas(
+        modifier = modifier
+            .size(size)
+    ) {
+        val minSide = minOf(this@Canvas.size.width, this@Canvas.size.height)
+
+        // 背景层
+        drawBackgroundLayer(
+            layoutDirection = layoutDirection,
+            size = this@Canvas.size,
+            shape = backgroundShape,
+            backgroundColor = currentBackgroundColor,
+            borderColor = currentBorderColor,
+            borderWidthPx = (minSide * borderWidthRatio).coerceAtLeast(0f)
+        )
+
+        // 摇杆层
+        drawJoystick(
+            layoutDirection = layoutDirection,
+            color = when {
+                isLocked -> currentJoystickLockedColor
+                internalCanLock -> currentJoystickCanLockColor
+                else -> currentJoystickColor
+            },
+            center = joystickPosition,
+            size = joystickSizePx,
+            shape = joystickShape
+        )
+
+        // 锁定标记
+        if (isLocked) {
+            drawCircle(
+                color = currentLockMarkColor,
+                center = lockPosition,
+                radius = 4f
+            )
+        }
+    }
+}
+
+/**
  * 移动摇杆控件
  * @param alpha 整体不透明度
  * @param backgroundColor 控件的背景层颜色
@@ -534,7 +666,7 @@ private fun DrawScope.drawJoystick(
     }
 }
 
-private fun updateJoystickPosition(
+internal fun updateJoystickPosition(
     newPosition: Offset,
     minX: Float,
     maxX: Float,
@@ -551,7 +683,7 @@ private fun updateJoystickPosition(
 /**
  * 计算摇杆方向
  */
-private fun calculateDirection(
+internal fun calculateDirection(
     joystickPosition: Offset,
     backgroundCenter: Offset,
     deadZoneRadius: Float

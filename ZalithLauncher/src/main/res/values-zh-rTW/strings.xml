@@ -771,6 +771,8 @@
     <string name="settings_control_gyroscope_invert_x_summary">啟用後，左右轉動裝置會反向控制視角</string>
     <string name="settings_control_gyroscope_invert_y_title">反轉 Y 軸</string>
     <string name="settings_control_gyroscope_invert_y_summary">啟用後，上下轉動裝置會反向控制視角</string>
+    <string name="settings_control_joystick_left_half_screen_title">啟用左半屏移動</string>
+    <string name="settings_control_joystick_left_half_screen_summary">手指在左半屏非控制按鍵位置按下時，以該位置為中心出現搖桿</string>
     <string name="settings_gamepad_title">手把控制</string>
     <string name="settings_gamepad_summary">啟用或關閉手把控制功能。若您的其他外設被誤識別為手把，請關閉此選項。</string>
     <string name="settings_gamepad_deadzone_title">手把死區縮放</string>

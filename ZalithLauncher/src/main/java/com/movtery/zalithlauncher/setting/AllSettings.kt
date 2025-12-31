@@ -511,6 +511,12 @@ object AllSettings : SettingsRegistry() {
     val joystickControlLockSpring = boolSetting("joystickControlLockSpring", true)
 
     /**
+     * 启用左半屏移动模式
+     * 启用后，摇杆默认隐藏，手指在左半屏非控制按键位置按下时，以该位置为中心出现摇杆
+     */
+    val joystickLeftHalfScreenMode = boolSetting("joystickLeftHalfScreenMode", false)
+
+    /**
      * 上次检查更新的时间戳
      */
     val lastUpgradeCheck = longSetting("lastUpgradeCheck", 0L)
