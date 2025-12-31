@@ -28,7 +28,9 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.absoluteOffset
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -643,6 +645,28 @@ fun GameScreen(
                     onTouch = { viewModel.switchControlLayer(HideLayerWhen.None) },
                     gamepadViewModel = gamepadViewModel.takeIf { AllSettings.gamepadControl.state }
                 )
+
+                //摇杆控制层 (集成到控制布局的内容层中)
+                viewModel.observableLayout?.let { layout ->
+                    val special by layout.special.collectAsStateWithLifecycle()
+                    JoystickControlLayout(
+                        screenSize = screenSize,
+                        isGrabbing = isGrabbing,
+                        special = special,
+                        defaultStyle = viewModel.launcherJoystickStyle,
+                        hideLayerWhen = viewModel.controlLayerHideState,
+                        viewModel = joystickMovementViewModel,
+                        checkOccupiedPointers = { viewModel.occupiedPointers.contains(it) },
+                        onOccupiedPointer = { viewModel.occupiedPointers.add(it) },
+                        onReleasePointer = {
+                            viewModel.occupiedPointers.remove(it)
+                            viewModel.moveOnlyPointers.remove(it)
+                        },
+                        onKeyEvent = { event, pressed ->
+                            viewModel.onKeyEvent(event, pressed)
+                        }
+                    )
+                }
             }
 
             //物品栏触发层
@@ -660,27 +684,6 @@ fun GameScreen(
                 onReleasePointer = { viewModel.occupiedPointers.remove(it) }
             )
 
-            //摇杆控制层
-            viewModel.observableLayout?.let { layout ->
-                val special by layout.special.collectAsStateWithLifecycle()
-                JoystickControlLayout(
-                    screenSize = screenSize,
-                    isGrabbing = isGrabbing,
-                    special = special,
-                    defaultStyle = viewModel.launcherJoystickStyle,
-                    hideLayerWhen = viewModel.controlLayerHideState,
-                    viewModel = joystickMovementViewModel,
-                    checkOccupiedPointers = { viewModel.occupiedPointers.contains(it) },
-                    onOccupiedPointer = { viewModel.occupiedPointers.add(it) },
-                    onReleasePointer = {
-                        viewModel.occupiedPointers.remove(it)
-                        viewModel.moveOnlyPointers.remove(it)
-                    },
-                    onKeyEvent = { event, pressed ->
-                        viewModel.onKeyEvent(event, pressed)
-                    }
-                )
-            }
 
             if (AllSettings.gamepadControl.state) {
                 //手柄事件捕获层
@@ -1046,8 +1049,8 @@ private fun JoystickControlLayout(
             val size = AllSettings.joystickControlSize.state.dp
             
             LeftHalfScreenJoystick(
-                modifier = Modifier.fillMaxSize(),
-                screenSize = screenSize,
+                modifier = Modifier.fillMaxHeight().fillMaxWidth(0.5f),
+                screenSize = IntSize(width = screenSize.width / 2, height = screenSize.height),
                 style = if (AllSettings.joystickUseStyleByLayout.state) {
                     joystickStyle ?: defaultStyle
                 } else {

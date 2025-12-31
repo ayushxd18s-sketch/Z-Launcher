@@ -159,7 +159,8 @@ private suspend fun PointerInputScope.handleJoystickTouch(
                     
                     if (downChange != null) {
                         val pos = downChange.position
-                        if (pos.x < screenSize.width / 2f && !isOccupiedPointer(downChange.id)) {
+                        // 即使容器已经限制了 50%，这里再做一次逻辑检查作为双重保险
+                        if (pos.x >= 0 && pos.x < screenSize.width && !isOccupiedPointer(downChange.id)) {
                             activePointerId = downChange.id
                             
                             val halfSize = joystickSizePx / 2
