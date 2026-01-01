@@ -106,9 +106,13 @@ import com.movtery.zalithlauncher.ui.control.gyroscope.isGyroscopeAvailable
 import com.movtery.zalithlauncher.ui.control.hotbarPercentage
 import com.movtery.zalithlauncher.ui.control.input.TextInputMode
 import com.movtery.zalithlauncher.ui.control.joystick.JoystickDirectionListener
-import com.movtery.zalithlauncher.ui.control.joystick.LeftHalfScreenJoystick
+import com.movtery.zalithlauncher.ui.control.joystick.JoystickDirectionListener
+import com.movtery.zalithlauncher.ui.control.joystick.LeftHalfScreenJoystickInput
+import com.movtery.zalithlauncher.ui.control.joystick.LeftHalfScreenJoystickState
+import com.movtery.zalithlauncher.ui.control.joystick.LeftHalfScreenJoystickVisual
 import com.movtery.zalithlauncher.ui.control.joystick.StyleableJoystick
 import com.movtery.zalithlauncher.ui.control.joystick.loadJoystickStyle
+import com.movtery.zalithlauncher.ui.control.joystick.rememberLeftHalfScreenJoystickState
 import com.movtery.zalithlauncher.ui.control.joystick.saveJoystickStyle
 import com.movtery.zalithlauncher.ui.control.mouse.SwitchableMouseLayout
 import com.movtery.zalithlauncher.ui.screens.game.elements.DraggableGameBall
@@ -523,6 +527,7 @@ fun GameScreen(
     val viewModel = rememberGameViewModel(version) { mode ->
         eventViewModel.sendEvent(EventViewModel.Event.Game.SwitchIme(mode))
     }
+    val joystickState = rememberLeftHalfScreenJoystickState()
     val editorViewModel = rememberEditorViewModel("ControlEditor_Times=${viewModel.editorRefresh}")
     val isGrabbing = remember(ZLBridgeStates.cursorMode) {
         ZLBridgeStates.cursorMode == CURSOR_DISABLED
@@ -646,10 +651,13 @@ fun GameScreen(
                     gamepadViewModel = gamepadViewModel.takeIf { AllSettings.gamepadControl.state }
                 )
 
-                //摇杆控制层 (集成到控制布局的内容层中)
+                //摇杆控制层 - 输入层 (位于按键之下)
+                //仅在左半屏移动开启时启用
                 viewModel.observableLayout?.let { layout ->
                     val special by layout.special.collectAsStateWithLifecycle()
                     JoystickControlLayout(
+                        layerType = JoystickLayerType.Input,
+                        joystickState = joystickState,
                         screenSize = screenSize,
                         isGrabbing = isGrabbing,
                         special = special,
@@ -684,6 +692,30 @@ fun GameScreen(
                 onReleasePointer = { viewModel.occupiedPointers.remove(it) }
             )
 
+
+            //摇杆控制层 - 视觉层 (位于按键之上)
+            viewModel.observableLayout?.let { layout ->
+                val special by layout.special.collectAsStateWithLifecycle()
+                JoystickControlLayout(
+                    layerType = JoystickLayerType.Visual,
+                    joystickState = joystickState,
+                    screenSize = screenSize,
+                    isGrabbing = isGrabbing,
+                    special = special,
+                    defaultStyle = viewModel.launcherJoystickStyle,
+                    hideLayerWhen = viewModel.controlLayerHideState,
+                    viewModel = joystickMovementViewModel,
+                    checkOccupiedPointers = { viewModel.occupiedPointers.contains(it) },
+                    onOccupiedPointer = { viewModel.occupiedPointers.add(it) },
+                    onReleasePointer = {
+                        viewModel.occupiedPointers.remove(it)
+                        viewModel.moveOnlyPointers.remove(it)
+                    },
+                    onKeyEvent = { event, pressed ->
+                        viewModel.onKeyEvent(event, pressed)
+                    }
+                )
+            }
 
             if (AllSettings.gamepadControl.state) {
                 //手柄事件捕获层
@@ -1012,8 +1044,18 @@ private fun Float.sumPosition(): Float {
  * @param viewModel 摇杆移动监听 ViewModel
  * @param onKeyEvent 由
  */
+private enum class JoystickLayerType {
+    Input, Visual
+}
+
+/**
+ * 摇杆控制层
+ * 支持 Input/Visual 分离渲染以解决图层优先级问题
+ */
 @Composable
 private fun JoystickControlLayout(
+    layerType: JoystickLayerType,
+    joystickState: LeftHalfScreenJoystickState,
     isGrabbing: Boolean,
     screenSize: IntSize,
     special: ObservableSpecial,
@@ -1048,95 +1090,108 @@ private fun JoystickControlLayout(
             // 左半屏动态摇杆模式
             val size = AllSettings.joystickControlSize.state.dp
             
-            LeftHalfScreenJoystick(
-                modifier = Modifier.fillMaxHeight().fillMaxWidth(0.5f),
-                screenSize = IntSize(width = screenSize.width / 2, height = screenSize.height),
-                style = if (AllSettings.joystickUseStyleByLayout.state) {
-                    joystickStyle ?: defaultStyle
-                } else {
-                    defaultStyle
-                },
-                size = size,
-                deadZoneRatio = AllSettings.joystickDeadZoneRatio.state / 100f,
-                canLock = AllSettings.joystickControlCanLock.state,
-                isOccupiedPointer = checkOccupiedPointers,
-                onOccupiedPointer = onOccupiedPointer,
-                onReleasePointer = onReleasePointer,
-                onDirectionChanged = { direction ->
-                    viewModel.onListen(direction)
-                },
-                onLock = { lock ->
-                    if (AllSettings.joystickControlLockSpring.state) {
-                        mapToControlEvent(SPRING, SPRING_VALUE)?.let { key ->
-                            val event = ClickEvent(
-                                type = ClickEvent.Type.Key,
-                                key = key
-                            )
-                            if (lock) {
-                                onKeyEvent(event, true)
-                            } else {
-                                onKeyEvent(event, false)
+            if (layerType == JoystickLayerType.Input) {
+                // 输入层：处理左半屏触摸
+                LeftHalfScreenJoystickInput(
+                    state = joystickState,
+                    modifier = Modifier.fillMaxHeight().fillMaxWidth(0.5f),
+                    screenSize = IntSize(width = screenSize.width / 2, height = screenSize.height),
+                    size = size,
+                    deadZoneRatio = AllSettings.joystickDeadZoneRatio.state / 100f,
+                    canLock = AllSettings.joystickControlCanLock.state,
+                    isOccupiedPointer = checkOccupiedPointers,
+                    onOccupiedPointer = onOccupiedPointer,
+                    onReleasePointer = onReleasePointer,
+                    onDirectionChanged = { direction ->
+                        viewModel.onListen(direction)
+                    },
+                    onLock = { lock ->
+                        if (AllSettings.joystickControlLockSpring.state) {
+                            mapToControlEvent(SPRING, SPRING_VALUE)?.let { key ->
+                                val event = ClickEvent(
+                                    type = ClickEvent.Type.Key,
+                                    key = key
+                                )
+                                if (lock) {
+                                    onKeyEvent(event, true)
+                                } else {
+                                    onKeyEvent(event, false)
+                                }
                             }
                         }
                     }
-                }
-            )
-        } else {
-            // 固定位置摇杆模式（原有逻辑）
-            val size = AllSettings.joystickControlSize.state.dp
-            val x = AllSettings.joystickControlX.state
-            val y = AllSettings.joystickControlY.state
-
-            val position = remember(screenSize, size, x, y) {
-                val widgetSize = with(density) {
-                    val pixelSize = size.roundToPx()
-                    IntSize(
-                        width = pixelSize,
-                        height = pixelSize
-                    )
-                }
-
-                widgetPosition(
-                    xPercentage = x / 10000f,
-                    yPercentage = y / 10000f,
-                    widgetSize = widgetSize,
-                    screenSize = screenSize
+                )
+            } else {
+                // 视觉层：渲染摇杆
+                LeftHalfScreenJoystickVisual(
+                    state = joystickState,
+                    style = if (AllSettings.joystickUseStyleByLayout.state) {
+                        joystickStyle ?: defaultStyle
+                    } else {
+                        defaultStyle
+                    },
+                    size = size
                 )
             }
-
-            StyleableJoystick(
-                modifier = Modifier
-                    .absoluteOffset {
-                        IntOffset(x = position.x.toInt(), y = position.y.toInt())
+        } else {
+            // 固定位置摇杆模式（原有逻辑）
+            // 固定摇杆仅在Visual层渲染
+            if (layerType == JoystickLayerType.Visual) {
+                val size = AllSettings.joystickControlSize.state.dp
+                val x = AllSettings.joystickControlX.state
+                val y = AllSettings.joystickControlY.state
+    
+                val position = remember(screenSize, size, x, y) {
+                    val widgetSize = with(density) {
+                        val pixelSize = size.roundToPx()
+                        IntSize(
+                            width = pixelSize,
+                            height = pixelSize
+                        )
+                    }
+    
+                    widgetPosition(
+                        xPercentage = x / 10000f,
+                        yPercentage = y / 10000f,
+                        widgetSize = widgetSize,
+                        screenSize = screenSize
+                    )
+                }
+    
+                StyleableJoystick(
+                    modifier = Modifier
+                        .absoluteOffset {
+                            IntOffset(x = position.x.toInt(), y = position.y.toInt())
+                        },
+                    style = if (AllSettings.joystickUseStyleByLayout.state) {
+                        //启用后，优先使用控制布局提供的样式
+                        joystickStyle ?: defaultStyle
+                    } else {
+                        defaultStyle
                     },
-                style = if (AllSettings.joystickUseStyleByLayout.state) {
-                    //启用后，优先使用控制布局提供的样式
-                    joystickStyle ?: defaultStyle
-                } else {
-                    defaultStyle
-                },
-                size = size,
-                onDirectionChanged = { direction ->
-                    viewModel.onListen(direction)
-                },
-                deadZoneRatio = AllSettings.joystickDeadZoneRatio.state / 100f,
-                canLock = AllSettings.joystickControlCanLock.state,
-                onLock = { lock ->
-                    if (AllSettings.joystickControlLockSpring.state) {
-                        mapToControlEvent(SPRING, SPRING_VALUE)?.let { key ->
-                            val event = ClickEvent(
-                                type = ClickEvent.Type.Key,
-                                key = key
-                            )
-                            if (lock) {
-                                onKeyEvent(event, true)
-                            } else {
-                                onKeyEvent(event, false)
+                    size = size,
+                    onDirectionChanged = { direction ->
+                        viewModel.onListen(direction)
+                    },
+                    deadZoneRatio = AllSettings.joystickDeadZoneRatio.state / 100f,
+                    canLock = AllSettings.joystickControlCanLock.state,
+                    onLock = { lock ->
+                        if (AllSettings.joystickControlLockSpring.state) {
+                            mapToControlEvent(SPRING, SPRING_VALUE)?.let { key ->
+                                val event = ClickEvent(
+                                    type = ClickEvent.Type.Key,
+                                    key = key
+                                )
+                                if (lock) {
+                                    onKeyEvent(event, true)
+                                } else {
+                                    onKeyEvent(event, false)
+                                }
                             }
                         }
                     }
-                }
-            )
+                )
+            }
         }
     }
 

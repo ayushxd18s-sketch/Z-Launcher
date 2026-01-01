@@ -20,7 +20,6 @@ package com.movtery.zalithlauncher.ui.control.joystick
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,7 +28,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.PointerType
@@ -49,11 +48,22 @@ import kotlin.math.roundToInt
  * 左半屏动态摇杆组件
  * 使用 PointerEventPass.Final 实现不阻塞底层按钮的探测
  */
+class LeftHalfScreenJoystickState {
+    var isVisible by mutableStateOf(false)
+    var center by mutableStateOf(Offset.Zero)
+    var joystickOffset by mutableStateOf(Offset.Zero) // 摇杆相对于中心的偏移
+    var isLocked by mutableStateOf(false)
+    var internalCanLock by mutableStateOf(false)
+}
+
 @Composable
-fun LeftHalfScreenJoystick(
+fun rememberLeftHalfScreenJoystickState() = remember { LeftHalfScreenJoystickState() }
+
+@Composable
+fun LeftHalfScreenJoystickInput(
+    state: LeftHalfScreenJoystickState,
     modifier: Modifier = Modifier,
     screenSize: IntSize,
-    style: ObservableJoystickStyle,
     size: Dp,
     deadZoneRatio: Float,
     canLock: Boolean,
@@ -66,16 +76,12 @@ fun LeftHalfScreenJoystick(
     val density = LocalDensity.current
     val joystickSizePx = with(density) { size.toPx() }
     
-    // 内部状态
-    var joystickVisible by remember { mutableStateOf(false) }
-    var joystickCenter by remember { mutableStateOf(Offset.Zero) }
-    var joystickOffset by remember { mutableStateOf(Offset.Zero) } // 摇杆相对于中心的偏移
-    var isLocked by remember { mutableStateOf(false) }
-    var internalCanLock by remember { mutableStateOf(false) }
-    
     // 状态回调支持
     val currentOnDirectionChanged by rememberUpdatedState(onDirectionChanged)
     val currentOnLock by rememberUpdatedState(onLock)
+
+    // 记录上一次上报的方向，用于去重，避免每一帧都触发按键事件
+    var lastReportedDirection by remember { mutableStateOf(JoystickDirection.None) }
 
     Box(
         modifier = modifier
@@ -90,38 +96,49 @@ fun LeftHalfScreenJoystick(
                     onOccupiedPointer = onOccupiedPointer,
                     onReleasePointer = onReleasePointer,
                     onUpdateState = { visible, center, offset, locked, canLockState, direction ->
-                        joystickVisible = visible
-                        joystickCenter = center
-                        joystickOffset = offset
+                        state.isVisible = visible
+                        state.center = center
+                        state.joystickOffset = offset
                         
-                        if (isLocked != locked) {
-                            isLocked = locked
+                        if (state.isLocked != locked) {
+                            state.isLocked = locked
                             currentOnLock(locked)
                         }
                         
-                        internalCanLock = canLockState
-                        currentOnDirectionChanged(direction)
+                        state.internalCanLock = canLockState
+                        
+                        if (direction != lastReportedDirection) {
+                            lastReportedDirection = direction
+                            currentOnDirectionChanged(direction)
+                        }
                     }
                 )
             }
-    ) {
-        if (joystickVisible) {
-            val visualOffset = remember(joystickCenter, joystickSizePx) {
-                IntOffset(
-                    (joystickCenter.x - joystickSizePx / 2).roundToInt(),
-                    (joystickCenter.y - joystickSizePx / 2).roundToInt()
-                )
-            }
-            
-            StatelessStyleableJoystick(
-                modifier = Modifier.offset { visualOffset },
-                style = style,
-                size = size,
-                joystickOffset = joystickOffset,
-                isLocked = isLocked,
-                internalCanLock = internalCanLock
-            )
-        }
+    )
+}
+
+@Composable
+fun LeftHalfScreenJoystickVisual(
+    state: LeftHalfScreenJoystickState,
+    modifier: Modifier = Modifier,
+    style: ObservableJoystickStyle,
+    size: Dp
+) {
+    val density = LocalDensity.current
+    val joystickSizePx = with(density) { size.toPx() }
+
+    if (state.isVisible) {
+        StatelessStyleableJoystick(
+            modifier = modifier.graphicsLayer {
+                translationX = state.center.x - joystickSizePx / 2
+                translationY = state.center.y - joystickSizePx / 2
+            },
+            style = style,
+            size = size,
+            joystickOffset = { state.joystickOffset },
+            isLocked = state.isLocked,
+            internalCanLock = state.internalCanLock
+        )
     }
 }
 
@@ -148,7 +165,7 @@ private suspend fun PointerInputScope.handleJoystickTouch(
             var canLockTriggered = false
             
             while (true) {
-                val event = awaitPointerEvent(PointerEventPass.Final)
+                val event = awaitPointerEvent()
                 
                 if (activePointerId == null) {
                     val downChange = event.changes.find { 

@@ -183,7 +183,7 @@ fun StatelessStyleableJoystick(
     isDarkTheme: Boolean = isLauncherInDarkTheme(),
     style: ObservableJoystickStyle,
     size: Dp = 120.dp,
-    joystickOffset: Offset, // 摇杆相对于中心的偏移
+    joystickOffset: () -> Offset, // 摇杆相对于中心的偏移
     isLocked: Boolean = false,
     internalCanLock: Boolean = false
 ) {
@@ -242,7 +242,7 @@ fun StatelessJoystick(
     size: Dp = 120.dp,
     @FloatRange(from = 0.0, to = 1.0)
     joystickSize: Float = 0.5f,
-    joystickOffset: Offset,
+    joystickOffset: () -> Offset,
     isLocked: Boolean = false,
     internalCanLock: Boolean = false
 ) {
@@ -264,7 +264,8 @@ fun StatelessJoystick(
     val lockPosition = Offset(centerPoint.x, 0f)
 
     // 计算摇杆当前的绝对位置供 Canvas 绘制
-    val joystickPosition = centerPoint + joystickOffset
+    // 延迟到 Draw 阶段计算，避免重组
+    // val joystickPosition = centerPoint + joystickOffset
 
     Canvas(
         modifier = modifier
@@ -290,7 +291,7 @@ fun StatelessJoystick(
                 internalCanLock -> currentJoystickCanLockColor
                 else -> currentJoystickColor
             },
-            center = joystickPosition,
+            center = centerPoint + joystickOffset(),
             size = joystickSizePx,
             shape = joystickShape
         )
