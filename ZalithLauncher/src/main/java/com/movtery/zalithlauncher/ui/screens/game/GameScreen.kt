@@ -36,6 +36,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,10 +50,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -696,25 +699,23 @@ fun GameScreen(
             //摇杆控制层 - 视觉层 (位于按键之上)
             viewModel.observableLayout?.let { layout ->
                 val special by layout.special.collectAsStateWithLifecycle()
-                JoystickControlLayout(
-                    layerType = JoystickLayerType.Visual,
-                    joystickState = joystickState,
-                    screenSize = screenSize,
-                    isGrabbing = isGrabbing,
-                    special = special,
-                    defaultStyle = viewModel.launcherJoystickStyle,
-                    hideLayerWhen = viewModel.controlLayerHideState,
-                    viewModel = joystickMovementViewModel,
-                    checkOccupiedPointers = { viewModel.occupiedPointers.contains(it) },
-                    onOccupiedPointer = { viewModel.occupiedPointers.add(it) },
-                    onReleasePointer = {
-                        viewModel.occupiedPointers.remove(it)
-                        viewModel.moveOnlyPointers.remove(it)
-                    },
-                    onKeyEvent = { event, pressed ->
-                        viewModel.onKeyEvent(event, pressed)
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    Box(Modifier.fillMaxSize()) {
+                        JoystickControlLayout(
+                            layerType = JoystickLayerType.Visual,
+                            joystickState = joystickState,
+                            screenSize = screenSize,
+                            isGrabbing = isGrabbing,
+                            special = special,
+                            defaultStyle = viewModel.launcherJoystickStyle,
+                            hideLayerWhen = viewModel.controlLayerHideState,
+                            viewModel = joystickMovementViewModel,
+                            onKeyEvent = { event, pressed ->
+                                viewModel.onKeyEvent(event, pressed)
+                            }
+                        )
                     }
-                )
+                }
             }
 
             if (AllSettings.gamepadControl.state) {
@@ -1062,9 +1063,9 @@ private fun JoystickControlLayout(
     defaultStyle: ObservableJoystickStyle,
     hideLayerWhen: HideLayerWhen,
     viewModel: JoystickMovementViewModel,
-    checkOccupiedPointers: (PointerId) -> Boolean,
-    onOccupiedPointer: (PointerId) -> Unit,
-    onReleasePointer: (PointerId) -> Unit,
+    checkOccupiedPointers: (PointerId) -> Boolean = { false },
+    onOccupiedPointer: (PointerId) -> Unit = {},
+    onReleasePointer: (PointerId) -> Unit = {},
     onKeyEvent: (ClickEvent, pressed: Boolean) -> Unit
 ) {
     val joystickStyle by special.joystickStyle.collectAsStateWithLifecycle()

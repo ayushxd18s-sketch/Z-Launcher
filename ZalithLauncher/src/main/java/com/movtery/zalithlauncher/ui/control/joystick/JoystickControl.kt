@@ -667,7 +667,7 @@ private fun DrawScope.drawJoystick(
     }
 }
 
-internal fun updateJoystickPosition(
+fun updateJoystickPosition(
     newPosition: Offset,
     minX: Float,
     maxX: Float,
@@ -684,7 +684,7 @@ internal fun updateJoystickPosition(
 /**
  * 计算摇杆方向
  */
-internal fun calculateDirection(
+fun calculateDirection(
     joystickPosition: Offset,
     backgroundCenter: Offset,
     deadZoneRadius: Float

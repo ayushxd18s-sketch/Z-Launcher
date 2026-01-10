@@ -19,6 +19,7 @@
 package com.movtery.zalithlauncher.ui.control.joystick
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,7 +29,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.PointerType
@@ -129,9 +129,11 @@ fun LeftHalfScreenJoystickVisual(
 
     if (state.isVisible) {
         StatelessStyleableJoystick(
-            modifier = modifier.graphicsLayer {
-                translationX = state.center.x - joystickSizePx / 2
-                translationY = state.center.y - joystickSizePx / 2
+            modifier = modifier.absoluteOffset {
+                IntOffset(
+                    x = (state.center.x - joystickSizePx / 2).roundToInt(),
+                    y = (state.center.y - joystickSizePx / 2).roundToInt()
+                )
             },
             style = style,
             size = size,
