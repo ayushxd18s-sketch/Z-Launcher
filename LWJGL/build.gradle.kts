@@ -24,9 +24,6 @@ tasks.jar {
     exclude("net/java/openjdk/cacio/ctc/**")
     manifest {
         attributes("Automatic-Module-Name" to "org.lwjgl")
-        attributes("Specification-Vendor" to "lwjgl.org")
-        attributes("Implementation-Title" to "lwjgl")
-        attributes("Implementation-Vendor" to "lwjgl.org")
         attributes("Multi-Release" to "true")
     }
 }
