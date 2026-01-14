@@ -66,3 +66,4 @@ jobs:
           name: debug apk (${{ matrix.arch }})
           path: |
                 **/lwjgl-glfw-classes.jar
+                **/src/main/assets/components/lwjgl3/version
