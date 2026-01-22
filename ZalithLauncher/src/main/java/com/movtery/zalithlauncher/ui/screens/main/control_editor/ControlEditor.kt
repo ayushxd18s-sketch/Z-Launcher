@@ -104,18 +104,29 @@ fun BoxWithConstraintsScope.ControlEditor(
             enableJoystick = viewModel.enableJoystick
         )
     } else {
-        ControlEditorLayer(
-            observedLayout = viewModel.observableLayout,
-            onButtonTap = { data, layer ->
-                viewModel.selectedWidget = SelectedWidgetData(data, layer)
-                viewModel.editorOperation = EditorOperation.SelectButton
-            },
-            enableSnap = AllSettings.editorEnableWidgetSnap.state,
-            snapInAllLayers = AllSettings.editorSnapInAllLayers.state,
-            snapMode = AllSettings.editorWidgetSnapMode.state,
-            focusedLayer = viewModel.selectedLayer?.takeIf { viewModel.isLayerFocus },
-            isDark = isLauncherInDarkTheme()
-        )
+        androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize()) {
+            ControlEditorLayer(
+                observedLayout = viewModel.observableLayout,
+                onButtonTap = { data, layer ->
+                    viewModel.selectedWidget = SelectedWidgetData(data, layer)
+                    viewModel.editorOperation = EditorOperation.SelectButton
+                },
+                enableSnap = AllSettings.editorEnableWidgetSnap.state,
+                snapInAllLayers = AllSettings.editorSnapInAllLayers.state,
+                snapMode = AllSettings.editorWidgetSnapMode.state,
+                focusedLayer = viewModel.selectedLayer?.takeIf { viewModel.isLayerFocus },
+                isDark = isLauncherInDarkTheme()
+            )
+
+            PreviewJoystickControlLayout(
+                screenSize = screenSize,
+                special = special,
+                enableJoystick = viewModel.enableJoystick,
+                previewHideLayerWhen = com.movtery.layer_controller.data.HideLayerWhen.None,
+                previewScenario = PreviewScenario.InMenu, // Not used when forceShow is true
+                forceShow = viewModel.enableJoystick
+            )
+        }
     }
 
     EditorMenu(
@@ -296,6 +307,7 @@ fun BoxWithConstraintsScope.ControlEditor(
         },
         onCreateJoystickStyle = {
             special.setJoystickStyle(DefaultObservableJoystickStyle)
+            viewModel.enableJoystick = true
             viewModel.editorOperation = EditorOperation.EditJoystickStyle
         },
         onDeleteJoystickStyle = {

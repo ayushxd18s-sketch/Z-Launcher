@@ -134,12 +134,13 @@ private fun PreviewMouseLayout(
  * @param previewScenario 控制布局预览的场景
  */
 @Composable
-private fun PreviewJoystickControlLayout(
+fun PreviewJoystickControlLayout(
     screenSize: IntSize,
     special: ObservableSpecial,
     enableJoystick: Boolean,
     previewHideLayerWhen: HideLayerWhen,
-    previewScenario: PreviewScenario
+    previewScenario: PreviewScenario,
+    forceShow: Boolean = false
 ) {
     val joystickStyle by special.joystickStyle.collectAsStateWithLifecycle()
 
@@ -151,7 +152,7 @@ private fun PreviewJoystickControlLayout(
         HideLayerWhen.None -> false
     }
 
-    if (enableJoystick && previewScenario.isCursorGrabbing && !hideState) {
+    if ((enableJoystick && previewScenario.isCursorGrabbing && !hideState) || forceShow) {
         val size = AllSettings.joystickControlSize.state.dp
         val x = AllSettings.joystickControlX.state
         val y = AllSettings.joystickControlY.state

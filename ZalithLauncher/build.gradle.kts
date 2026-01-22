@@ -66,7 +66,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = zalithPackageName
+        applicationId = "com.vergi.launcher"
         applicationIdSuffix = ".v2"
         minSdk = 26
         targetSdk = 35
