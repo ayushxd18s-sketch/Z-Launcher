@@ -308,7 +308,7 @@ fun BoxWithConstraintsScope.ControlEditor(
         onCreateJoystickStyle = {
             special.setJoystickStyle(DefaultObservableJoystickStyle)
             viewModel.enableJoystick = true
-            viewModel.editorOperation = EditorOperation.EditJoystickStyle
+            viewModel.editorOperation = EditorOperation.None
         },
         onDeleteJoystickStyle = {
             special.setJoystickStyle(null)
