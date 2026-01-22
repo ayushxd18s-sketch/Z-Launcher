@@ -178,6 +178,7 @@ fun BoxWithConstraintsScope.ControlEditor(
         openStyleList = {
             viewModel.editorOperation = EditorOperation.OpenStyleList
         },
+        hasJoystickStyle = joystickStyle != null,
         onEditJoystickStyle = {
             if (joystickStyle == null) {
                 viewModel.editorOperation = EditorOperation.CreateJoystickStyle

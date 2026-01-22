@@ -926,6 +926,7 @@
     <string name="control_editor_menu_title">Editor Menu</string>
     <string name="control_editor_menu_new_widget_button">Add Button</string>
     <string name="control_editor_menu_new_widget_text">Add Text Box</string>
+    <string name="control_editor_menu_new_widget_joystick">Add Joystick</string>
     <string name="control_editor_menu_no_layers_title">No Control Layers</string>
     <string name="control_editor_menu_no_layers_message">No control layers have been created for the current control layout. Please create a control layer first.</string>
     <string name="control_editor_menu_no_selected_layer_title">No Control Layer Selected</string>

@@ -27,8 +27,8 @@ import java.util.*;
 
 public class GLFW
 {
-    static FloatBuffer joystickData = (FloatBuffer)FloatBuffer.allocate(8).flip();
-    static ByteBuffer buttonData = (ByteBuffer)ByteBuffer.allocate(8).flip();
+    static FloatBuffer joystickData = (FloatBuffer)FloatBuffer.allocate(8);
+    static ByteBuffer buttonData = (ByteBuffer)ByteBuffer.allocate(8);
     /** The major version number of the GLFW library. This is incremented when the API is changed in non-compatible ways. */
     public static final int GLFW_VERSION_MAJOR = 3;
 
@@ -1264,12 +1264,11 @@ public class GLFW
             return buttonData;
         }else return null;
     }
-    public static ByteBuffer glfwGetjoystickHats(int jid) {
+    public static ByteBuffer glfwGetJoystickHats(int jid) {
         return null;
     }
     public static boolean glfwJoystickIsGamepad(int jid) {
-        if(jid == 0) return true;
-        else return false;
+        return false;
     }
     public static String glfwGetJoystickGUID(int jid) {
         if(jid == 0) return "aio0";

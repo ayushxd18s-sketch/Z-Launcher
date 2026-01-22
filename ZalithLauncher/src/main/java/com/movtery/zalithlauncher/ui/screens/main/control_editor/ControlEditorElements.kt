@@ -202,6 +202,7 @@ fun EditorMenu(
     addNewButton: () -> Unit,
     addNewText: () -> Unit,
     openStyleList: () -> Unit,
+    hasJoystickStyle: Boolean,
     onEditJoystickStyle: () -> Unit,
     isLayerFocus: Boolean,
     onLayerFocusChanged: (Boolean) -> Unit,
@@ -251,6 +252,19 @@ fun EditorMenu(
                         enabled = isPreviewMode.not(),
                         text = stringResource(R.string.control_editor_menu_new_widget_text),
                         onClick = addNewText
+                    )
+                }
+
+                // Add Joystick
+                item {
+                    MenuTextButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = isPreviewMode.not() && hasJoystickStyle.not(),
+                        text = stringResource(R.string.control_editor_menu_new_widget_joystick),
+                        onClick = {
+                            onEditJoystickStyle()
+                            closeScreen()
+                        }
                     )
                 }
 
