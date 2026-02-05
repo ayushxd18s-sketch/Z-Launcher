@@ -1,5 +1,5 @@
 Welcome to ZalithLauncher2_lwjgl3.4.1 Repositories.
-It's a fork of Zalith Launcher 2.
+It's a fork of Zalith Launcher.
 There are a lot of unknown issues in LWJGL 3.4.1 so far. So hopefully you can help me test the LWJGL 3.4.1. Maybe all of commits of the lwjgl3.4.1 branch in the fork will be merged into the upstream(ZalithLauncher2) soon.
 
 # Zalith Launcher 2
