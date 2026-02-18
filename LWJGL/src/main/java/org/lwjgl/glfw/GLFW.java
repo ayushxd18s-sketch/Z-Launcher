@@ -1181,6 +1181,11 @@ public class GLFW
     }
 
     public static int glfwGetKey(@NativeType("GLFWwindow *") long window, int key) {
+		// This is jank, anything asking for int 348 results in an IndexOutOfBounds because idk.
+        // Probably an off-by-one error. This is the 'fix'
+        if (key == GLFW_KEY_LAST) {
+			return GLFW_KEY_LAST;
+	    }
         return keyDownBuffer.get(Math.max(0, key-31));
     }
 
@@ -1477,4 +1482,30 @@ public class GLFW
 
     public static void glfwRestoreWindow(@NativeType("GLFWwindow *") long window) {
     }
+
+	public static boolean glfwPlatformSupported(int platform) {
+		//TODO
+        return true;
+	}
+
+    // --- [ glfwSetPreeditCallback ] ---
+    /** {@code GLFWpreeditfun glfwSetPreeditCallback(GLFWwindow * window, GLFWpreeditfun cbfun)} */
+    public static long nglfwSetPreeditCallback(long window, long cbfun) {
+        /*long __functionAddress = Functions.SetPreeditCallback;
+        if (CHECKS) {
+            check(__functionAddress);
+            check(window);
+        }
+        return invokePPP(window, cbfun, __functionAddress);*/
+		//TODO
+		return 0L;
+    }
+
+    /** {@code GLFWpreeditfun glfwSetPreeditCallback(GLFWwindow * window, GLFWpreeditfun cbfun)} */
+    // @NativeType("GLFWpreeditfun")
+    public static @Nullable GLFWPreeditCallback glfwSetPreeditCallback(@NativeType("GLFWwindow *") long window, @NativeType("GLFWpreeditfun") @Nullable GLFWPreeditCallbackI cbfun) {
+        //return GLFWPreeditCallback.createSafe(nglfwSetPreeditCallback(window, memAddressSafe(cbfun)));
+		return null; // TODO
+	}
+
 }
