@@ -195,6 +195,7 @@
     <string name="download_install_clear_temp">Clear cache files</string>
     <string name="download_install_input_version_name">Waiting for user to enter version name</string>
     <string name="download_install_input_version_name_title">Enter the pre-installed version name</string>
+    <string name="download_install_warning_mobile_data">You are using mobile data. Continuing the download will consume data.</string>
     <string name="download_assets_filter_search_name">Search Name</string>
     <string name="download_assets_filter_search_platform">Target Platform</string>
     <string name="download_assets_filter_game_version">Game Version</string>
@@ -396,11 +397,13 @@
     <string name="game_styles_joystick_edit">Edit Joystick Style</string>
     <string name="game_styles_joystick_edit_use_control_layout">Use Style Provided by Control Layout</string>
     <string name="game_styles_joystick_deadzone">Joystick Deadzone Range</string>
+    <string name="game_styles_joystick_lock_threshold">Joystick Forward Lock Threshold</string>
     <string name="game_styles_joystick_can_lock">Forward Lock</string>
     <string name="game_styles_joystick_lock_sprint">Force Sprint When Locked</string>
     <string name="game_styles_joystick_hide_when_mouse">Hide When Using Physical Mouse</string>
     <string name="game_styles_joystick_hide_when_gamepad">Hide When Using Gamepad</string>
     <string name="game_styles_save_failed">Failed to Save Style</string>
+    <string name="game_saponsorship_finished_game">The launcher has successfully run the game %s times! If you find it useful, please consider supporting the developer! :)</string>
     <!-- Renderers -->
     <string name="renderer_version_support">MC Version Support:</string>
     <string name="renderer_version_unsupported_warning">The current renderer %s does not support this game version. Continuing to use it may cause rendering errors or crashes! Are you sure you want to proceed?</string>
@@ -679,6 +682,7 @@
     <string name="mods_update_task_show">The following mods will be updated</string>
     <string name="mods_update_task_download">Download new mod versions</string>
     <string name="mods_update_task_replace">Replace mod files</string>
+    <string name="mods_update_task_loading">Syncing mod data: %s</string>
     <string name="mods_update_no_mods_update">All mods are already up to date, no update needed</string>
     <string name="mods_update_updating">Updating all mods (%1$d/%2$d, %3$s)</string>
     <string name="mods_update_updating_retry">Retrying to update all mods (%1$d/%2$d, %3$s)</string>
@@ -778,7 +782,7 @@
     <string name="settings_renderer_vulkan_driver_system_title">Use System Vulkan Driver</string>
     <string name="settings_renderer_vulkan_driver_system_summary">When enabled, the launcher will force the use of the system\'s built-in Vulkan driver (for Adreno GPUs) instead of the default Turnip driver. This setting only affects the Zink backend and related mods that use Vulkan rendering</string>
     <string name="settings_renderer_zink_driver_adreno">The launcher detected your device has an Adreno GPU. Enabling this option may cause the Zink renderer to malfunction. Are you sure you want to enable it?</string>
-    <string name="settings_renderer_vsync_in_zink_title">Zink vertical sync</string>
+    <string name="settings_renderer_vsync_in_zink_title"> Zink Vsync</string>
     <string name="settings_renderer_vsync_in_zink_summary">Enable vertical sync for the Zink renderer via the system interface</string>
     <string name="settings_renderer_force_big_core_title">Force High-Performance Cores</string>
     <string name="settings_renderer_force_big_core_summary">Bind Minecraft\'s rendering thread to the CPU\'s high-performance cores (big cores). Enabling this may increase power consumption and heat</string>
@@ -1131,4 +1135,5 @@
     <string name="language_german" translatable="false">Deutsch</string>
     <string name="language_hungarian" translatable="false">magyar</string>
     <string name="language_brazilian_portuguese" translatable="false">Português brasileiro</string>
+    <string name="language_uyghur" translatable="false">ۋىغرۇچە</string>
 </resources>

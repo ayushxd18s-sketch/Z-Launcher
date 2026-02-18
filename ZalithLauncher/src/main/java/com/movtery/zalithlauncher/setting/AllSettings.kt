@@ -518,6 +518,11 @@ object AllSettings : SettingsRegistry() {
     val joystickDeadZoneRatio = intSetting("joystickDeadZoneRatio", 30, 10..50)
 
     /**
+     * 摇杆前进锁判定范围
+     */
+    val joystickLockThreshold = intSetting("joystickLockThreshold", 30, 5..50)
+
+    /**
      * 游戏中摇杆移动组件是否可锁定
      */
     val joystickControlCanLock = boolSetting("joystickControlCanLock", true)
@@ -536,4 +541,14 @@ object AllSettings : SettingsRegistry() {
      * 游戏内文本输入模式，控制输入代理的输入行为
      */
     val textInputMode = enumSetting("textInputMode", InputMode.Default)
+
+    /**
+     * 玩家结束运行游戏的次数
+     */
+    val finishedGame = intSetting("finishedGame", 0)
+
+    /**
+     * 是否在打开启动器时，根据特定的运行游戏次数，显示赞助支持弹窗
+     */
+    val showSponsorship = boolSetting("showSponsorship", true)
 }

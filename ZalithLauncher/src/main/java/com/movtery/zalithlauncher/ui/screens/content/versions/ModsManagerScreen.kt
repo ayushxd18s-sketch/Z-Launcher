@@ -61,6 +61,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Block
@@ -84,6 +85,7 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -194,6 +196,13 @@ private class ModsManageViewModel(
     var filteredMods by mutableStateOf<List<RemoteMod>?>(null)
         private set
 
+    /** 已启用的模组数量 */
+    var enabledCount by mutableIntStateOf(-1)
+        private set
+    /** 已禁用的模组数量 */
+    var disabledCount by mutableIntStateOf(-1)
+        private set
+
     /**
      * 已选择的模组
      */
@@ -218,6 +227,10 @@ private class ModsManageViewModel(
     fun refresh(context: Context? = null) {
         job?.cancel()
         job = viewModelScope.launch {
+            withContext(Dispatchers.Main) {
+                enabledCount = -1
+                disabledCount = -1
+            }
             modsState = LoadingState.Loading
             selectedMods.clear() //清空所有已选择的模组
             try {
@@ -227,6 +240,23 @@ private class ModsManageViewModel(
                 //已取消
             }
             modsState = LoadingState.None
+        }
+    }
+
+    /**
+     * 刷新模组计数
+     */
+    fun refreshCounter() {
+        allMods.also { list ->
+            val counts = list.fold(Pair(0, 0)) { (enabled, disabled), mod ->
+                when {
+                    mod.localMod.file.isEnabled() -> Pair(enabled + 1, disabled)
+                    mod.localMod.file.isDisabled() -> Pair(enabled, disabled + 1)
+                    else -> Pair(enabled, disabled)
+                }
+            }
+            enabledCount = counts.first
+            disabledCount = counts.second
         }
     }
 
@@ -260,6 +290,7 @@ private class ModsManageViewModel(
     )
 
     private fun filterMods(context: Context? = null) {
+        refreshCounter()
         filteredMods = allMods
             .takeIf { it.isNotEmpty() }
             ?.filterMods(nameFilter, stateFilter, context)
@@ -277,6 +308,14 @@ private class ModsManageViewModel(
                     -value
                 }
             }
+    }
+
+    fun selectAllMods() {
+        allMods.forEach { mod ->
+            if (!selectedMods.contains(mod)) {
+                selectedMods.add(mod)
+            }
+        }
     }
 
     /** 在ViewModel的生命周期协程内调用 */
@@ -307,8 +346,6 @@ private class ModsManageViewModel(
 
                 launch {
                     try {
-                        //重载模组信息时，应从选择列表中清除
-                        selectedMods.remove(mod)
                         mod.load(loadFromCache)
                     } finally {
                         semaphore.release()
@@ -570,6 +607,7 @@ fun ModsManagerScreen(
             when (viewModel.modsState) {
                 LoadingState.None -> {
                     var modsOperation by remember { mutableStateOf<ModsOperation>(ModsOperation.None) }
+                    /** 运行任务并刷新模组列表 */
                     fun runProgress(task: () -> Unit) {
                         viewModel.doInScope {
                             withContext(Dispatchers.IO) {
@@ -580,6 +618,7 @@ fun ModsManagerScreen(
                             }
                         }
                     }
+
                     ModsOperation(
                         modsOperation = modsOperation,
                         updateOperation = { modsOperation = it },
@@ -597,6 +636,9 @@ fun ModsManagerScreen(
                             onNameFilterChange = { viewModel.updateFilter(it, context) },
                             stateFilter = viewModel.stateFilter,
                             onStateFilterChange = { viewModel.updateStateFilter(it, context) },
+                            allModsCount = viewModel.allMods.size,
+                            enabledModsCount = viewModel.enabledCount.takeIf { it >= 0 },
+                            disabledModsCount = viewModel.disabledCount.takeIf { it >= 0 },
                             supportedSortByEnums = viewModel.supportedSortByEnums,
                             sortByEnum = viewModel.sortByEnum,
                             onSortByChanged = { viewModel.updateSortBy(it, context) },
@@ -626,6 +668,9 @@ fun ModsManagerScreen(
                                 }
                             },
                             isModsSelected = viewModel.selectedMods.isNotEmpty(),
+                            onSelectAll = {
+                                viewModel.selectAllMods()
+                            },
                             onClearModsSelected = { viewModel.selectedMods.clear() },
                             swapToDownload = swapToDownload,
                             refresh = { viewModel.refresh(context) },
@@ -657,12 +702,18 @@ fun ModsManagerScreen(
                                     withContext(Dispatchers.IO) {
                                         mod.localMod.enable()
                                     }
+                                    withContext(Dispatchers.Main) {
+                                        viewModel.refreshCounter()
+                                    }
                                 }
                             },
                             onDisable = { mod ->
                                 viewModel.doInScope {
                                     withContext(Dispatchers.IO) {
                                         mod.localMod.disable()
+                                    }
+                                    withContext(Dispatchers.Main) {
+                                        viewModel.refreshCounter()
                                     }
                                 }
                             },
@@ -690,6 +741,9 @@ private fun ModsActionsHeader(
     onNameFilterChange: (String) -> Unit,
     stateFilter: ModStateFilter,
     onStateFilterChange: (ModStateFilter) -> Unit,
+    allModsCount: Int,
+    enabledModsCount: Int?,
+    disabledModsCount: Int?,
     supportedSortByEnums: List<SortByEnum>,
     sortByEnum: SortByEnum,
     onSortByChanged: (SortByEnum) -> Unit,
@@ -700,6 +754,7 @@ private fun ModsActionsHeader(
     modsDir: File,
     onDeleteAll: () -> Unit,
     isModsSelected: Boolean,
+    onSelectAll: () -> Unit,
     onClearModsSelected: () -> Unit,
     swapToDownload: () -> Unit,
     refresh: () -> Unit,
@@ -733,8 +788,23 @@ private fun ModsActionsHeader(
                         shape = MaterialTheme.shapes.large
                     ) {
                         ModStateFilter.entries.forEach { filter ->
+                            val count = when (filter) {
+                                ModStateFilter.Enabled -> enabledModsCount
+                                ModStateFilter.Disabled -> disabledModsCount
+                                else -> allModsCount
+                            }
+
                             DropdownMenuItem(
-                                text = { Text(stringResource(filter.textRes)) },
+                                text = {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(text = stringResource(filter.textRes))
+                                        if (count != null) {
+                                            Text(text = "($count)")
+                                        }
+                                    }
+                                },
                                 onClick = {
                                     onStateFilterChange(filter)
                                     expanded = false
@@ -811,6 +881,15 @@ private fun ModsActionsHeader(
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Delete,
+                                contentDescription = null
+                            )
+                        }
+
+                        IconButton(
+                            onClick = onSelectAll
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SelectAll,
                                 contentDescription = null
                             )
                         }
@@ -938,13 +1017,11 @@ private fun ModsList(
                         onForceRefresh(mod)
                     },
                     onClick = {
-                        if (mod.isLoaded) {
-                            //仅加载了项目信息的模组允许被选择
-                            if (selectedMods.contains(mod)) {
-                                removeFromSelected(mod)
-                            } else {
-                                addToSelected(mod)
-                            }
+                        //仅加载了项目信息的模组允许被选择
+                        if (selectedMods.contains(mod)) {
+                            removeFromSelected(mod)
+                        } else {
+                            addToSelected(mod)
                         }
                     },
                     onEnable = {
