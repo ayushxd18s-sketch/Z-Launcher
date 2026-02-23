@@ -108,14 +108,14 @@ import com.movtery.zalithlauncher.ui.control.gyroscope.GyroscopeReader
 import com.movtery.zalithlauncher.ui.control.gyroscope.isGyroscopeAvailable
 import com.movtery.zalithlauncher.ui.control.hotbarPercentage
 import com.movtery.zalithlauncher.ui.control.input.TextInputMode
+import com.movtery.zalithlauncher.ui.control.joystick.HalfScreenJoystickInput
+import com.movtery.zalithlauncher.ui.control.joystick.HalfScreenJoystickMode
+import com.movtery.zalithlauncher.ui.control.joystick.HalfScreenJoystickState
+import com.movtery.zalithlauncher.ui.control.joystick.HalfScreenJoystickVisual
 import com.movtery.zalithlauncher.ui.control.joystick.JoystickDirectionListener
-import com.movtery.zalithlauncher.ui.control.joystick.JoystickDirectionListener
-import com.movtery.zalithlauncher.ui.control.joystick.LeftHalfScreenJoystickInput
-import com.movtery.zalithlauncher.ui.control.joystick.LeftHalfScreenJoystickState
-import com.movtery.zalithlauncher.ui.control.joystick.LeftHalfScreenJoystickVisual
 import com.movtery.zalithlauncher.ui.control.joystick.StyleableJoystick
 import com.movtery.zalithlauncher.ui.control.joystick.loadJoystickStyle
-import com.movtery.zalithlauncher.ui.control.joystick.rememberLeftHalfScreenJoystickState
+import com.movtery.zalithlauncher.ui.control.joystick.rememberHalfScreenJoystickState
 import com.movtery.zalithlauncher.ui.control.joystick.saveJoystickStyle
 import com.movtery.zalithlauncher.ui.control.mouse.SwitchableMouseLayout
 import com.movtery.zalithlauncher.ui.screens.game.elements.DraggableGameBall
@@ -530,7 +530,7 @@ fun GameScreen(
     val viewModel = rememberGameViewModel(version) { mode ->
         eventViewModel.sendEvent(EventViewModel.Event.Game.SwitchIme(mode))
     }
-    val joystickState = rememberLeftHalfScreenJoystickState()
+    val joystickState = rememberHalfScreenJoystickState()
     val editorViewModel = rememberEditorViewModel("ControlEditor_Times=${viewModel.editorRefresh}")
     val isGrabbing = remember(ZLBridgeStates.cursorMode) {
         ZLBridgeStates.cursorMode == CURSOR_DISABLED
@@ -1056,7 +1056,7 @@ private enum class JoystickLayerType {
 @Composable
 private fun JoystickControlLayout(
     layerType: JoystickLayerType,
-    joystickState: LeftHalfScreenJoystickState,
+    joystickState: HalfScreenJoystickState,
     isGrabbing: Boolean,
     screenSize: IntSize,
     special: ObservableSpecial,
@@ -1083,23 +1083,32 @@ private fun JoystickControlLayout(
         ((isGrabbing && !hideState) || viewModel.operation == JoystickManageOperation.Manage) &&
         AllSettings.enableJoystickControl.state
     ) {
-        // 根据设置选择摇杆模式
-        val useLeftHalfScreenMode = AllSettings.joystickLeftHalfScreenMode.state && 
+        val halfScreenMode = AllSettings.joystickHalfScreenMode.state
+        val useHalfScreenMode = halfScreenMode != HalfScreenJoystickMode.Disabled && 
             viewModel.operation != JoystickManageOperation.Manage
         
-        if (useLeftHalfScreenMode) {
-            // 左半屏动态摇杆模式
+        if (useHalfScreenMode) {
+            val isLeftHalf = halfScreenMode == HalfScreenJoystickMode.LeftHalf
             val size = AllSettings.joystickControlSize.state.dp
+            val offsetX = if (isLeftHalf) 0 else screenSize.width / 2
             
             if (layerType == JoystickLayerType.Input) {
-                // 输入层：处理左半屏触摸
-                LeftHalfScreenJoystickInput(
+                val halfScreenWidth = if (isLeftHalf) {
+                    Modifier.fillMaxHeight().fillMaxWidth(0.5f)
+                } else {
+                    Modifier.fillMaxHeight().fillMaxWidth(0.5f)
+                        .absoluteOffset { IntOffset(x = screenSize.width / 2, y = 0) }
+                }
+                
+                HalfScreenJoystickInput(
                     state = joystickState,
-                    modifier = Modifier.fillMaxHeight().fillMaxWidth(0.5f),
-                    screenSize = IntSize(width = screenSize.width / 2, height = screenSize.height),
+                    modifier = halfScreenWidth,
+                    screenSize = screenSize,
                     size = size,
                     deadZoneRatio = AllSettings.joystickDeadZoneRatio.state / 100f,
                     canLock = AllSettings.joystickControlCanLock.state,
+                    isLeftHalf = isLeftHalf,
+                    offsetX = offsetX,
                     isOccupiedPointer = checkOccupiedPointers,
                     onOccupiedPointer = onOccupiedPointer,
                     onReleasePointer = onReleasePointer,
@@ -1123,8 +1132,7 @@ private fun JoystickControlLayout(
                     }
                 )
             } else {
-                // 视觉层：渲染摇杆
-                LeftHalfScreenJoystickVisual(
+                HalfScreenJoystickVisual(
                     state = joystickState,
                     style = if (AllSettings.joystickUseStyleByLayout.state) {
                         joystickStyle ?: defaultStyle

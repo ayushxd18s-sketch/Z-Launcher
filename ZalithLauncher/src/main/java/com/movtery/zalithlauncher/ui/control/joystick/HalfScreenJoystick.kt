@@ -44,29 +44,27 @@ import com.movtery.layer_controller.observable.ObservableJoystickStyle
 import kotlinx.coroutines.coroutineScope
 import kotlin.math.roundToInt
 
-/**
- * 左半屏动态摇杆组件
- * 使用 PointerEventPass.Final 实现不阻塞底层按钮的探测
- */
-class LeftHalfScreenJoystickState {
+class HalfScreenJoystickState {
     var isVisible by mutableStateOf(false)
     var center by mutableStateOf(Offset.Zero)
-    var joystickOffset by mutableStateOf(Offset.Zero) // 摇杆相对于中心的偏移
+    var joystickOffset by mutableStateOf(Offset.Zero)
     var isLocked by mutableStateOf(false)
     var internalCanLock by mutableStateOf(false)
 }
 
 @Composable
-fun rememberLeftHalfScreenJoystickState() = remember { LeftHalfScreenJoystickState() }
+fun rememberHalfScreenJoystickState() = remember { HalfScreenJoystickState() }
 
 @Composable
-fun LeftHalfScreenJoystickInput(
-    state: LeftHalfScreenJoystickState,
+fun HalfScreenJoystickInput(
+    state: HalfScreenJoystickState,
     modifier: Modifier = Modifier,
     screenSize: IntSize,
     size: Dp,
     deadZoneRatio: Float,
     canLock: Boolean,
+    isLeftHalf: Boolean,
+    offsetX: Int = 0,
     isOccupiedPointer: (PointerId) -> Boolean,
     onOccupiedPointer: (PointerId) -> Unit,
     onReleasePointer: (PointerId) -> Unit,
@@ -76,22 +74,22 @@ fun LeftHalfScreenJoystickInput(
     val density = LocalDensity.current
     val joystickSizePx = with(density) { size.toPx() }
     
-    // 状态回调支持
     val currentOnDirectionChanged by rememberUpdatedState(onDirectionChanged)
     val currentOnLock by rememberUpdatedState(onLock)
 
-    // 记录上一次上报的方向，用于去重，避免每一帧都触发按键事件
     var lastReportedDirection by remember { mutableStateOf(JoystickDirection.None) }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .pointerInput(screenSize, joystickSizePx, deadZoneRatio, canLock) {
+            .pointerInput(screenSize, joystickSizePx, deadZoneRatio, canLock, isLeftHalf, offsetX) {
                 handleJoystickTouch(
                     screenSize = screenSize,
                     joystickSizePx = joystickSizePx,
                     deadZoneRatio = deadZoneRatio,
                     canLock = canLock,
+                    isLeftHalf = isLeftHalf,
+                    offsetX = offsetX,
                     isOccupiedPointer = isOccupiedPointer,
                     onOccupiedPointer = onOccupiedPointer,
                     onReleasePointer = onReleasePointer,
@@ -118,8 +116,8 @@ fun LeftHalfScreenJoystickInput(
 }
 
 @Composable
-fun LeftHalfScreenJoystickVisual(
-    state: LeftHalfScreenJoystickState,
+fun HalfScreenJoystickVisual(
+    state: HalfScreenJoystickState,
     modifier: Modifier = Modifier,
     style: ObservableJoystickStyle,
     size: Dp
@@ -149,6 +147,8 @@ private suspend fun PointerInputScope.handleJoystickTouch(
     joystickSizePx: Float,
     deadZoneRatio: Float,
     canLock: Boolean,
+    isLeftHalf: Boolean,
+    offsetX: Int,
     isOccupiedPointer: (PointerId) -> Boolean,
     onOccupiedPointer: (PointerId) -> Unit,
     onReleasePointer: (PointerId) -> Unit,
@@ -156,8 +156,8 @@ private suspend fun PointerInputScope.handleJoystickTouch(
 ) {
     val centerPoint = Offset(joystickSizePx / 2, joystickSizePx / 2)
     val deadZoneRadius = joystickSizePx * deadZoneRatio / 2
-    val lockThresholdPx = joystickSizePx * 0.3f // 锁定判定阈值
-    val lockPositionOffset = Offset(0f, -joystickSizePx / 2) // 锁定的绝对位置偏移 (相对于中心)
+    val lockThresholdPx = joystickSizePx * 0.3f
+    val lockPositionOffset = Offset(0f, -joystickSizePx / 2)
 
     coroutineScope {
         awaitPointerEventScope {
@@ -177,15 +177,16 @@ private suspend fun PointerInputScope.handleJoystickTouch(
                     }
                     
                     if (downChange != null) {
-                        val pos = downChange.position
-                        // 即使容器已经限制了 50%，这里再做一次逻辑检查作为双重保险
-                        if (pos.x >= 0 && pos.x < screenSize.width && !isOccupiedPointer(downChange.id)) {
+                        val localPos = downChange.position
+                        val actualX = localPos.x + offsetX
+                        
+                        if (actualX >= 0 && actualX < screenSize.width && !isOccupiedPointer(downChange.id)) {
                             activePointerId = downChange.id
                             
                             val halfSize = joystickSizePx / 2
                             center = Offset(
-                                pos.x.coerceIn(halfSize, screenSize.width - halfSize),
-                                pos.y.coerceIn(halfSize, screenSize.height - halfSize)
+                                actualX.coerceIn(halfSize, screenSize.width - halfSize),
+                                localPos.y.coerceIn(halfSize, screenSize.height - halfSize)
                             )
                             
                             currentLocked = false
@@ -201,7 +202,6 @@ private suspend fun PointerInputScope.handleJoystickTouch(
                     
                     if (change != null) {
                         if (change.changedToUpIgnoreConsumed()) {
-                            // 抬起处理：如果满足锁定条件，则进入锁定状态
                             if (canLockTriggered) {
                                 currentLocked = true
                                 val direction = JoystickDirection.North
@@ -216,8 +216,10 @@ private suspend fun PointerInputScope.handleJoystickTouch(
                             canLockTriggered = false
                             change.consume()
                         } else if (change.pressed && change.positionChanged()) {
-                            val currentPos = change.position
-                            val relativeOffset = currentPos - center
+                            val localPos = change.position
+                            val actualX = localPos.x + offsetX
+                            val actualPos = Offset(actualX, localPos.y)
+                            val relativeOffset = actualPos - center
                             
                             if (currentLocked) currentLocked = false
                             
@@ -241,7 +243,6 @@ private suspend fun PointerInputScope.handleJoystickTouch(
                         }
                     }
                     
-                    // 特殊情况：如果所有手指都抬起了
                     if (!event.changes.any { it.pressed }) {
                         if (activePointerId != null) {
                             onUpdateState(false, center, Offset.Zero, false, false, JoystickDirection.None)

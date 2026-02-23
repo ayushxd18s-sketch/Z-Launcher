@@ -1076,8 +1076,13 @@
     <string name="upgrade_is_latest">You are already on the latest version</string>
     <string name="upgrade_cloud_drive">Cloud Drive</string>
     <!--  Joystick Control Settings  -->
-    <string name="settings_control_joystick_left_half_screen_title">Enable Left Half-Screen Movement</string>
+    <string name="settings_control_joystick_half_screen_mode">Half-Screen Joystick Mode</string>
+    <string name="settings_control_joystick_half_screen_disabled">Disabled</string>
+    <string name="settings_control_joystick_half_screen_disabled_summary">Use fixed position joystick</string>
+    <string name="settings_control_joystick_left_half_screen_title">Left Half-Screen</string>
     <string name="settings_control_joystick_left_half_screen_summary">Joystick appears at touch position when pressing on the left half of the screen (excluding control buttons)</string>
+    <string name="settings_control_joystick_right_half_screen_title">Right Half-Screen</string>
+    <string name="settings_control_joystick_right_half_screen_summary">Joystick appears at touch position when pressing on the right half of the screen (excluding control buttons)</string>
     <!--  Url  -->
     <string name="url_wiki_minecraft_game_release">https://minecraft.wiki/w/Java_Edition_%s</string>
     <string name="url_wiki_minecraft_game_snapshot">https://minecraft.wiki/w/Java_Edition_%s</string>
