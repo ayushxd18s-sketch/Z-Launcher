@@ -646,6 +646,7 @@ public class GLFW
     }
 
     public static GLFWWindowProperties internalGetWindow(long window) {
+        public long userPointer = 0L;
         GLFWWindowProperties win = mGLFWWindowMap.get(window);
         if (win == null) {
             throw new IllegalArgumentException("No window pointer found: " + window);
@@ -1185,7 +1186,7 @@ public class GLFW
         // Probably an off-by-one error. This is the 'fix'
         if (key == GLFW_KEY_LAST) {
 			return GLFW_KEY_LAST;
-	    }
+		}
         return keyDownBuffer.get(Math.max(0, key-31));
     }
 
@@ -1483,11 +1484,6 @@ public class GLFW
     public static void glfwRestoreWindow(@NativeType("GLFWwindow *") long window) {
     }
 
-	public static boolean glfwPlatformSupported(int platform) {
-		//TODO
-        return true;
-	}
-
     // --- [ glfwSetPreeditCallback ] ---
     /** {@code GLFWpreeditfun glfwSetPreeditCallback(GLFWwindow * window, GLFWpreeditfun cbfun)} */
     public static long nglfwSetPreeditCallback(long window, long cbfun) {
@@ -1507,5 +1503,157 @@ public class GLFW
         //return GLFWPreeditCallback.createSafe(nglfwSetPreeditCallback(window, memAddressSafe(cbfun)));
 		return null; // TODO
 	}
+	
+// --- [ glfwInitAllocator ] ---
+/** {@code void glfwInitAllocator(GLFWallocator const * allocator)} */
+public static void glfwInitAllocator(@NativeType("GLFWallocator const *") @Nullable GLFWAllocator allocator) {
+    // TODO: Implement glfwInitAllocator
+}
+
+// --- [ glfwPlatformSupported ] ---
+/** {@code int glfwPlatformSupported(int platform)} */
+@NativeType("int")
+public static boolean glfwPlatformSupported(int platform) {
+    // TODO: Implement proper platform support detection
+    return true;
+}
+
+// --- [ glfwGetMonitorName ] ---
+/** {@code char const * glfwGetMonitorName(GLFWmonitor * monitor)} */
+@NativeType("char const *")
+public static @Nullable String glfwGetMonitorName(@NativeType("GLFWmonitor *") long monitor) {
+    // TODO: Implement monitor name retrieval
+    return "Primary Monitor";
+}
+
+// --- [ glfwSetMonitorUserPointer ] ---
+/** {@code void glfwSetMonitorUserPointer(GLFWmonitor * monitor, void * pointer)} */
+public static void glfwSetMonitorUserPointer(@NativeType("GLFWmonitor *") long monitor, @NativeType("void *") long pointer) {
+    // TODO: Implement monitor user pointer
+}
+
+// --- [ glfwGetMonitorUserPointer ] ---
+/** {@code void * glfwGetMonitorUserPointer(GLFWmonitor * monitor)} */
+@NativeType("void *")
+public static long glfwGetMonitorUserPointer(@NativeType("GLFWmonitor *") long monitor) {
+    // TODO: Implement monitor user pointer retrieval
+    return 0L;
+}
+
+// --- [ glfwSetWindowAspectRatio ] ---
+/** {@code void glfwSetWindowAspectRatio(GLFWwindow * window, int numer, int denom)} */
+public static void glfwSetWindowAspectRatio(@NativeType("GLFWwindow *") long window, int numer, int denom) {
+    // TODO: Implement window aspect ratio setting
+}
+
+// --- [ glfwGetWindowOpacity ] ---
+/** {@code float glfwGetWindowOpacity(GLFWwindow * window)} */
+public static float glfwGetWindowOpacity(@NativeType("GLFWwindow *") long window) {
+    // TODO: Implement window opacity retrieval
+    return 1.0f;
+}
+
+// --- [ glfwSetWindowOpacity ] ---
+/** {@code void glfwSetWindowOpacity(GLFWwindow * window, float opacity)} */
+public static void glfwSetWindowOpacity(@NativeType("GLFWwindow *") long window, float opacity) {
+    // TODO: Implement window opacity setting
+}
+
+// --- [ glfwGetWindowTitle ] ---
+/** {@code char const * glfwGetWindowTitle(GLFWwindow * window)} */
+@NativeType("char const *")
+public static @Nullable String glfwGetWindowTitle(@NativeType("GLFWwindow *") long window) {
+    // TODO: Implement window title retrieval
+    return internalGetWindow(window).title.toString();
+}
+
+// --- [ glfwSetWindowUserPointer ] ---
+/** {@code void glfwSetWindowUserPointer(GLFWwindow * window, void * pointer)} */
+public static void glfwSetWindowUserPointer(@NativeType("GLFWwindow *") long window, @NativeType("void *") long pointer) {
+    // TODO: Implement window user pointer
+    internalGetWindow(window).userPointer = pointer;
+}
+
+// --- [ glfwGetWindowUserPointer ] ---
+/** {@code void * glfwGetWindowUserPointer(GLFWwindow * window)} */
+@NativeType("void *")
+public static long glfwGetWindowUserPointer(@NativeType("GLFWwindow *") long window) {
+    // TODO: Implement window user pointer retrieval
+    return internalGetWindow(window).userPointer;
+}
+
+// --- [ glfwIconifyWindow ] ---
+/** {@code void glfwIconifyWindow(GLFWwindow * window)} */
+public static void glfwIconifyWindow(@NativeType("GLFWwindow *") long window) {
+    // TODO: Implement window iconify/minimize
+}
+
+// --- [ glfwGetPreeditCursorRectangle ] ---
+/** {@code void glfwGetPreeditCursorRectangle(GLFWwindow * window, int * x, int * y, int * w, int * h)} */
+public static void glfwGetPreeditCursorRectangle(@NativeType("GLFWwindow *") long window, @NativeType("int *") @Nullable IntBuffer x, @NativeType("int *") @Nullable IntBuffer y, @NativeType("int *") @Nullable IntBuffer w, @NativeType("int *") @Nullable IntBuffer h) {
+    // TODO: Implement IME preedit cursor rectangle retrieval
+    if (x != null) x.put(0);
+    if (y != null) y.put(0);
+    if (w != null) w.put(0);
+    if (h != null) h.put(0);
+}
+
+// --- [ glfwSetPreeditCursorRectangle ] ---
+/** {@code void glfwSetPreeditCursorRectangle(GLFWwindow * window, int x, int y, int w, int h)} */
+public static void glfwSetPreeditCursorRectangle(@NativeType("GLFWwindow *") long window, int x, int y, int w, int h) {
+    // TODO: Implement IME preedit cursor rectangle setting
+}
+
+// --- [ glfwResetPreeditText ] ---
+/** {@code void glfwResetPreeditText(GLFWwindow * window)} */
+public static void glfwResetPreeditText(@NativeType("GLFWwindow *") long window) {
+    // TODO: Implement IME preedit text reset
+}
+
+// --- [ glfwGetPreeditCandidate ] ---
+/** {@code unsigned int * glfwGetPreeditCandidate(GLFWwindow * window, int index, int * textCount)} */
+@NativeType("unsigned int *")
+public static @Nullable IntBuffer glfwGetPreeditCandidate(@NativeType("GLFWwindow *") long window, int index) {
+    // TODO: Implement IME preedit candidate retrieval
+    return null;
+}
+
+// --- [ glfwSetIMEStatusCallback ] ---
+/** {@code GLFWimestatusfun glfwSetIMEStatusCallback(GLFWwindow * window, GLFWimestatusfun cbfun)} */
+@NativeType("GLFWimestatusfun")
+public static @Nullable GLFWIMEStatusCallback glfwSetIMEStatusCallback(@NativeType("GLFWwindow *") long window, @NativeType("GLFWimestatusfun") @Nullable GLFWIMEStatusCallbackI cbfun) {
+    // TODO: Implement IME status callback
+    return null;
+}
+
+// --- [ glfwSetPreeditCandidateCallback ] ---
+/** {@code GLFWpreeditcandidatefun glfwSetPreeditCandidateCallback(GLFWwindow * window, GLFWpreeditcandidatefun cbfun)} */
+@NativeType("GLFWpreeditcandidatefun")
+public static @Nullable GLFWPreeditCandidateCallback glfwSetPreeditCandidateCallback(@NativeType("GLFWwindow *") long window, @NativeType("GLFWpreeditcandidatefun") @Nullable GLFWPreeditCandidateCallbackI cbfun) {
+    // TODO: Implement preedit candidate callback
+    return null;
+}
+
+
+/** {@code int glfwUpdateGamepadMappings(char const * string)} */
+public static boolean glfwUpdateGamepadMappings(@NativeType("char const *") CharSequence string) {
+    // TODO: Implement gamepad mappings update
+    return false;
+}
+
+// --- [ glfwGetProcAddress ] ---
+/** {@code GLFWglproc glfwGetProcAddress(char const * procname)} */
+@NativeType("GLFWglproc")
+public static long glfwGetProcAddress(@NativeType("char const *") ByteBuffer procname) {
+    // TODO: Implement OpenGL proc address retrieval
+    return 0L;
+}
+
+/** {@code GLFWglproc glfwGetProcAddress(char const * procname)} */
+@NativeType("GLFWglproc")
+public static long glfwGetProcAddress(@NativeType("char const *") CharSequence procname) {
+    // TODO: Implement OpenGL proc address retrieval
+    return 0L;
+}
 
 }
