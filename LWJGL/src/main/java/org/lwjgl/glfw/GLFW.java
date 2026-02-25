@@ -646,7 +646,6 @@ public class GLFW
     }
 
     public static GLFWWindowProperties internalGetWindow(long window) {
-        public long userPointer = 0L;
         GLFWWindowProperties win = mGLFWWindowMap.get(window);
         if (win == null) {
             throw new IllegalArgumentException("No window pointer found: " + window);
@@ -1285,6 +1284,10 @@ public class GLFW
     public static boolean glfwUpdateGamepadMappings(ByteBuffer string) {
         return false;
     }
+    public static boolean glfwUpdateGamepadMappings(@NativeType("char const *") CharSequence string) {
+        // TODO: Implement gamepad mappings update
+        return false;
+    }
     public static String glfwGetGamepadName(int jid) {
         return null;
     }
@@ -1571,7 +1574,6 @@ public static @Nullable String glfwGetWindowTitle(@NativeType("GLFWwindow *") lo
 /** {@code void glfwSetWindowUserPointer(GLFWwindow * window, void * pointer)} */
 public static void glfwSetWindowUserPointer(@NativeType("GLFWwindow *") long window, @NativeType("void *") long pointer) {
     // TODO: Implement window user pointer
-    internalGetWindow(window).userPointer = pointer;
 }
 
 // --- [ glfwGetWindowUserPointer ] ---
@@ -1579,7 +1581,7 @@ public static void glfwSetWindowUserPointer(@NativeType("GLFWwindow *") long win
 @NativeType("void *")
 public static long glfwGetWindowUserPointer(@NativeType("GLFWwindow *") long window) {
     // TODO: Implement window user pointer retrieval
-    return internalGetWindow(window).userPointer;
+    return 0L;
 }
 
 // --- [ glfwIconifyWindow ] ---
@@ -1632,13 +1634,6 @@ public static @Nullable GLFWIMEStatusCallback glfwSetIMEStatusCallback(@NativeTy
 public static @Nullable GLFWPreeditCandidateCallback glfwSetPreeditCandidateCallback(@NativeType("GLFWwindow *") long window, @NativeType("GLFWpreeditcandidatefun") @Nullable GLFWPreeditCandidateCallbackI cbfun) {
     // TODO: Implement preedit candidate callback
     return null;
-}
-
-
-/** {@code int glfwUpdateGamepadMappings(char const * string)} */
-public static boolean glfwUpdateGamepadMappings(@NativeType("char const *") CharSequence string) {
-    // TODO: Implement gamepad mappings update
-    return false;
 }
 
 // --- [ glfwGetProcAddress ] ---
