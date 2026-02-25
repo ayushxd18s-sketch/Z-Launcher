@@ -1156,6 +1156,9 @@ public class GLFW
     public static void glfwPostEmptyEvent() {}
 
     public static int glfwGetInputMode(@NativeType("GLFWwindow *") long window, int mode) {
+		if (CHECKS) {
+            check(window);
+		}
         return internalGetWindow(window).inputModes.get(mode);
     }
 
