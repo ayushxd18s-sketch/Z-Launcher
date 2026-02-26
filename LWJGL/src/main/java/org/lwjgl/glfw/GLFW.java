@@ -1159,7 +1159,16 @@ public class GLFW
 		if (CHECKS) {
             check(window);
 		}
-        return internalGetWindow(window).inputModes.get(mode);
+
+		GLFWWindowProperties win = internalGetWindow(window);
+        if (win == null || win.inputModes == null) {
+           return 0;
+	    }
+
+		Integer value = win.inputModes.get(mode);
+        return value != null ? value : 0;
+
+        //return internalGetWindow(window).inputModes.get(mode);
     }
 
     public static void glfwSetInputMode(@NativeType("GLFWwindow *") long window, int mode, int value) {
