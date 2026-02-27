@@ -11,6 +11,7 @@ tasks.jar {
     archiveBaseName.set("lwjgl-glfw-classes")
     destinationDirectory.set(file("../ZalithLauncher/src/main/assets/components/lwjgl3/"))
     // Auto update the version with a timestamp so the project jar gets updated by Pojav
+
     doLast {
         val versionFile = file("../ZalithLauncher/src/main/assets/components/lwjgl3/version")
         versionFile.writeText(System.currentTimeMillis().toString())
@@ -22,6 +23,8 @@ tasks.jar {
         }
     })
     exclude("net/java/openjdk/cacio/ctc/**")
+    exclude("module-info.class")
+    exclude("META-INF/INDEX.LIST")
     manifest {
         attributes("Manifest-Version" to "3.4.2")
         attributes("Automatic-Module-Name" to "org.lwjgl")
