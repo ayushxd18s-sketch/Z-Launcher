@@ -225,6 +225,8 @@ sealed interface AccountSkinOperation {
     data object None : AccountSkinOperation
     /** 修改皮肤主对话框 */
     data object ChangeSkin : AccountSkinOperation
+    /** 选择皮肤模型对话框 */
+    data class SelectModel(val uri: Uri, val recommendedModel: SkinModelType? = null) : AccountSkinOperation
 }
 
 /**
@@ -1113,6 +1115,7 @@ fun OtherServerLoginDialog(
 
 @Composable
 fun SelectSkinModelDialog(
+    recommendedModel: SkinModelType? = null,
     onDismissRequest: () -> Unit = {},
     onSelected: (SkinModelType) -> Unit = {}
 ) {
@@ -1164,7 +1167,9 @@ fun SelectSkinModelDialog(
                                 onSelected(SkinModelType.STEVE)
                             }
                         ) {
-                            MarqueeText(text = stringResource(R.string.account_change_skin_model_steve))
+                            val text = if (recommendedModel != SkinModelType.STEVE) stringResource(R.string.account_change_skin_model_steve)
+                                     else stringResource(R.string.account_change_skin_recommended, stringResource(R.string.account_change_skin_model_steve))
+                            MarqueeText(text = text)
                         }
                         Button(
                             modifier = Modifier.fillMaxWidth(),
@@ -1172,7 +1177,9 @@ fun SelectSkinModelDialog(
                                 onSelected(SkinModelType.ALEX)
                             }
                         ) {
-                            MarqueeText(text = stringResource(R.string.account_change_skin_model_alex))
+                            val text = if (recommendedModel != SkinModelType.ALEX) stringResource(R.string.account_change_skin_model_alex)
+                                    else stringResource(R.string.account_change_skin_recommended, stringResource(R.string.account_change_skin_model_alex))
+                            MarqueeText(text = text)
                         }
                         FilledTonalButton(
                             modifier = Modifier.fillMaxWidth(),
@@ -1211,6 +1218,7 @@ fun ChangeSkinDialog(
     onDismissRequest: () -> Unit = {},
     onResetSkin: () -> Unit = {},
     onChangeSkin: (Uri, SkinModelType) -> Unit = { _, _ -> },
+    onDetectSkin: (Uri) -> Unit = {},
     onChangeCape: (PlayerProfile.Cape, String) -> Unit = { _, _ -> },
     onFetchCapes: () -> Unit = {}
 ) {
@@ -1246,8 +1254,7 @@ fun ChangeSkinDialog(
     val skinPicker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
             uri?.let {
-                pendingSkinData = ChangeSkin.ChangeSkinData(skinUri = it)
-                showModelSelector = true
+                onDetectSkin(it)
             }
         }
 

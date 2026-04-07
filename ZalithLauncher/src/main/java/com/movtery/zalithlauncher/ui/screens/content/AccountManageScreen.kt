@@ -92,6 +92,7 @@ import com.movtery.zalithlauncher.ui.screens.content.elements.MicrosoftLoginOper
 import com.movtery.zalithlauncher.ui.screens.content.elements.MicrosoftLoginTipDialog
 import com.movtery.zalithlauncher.ui.screens.content.elements.OtherLoginOperation
 import com.movtery.zalithlauncher.ui.screens.content.elements.OtherServerLoginDialog
+import com.movtery.zalithlauncher.ui.screens.content.elements.SelectSkinModelDialog
 import com.movtery.zalithlauncher.ui.screens.content.elements.ServerOperation
 import com.movtery.zalithlauncher.utils.animation.swapAnimateDpAsState
 import com.movtery.zalithlauncher.utils.copyText
@@ -374,6 +375,7 @@ private fun LoginMenuOperation(
                 }
             )
         }
+
     }
 }
 
@@ -493,6 +495,7 @@ private fun LocalLoginOperation(
                 }
             )
         }
+
     }
 }
 
@@ -564,6 +567,7 @@ private fun OtherLoginOperation(
                 }
             )
         }
+
     }
 }
 
@@ -786,6 +790,9 @@ private fun AccountSkinOperation(
                         }
                     }
                 },
+                onDetectSkin = { uri ->
+                    actions.onIntent(AccountManageIntent.DetectSkinModel(account, uri))
+                },
                 onChangeCape = { cape, name ->
                     if (account.isMicrosoftAccount()) {
                         actions.onIntent(
@@ -797,6 +804,35 @@ private fun AccountSkinOperation(
                             )
                         )
                     }
+                }
+            )
+        }
+
+        is AccountSkinOperation.SelectModel -> {
+            SelectSkinModelDialog(
+                recommendedModel = accountSkinOperation.recommendedModel,
+                onDismissRequest = { updateOperation(AccountSkinOperation.None) },
+                onSelected = { model ->
+                    when {
+                        account.isLocalAccount() -> {
+                            account.skinModelType = model
+                            account.profileId = getLocalUUIDWithSkinModel(account.username, model)
+                            actions.onIntent(
+                                AccountManageIntent.SaveLocalSkin(account, accountSkinOperation.uri)
+                            )
+                        }
+
+                        account.isMicrosoftAccount() -> {
+                            actions.onIntent(
+                                AccountManageIntent.ImportSkinFile(
+                                    account,
+                                    accountSkinOperation.uri,
+                                    model
+                                )
+                            )
+                        }
+                    }
+                    updateOperation(AccountSkinOperation.None)
                 }
             )
         }

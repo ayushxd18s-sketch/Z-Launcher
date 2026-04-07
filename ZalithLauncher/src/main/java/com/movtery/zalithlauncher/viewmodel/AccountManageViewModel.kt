@@ -44,6 +44,7 @@ import com.movtery.zalithlauncher.game.account.microsoftLogin
 import com.movtery.zalithlauncher.game.account.refreshMicrosoft
 import com.movtery.zalithlauncher.game.account.wardrobe.SkinModelType
 import com.movtery.zalithlauncher.game.account.wardrobe.getLocalUUIDWithSkinModel
+import com.movtery.zalithlauncher.game.account.wardrobe.isSlimModel
 import com.movtery.zalithlauncher.game.account.wardrobe.validateSkinFile
 import com.movtery.zalithlauncher.game.account.yggdrasil.PlayerProfile
 import com.movtery.zalithlauncher.game.account.yggdrasil.cacheAllCapes
@@ -164,6 +165,9 @@ sealed interface AccountManageIntent {
 
     /** 将账号皮肤重置为默认状态 */
     data class ResetSkin(val account: Account) : AccountManageIntent
+
+    /** 自动识别皮肤模型 */
+    data class DetectSkinModel(val account: Account, val uri: Uri) : AccountManageIntent
 }
 
 /**
@@ -322,6 +326,7 @@ class AccountManageViewModel @Inject constructor(
             is AccountManageIntent.RefreshAccount -> refreshAccount(intent.account)
             is AccountManageIntent.SaveLocalSkin -> saveLocalSkin(intent)
             is AccountManageIntent.ResetSkin -> resetSkin(intent.account)
+            is AccountManageIntent.DetectSkinModel -> detectSkinModel(intent)
         }
     }
 
@@ -653,6 +658,57 @@ class AccountManageViewModel @Inject constructor(
             AccountManageIntent.UpdateAccountSkinOp(
                 account.uniqueUUID,
                 AccountSkinOperation.None
+            )
+        )
+    }
+
+    /** 自动识别皮肤模型 */
+    private fun detectSkinModel(intent: AccountManageIntent.DetectSkinModel) {
+        val account = intent.account
+        val uri = intent.uri
+        val fileName = context.getFileName(uri) ?: UUID.randomUUID().toString().replace("-", "")
+        val cacheFile = File(PathManager.DIR_IMAGE_CACHE, fileName)
+
+        TaskSystem.submitTask(
+            Task.runTask(
+                id = account.uniqueUUID,
+                dispatcher = Dispatchers.IO,
+                task = {
+                    context.copyLocalFile(uri, cacheFile)
+                    if (validateSkinFile(cacheFile)) {
+                        val isSlim = cacheFile.isSlimModel()
+                        val recommendedModel = if (isSlim) SkinModelType.ALEX else SkinModelType.STEVE
+                        onIntent(
+                            AccountManageIntent.UpdateAccountSkinOp(
+                                account.uniqueUUID,
+                                AccountSkinOperation.SelectModel(uri, recommendedModel)
+                            )
+                        )
+                    } else {
+                        emitError(
+                            context.getString(R.string.generic_warning),
+                            context.getString(R.string.account_change_skin_invalid)
+                        )
+                        onIntent(
+                            AccountManageIntent.UpdateAccountSkinOp(
+                                account.uniqueUUID,
+                                AccountSkinOperation.None
+                            )
+                        )
+                    }
+                },
+                onError = { th ->
+                    emitError(
+                        context.getString(R.string.generic_error),
+                        context.getString(R.string.account_change_skin_failed_to_import) + "\r\n" + th.getMessageOrToString()
+                    )
+                    onIntent(
+                        AccountManageIntent.UpdateAccountSkinOp(
+                            account.uniqueUUID,
+                            AccountSkinOperation.None
+                        )
+                    )
+                }
             )
         )
     }
