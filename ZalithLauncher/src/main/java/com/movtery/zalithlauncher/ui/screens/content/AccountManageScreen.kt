@@ -729,9 +729,12 @@ private fun AccountSkinOperation(
                     actions.onIntent(AccountManageIntent.ResetChangeSkinDialogState(account.uniqueUUID))
                     updateOperation(AccountSkinOperation.None)
                 },
-                onUiStateChange = { state ->
+                onIntent = { dialogIntent ->
                     actions.onIntent(
-                        AccountManageIntent.UpdateChangeSkinDialogState(account.uniqueUUID, state)
+                        AccountManageIntent.ReduceChangeSkinDialogState(
+                            account.uniqueUUID,
+                            dialogIntent
+                        )
                     )
                 },
                 onResetSkin = {

@@ -1086,6 +1086,17 @@ data class ChangeSkinDialogUiState(
     val currentUsingCape: PlayerProfile.Cape = EmptyCape
 )
 
+sealed interface ChangeSkinDialogIntent {
+    data class OnAvailableCapesChanged(val capes: List<PlayerProfile.Cape>) : ChangeSkinDialogIntent
+    data class SelectSkinFile(val skinUri: Uri) : ChangeSkinDialogIntent
+    data object SelectResetSkin : ChangeSkinDialogIntent
+    data object OpenCapeSelector : ChangeSkinDialogIntent
+    data object CloseCapeSelector : ChangeSkinDialogIntent
+    data object DismissModelSelector : ChangeSkinDialogIntent
+    data class SelectSkinModel(val model: SkinModelType) : ChangeSkinDialogIntent
+    data class SelectCape(val cape: PlayerProfile.Cape) : ChangeSkinDialogIntent
+}
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun ChangeSkinDialog(
@@ -1093,7 +1104,7 @@ fun ChangeSkinDialog(
     uiState: ChangeSkinDialogUiState = ChangeSkinDialogUiState(),
     availableCapes: List<PlayerProfile.Cape> = emptyList(),
     onDismissRequest: () -> Unit = {},
-    onUiStateChange: (ChangeSkinDialogUiState) -> Unit = {},
+    onIntent: (ChangeSkinDialogIntent) -> Unit = {},
     onResetSkin: () -> Unit = {},
     onChangeSkin: (Uri, SkinModelType) -> Unit = { _, _ -> },
     onChangeCape: (PlayerProfile.Cape, String) -> Unit = { _, _ -> },
@@ -1104,31 +1115,15 @@ fun ChangeSkinDialog(
 
     LaunchedEffect(availableCapes) {
         if (account.isMicrosoftAccount()) {
-            if (availableCapes.isNotEmpty()) {
-                val currentUsingCape0 = availableCapes.findUsing() ?: EmptyCape
-                onUiStateChange(
-                    uiState.copy(
-                        isFetchingCapes = false,
-                        currentUsingCape = currentUsingCape0,
-                        currentCapeToLoad = currentUsingCape0
-                    )
-                )
-            } else {
-                onUiStateChange(uiState.copy(isFetchingCapes = true))
-                onFetchCapes()
-            }
+            onIntent(ChangeSkinDialogIntent.OnAvailableCapesChanged(availableCapes))
+            if (availableCapes.isEmpty()) onFetchCapes()
         }
     }
 
     val skinPicker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
             uri?.let {
-                onUiStateChange(
-                    uiState.copy(
-                        pendingSkinData = ChangeSkin.ChangeSkinData(skinUri = it),
-                        showModelSelector = true
-                    )
-                )
+                onIntent(ChangeSkinDialogIntent.SelectSkinFile(it))
             }
         }
 
@@ -1288,7 +1283,7 @@ fun ChangeSkinDialog(
                                         }
                                     },
                                     onClick = {
-                                        onUiStateChange(uiState.copy(showCapeSelector = true))
+                                        onIntent(ChangeSkinDialogIntent.OpenCapeSelector)
                                     },
                                     enabled = !uiState.isFetchingCapes
                                 )
@@ -1307,7 +1302,7 @@ fun ChangeSkinDialog(
                                         )
                                     },
                                     onClick = {
-                                        onUiStateChange(uiState.copy(pendingSkinData = ChangeSkin.ResetSkin))
+                                        onIntent(ChangeSkinDialogIntent.SelectResetSkin)
                                     }
                                 )
                             }
@@ -1370,25 +1365,12 @@ fun ChangeSkinDialog(
 
     if (uiState.showModelSelector) {
         SelectSkinModelDialog(
-            onDismissRequest = {
-                onUiStateChange(
-                    uiState.copy(
-                        showModelSelector = false,
-                        pendingSkinData = null
-                    )
-                )
+                onDismissRequest = {
+                onIntent(ChangeSkinDialogIntent.DismissModelSelector)
                 loadSkin()
             },
             onSelected = { model ->
-                val data = uiState.pendingSkinData as? ChangeSkin.ChangeSkinData
-                onUiStateChange(
-                    uiState.copy(
-                        pendingSkinData = data?.copy(
-                            skinModel = model
-                        ),
-                        showModelSelector = false
-                    )
-                )
+                onIntent(ChangeSkinDialogIntent.SelectSkinModel(model))
             }
         )
     }
@@ -1402,17 +1384,10 @@ fun ChangeSkinDialog(
             //若当前未更改披风，则使用使用中的披风
             selectedCape = uiState.pendingCape ?: uiState.currentUsingCape,
             onSelected = { cape, _ ->
-                //检查是否已经为正在使用的披风
-                onUiStateChange(
-                    uiState.copy(
-                        pendingCape = if (cape != uiState.currentUsingCape) cape else null,
-                        currentCapeToLoad = cape,
-                        showCapeSelector = false
-                    )
-                )
+                onIntent(ChangeSkinDialogIntent.SelectCape(cape))
             },
             onDismiss = {
-                onUiStateChange(uiState.copy(showCapeSelector = false))
+                onIntent(ChangeSkinDialogIntent.CloseCapeSelector)
             }
         )
     }

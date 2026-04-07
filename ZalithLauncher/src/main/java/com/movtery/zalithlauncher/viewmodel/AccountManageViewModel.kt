@@ -43,6 +43,7 @@ import com.movtery.zalithlauncher.game.account.microsoft.XboxLoginException
 import com.movtery.zalithlauncher.game.account.microsoft.toLocal
 import com.movtery.zalithlauncher.game.account.microsoftLogin
 import com.movtery.zalithlauncher.game.account.refreshMicrosoft
+import com.movtery.zalithlauncher.game.account.wardrobe.EmptyCape
 import com.movtery.zalithlauncher.game.account.wardrobe.SkinModelType
 import com.movtery.zalithlauncher.game.account.wardrobe.getLocalUUIDWithSkinModel
 import com.movtery.zalithlauncher.game.account.wardrobe.validateSkinFile
@@ -50,12 +51,15 @@ import com.movtery.zalithlauncher.game.account.yggdrasil.PlayerProfile
 import com.movtery.zalithlauncher.game.account.yggdrasil.cacheAllCapes
 import com.movtery.zalithlauncher.game.account.yggdrasil.changeCape
 import com.movtery.zalithlauncher.game.account.yggdrasil.executeWithAuthorization
+import com.movtery.zalithlauncher.game.account.yggdrasil.findUsing
 import com.movtery.zalithlauncher.game.account.yggdrasil.getPlayerProfile
 import com.movtery.zalithlauncher.game.account.yggdrasil.uploadSkin
 import com.movtery.zalithlauncher.path.PathManager
 import com.movtery.zalithlauncher.ui.screens.content.elements.AccountOperation
 import com.movtery.zalithlauncher.ui.screens.content.elements.AccountSkinOperation
+import com.movtery.zalithlauncher.ui.screens.content.elements.ChangeSkinDialogIntent
 import com.movtery.zalithlauncher.ui.screens.content.elements.ChangeSkinDialogUiState
+import com.movtery.zalithlauncher.ui.screens.content.elements.ChangeSkin
 import com.movtery.zalithlauncher.ui.screens.content.elements.LocalLoginOperation
 import com.movtery.zalithlauncher.ui.screens.content.elements.MicrosoftLoginOperation
 import com.movtery.zalithlauncher.ui.screens.content.elements.OtherLoginOperation
@@ -130,9 +134,9 @@ sealed class AccountManageIntent {
     data class UpdateAccountOp(val operation: AccountOperation) : AccountManageIntent()
     data class UpdateAccountSkinOp(val accountUuid: String, val operation: AccountSkinOperation) :
         AccountManageIntent()
-    data class UpdateChangeSkinDialogState(
+    data class ReduceChangeSkinDialogState(
         val accountUuid: String,
-        val state: ChangeSkinDialogUiState
+        val intent: ChangeSkinDialogIntent
     ) : AccountManageIntent()
 
     data class ResetChangeSkinDialogState(val accountUuid: String) : AccountManageIntent()
@@ -326,11 +330,11 @@ class AccountManageViewModel @Inject constructor(
             is AccountManageIntent.UpdateAccountSkinOp -> {
                 _accountSkinOpMap.update { it + (intent.accountUuid to intent.operation) }
             }
-            is AccountManageIntent.UpdateChangeSkinDialogState -> {
-                reduceChangeSkinState(intent.accountUuid) { intent.state }
+            is AccountManageIntent.ReduceChangeSkinDialogState -> {
+                reduceChangeSkinState(intent.accountUuid, intent.intent)
             }
             is AccountManageIntent.ResetChangeSkinDialogState -> {
-                reduceChangeSkinState(intent.accountUuid) { null }
+                reduceChangeSkinState(intent.accountUuid, null)
             }
 
             is AccountManageIntent.PerformMicrosoftLogin -> performMicrosoftLogin(intent)
@@ -355,10 +359,60 @@ class AccountManageViewModel @Inject constructor(
 
     private fun reduceChangeSkinState(
         accountUuid: String,
-        reducer: (ChangeSkinDialogUiState?) -> ChangeSkinDialogUiState?
+        intent: ChangeSkinDialogIntent?
     ) {
         _changeSkinDialogStateMap.update { current ->
-            val next = reducer(current[accountUuid])
+            val state = current[accountUuid] ?: ChangeSkinDialogUiState()
+            val next = when (intent) {
+                null -> null
+                is ChangeSkinDialogIntent.OnAvailableCapesChanged -> {
+                    if (intent.capes.isNotEmpty()) {
+                        val currentUsingCape = intent.capes.findUsing() ?: EmptyCape
+                        state.copy(
+                            isFetchingCapes = false,
+                            currentUsingCape = currentUsingCape,
+                            currentCapeToLoad = currentUsingCape
+                        )
+                    } else {
+                        state.copy(isFetchingCapes = true)
+                    }
+                }
+                is ChangeSkinDialogIntent.SelectSkinFile -> {
+                    state.copy(
+                        pendingSkinData = ChangeSkin.ChangeSkinData(intent.skinUri),
+                        showModelSelector = true
+                    )
+                }
+                is ChangeSkinDialogIntent.SelectResetSkin -> {
+                    state.copy(pendingSkinData = ChangeSkin.ResetSkin)
+                }
+                is ChangeSkinDialogIntent.OpenCapeSelector -> {
+                    state.copy(showCapeSelector = true)
+                }
+                is ChangeSkinDialogIntent.CloseCapeSelector -> {
+                    state.copy(showCapeSelector = false)
+                }
+                is ChangeSkinDialogIntent.DismissModelSelector -> {
+                    state.copy(
+                        showModelSelector = false,
+                        pendingSkinData = null
+                    )
+                }
+                is ChangeSkinDialogIntent.SelectSkinModel -> {
+                    val pending = state.pendingSkinData as? ChangeSkin.ChangeSkinData
+                    state.copy(
+                        pendingSkinData = pending?.copy(skinModel = intent.model),
+                        showModelSelector = false
+                    )
+                }
+                is ChangeSkinDialogIntent.SelectCape -> {
+                    state.copy(
+                        pendingCape = intent.cape.takeIf { it != state.currentUsingCape },
+                        currentCapeToLoad = intent.cape,
+                        showCapeSelector = false
+                    )
+                }
+            }
             if (next == null) {
                 current - accountUuid
             } else {
