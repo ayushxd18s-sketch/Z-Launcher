@@ -54,6 +54,7 @@ import com.movtery.zalithlauncher.game.account.yggdrasil.uploadSkin
 import com.movtery.zalithlauncher.path.PathManager
 import com.movtery.zalithlauncher.ui.screens.content.elements.AccountOperation
 import com.movtery.zalithlauncher.ui.screens.content.elements.AccountSkinOperation
+import com.movtery.zalithlauncher.ui.screens.content.elements.ChangeSkinDialogUiState
 import com.movtery.zalithlauncher.ui.screens.content.elements.LocalLoginOperation
 import com.movtery.zalithlauncher.ui.screens.content.elements.MicrosoftLoginOperation
 import com.movtery.zalithlauncher.ui.screens.content.elements.OtherLoginOperation
@@ -110,7 +111,8 @@ data class AccountManageUiState(
     val otherLoginOperation: OtherLoginOperation = OtherLoginOperation.None,
     val serverOperation: ServerOperation = ServerOperation.None,
     val accountOperation: AccountOperation = AccountOperation.None,
-    val accountSkinOperationMap: Map<String, AccountSkinOperation> = emptyMap()
+    val accountSkinOperationMap: Map<String, AccountSkinOperation> = emptyMap(),
+    val changeSkinDialogStateMap: Map<String, ChangeSkinDialogUiState> = emptyMap()
 )
 
 /**
@@ -127,6 +129,12 @@ sealed class AccountManageIntent {
     data class UpdateAccountOp(val operation: AccountOperation) : AccountManageIntent()
     data class UpdateAccountSkinOp(val accountUuid: String, val operation: AccountSkinOperation) :
         AccountManageIntent()
+    data class UpdateChangeSkinDialogState(
+        val accountUuid: String,
+        val state: ChangeSkinDialogUiState
+    ) : AccountManageIntent()
+
+    data class ResetChangeSkinDialogState(val accountUuid: String) : AccountManageIntent()
 
 
     /** 执行微软登录流程 */
@@ -227,6 +235,8 @@ class AccountManageViewModel @Inject constructor(
     private val _serverOp = MutableStateFlow<ServerOperation>(ServerOperation.None)
     private val _accountOp = MutableStateFlow<AccountOperation>(AccountOperation.None)
     private val _accountSkinOpMap = MutableStateFlow<Map<String, AccountSkinOperation>>(emptyMap())
+    private val _changeSkinDialogStateMap =
+        MutableStateFlow<Map<String, ChangeSkinDialogUiState>>(emptyMap())
 
     private val _effect = Channel<AccountManageEffect>(Channel.BUFFERED)
     val effect = _effect.receiveAsFlow()
@@ -254,9 +264,10 @@ class AccountManageViewModel @Inject constructor(
             _otherLoginOp,
             _serverOp,
             _accountOp,
-            _accountSkinOpMap
-        ) { localLoginOp, otherLoginOp, serverOp, accountOp, accountSkinOpMap ->
-            OtherOps(localLoginOp, otherLoginOp, serverOp, accountOp, accountSkinOpMap)
+            _accountSkinOpMap,
+            _changeSkinDialogStateMap
+        ) { localLoginOp, otherLoginOp, serverOp, accountOp, accountSkinOpMap, changeSkinDialogStateMap ->
+            OtherOps(localLoginOp, otherLoginOp, serverOp, accountOp, accountSkinOpMap, changeSkinDialogStateMap)
         }
     ) { (accounts, currentAccount, authServers), msOps, otherOps ->
         AccountManageUiState(
@@ -269,7 +280,8 @@ class AccountManageViewModel @Inject constructor(
             otherLoginOperation = otherOps.otherLoginOp,
             serverOperation = otherOps.serverOp,
             accountOperation = otherOps.accountOp,
-            accountSkinOperationMap = otherOps.accountSkinOpMap
+            accountSkinOperationMap = otherOps.accountSkinOpMap,
+            changeSkinDialogStateMap = otherOps.changeSkinDialogStateMap
         )
     }.stateIn(
         scope = viewModelScope,
@@ -287,7 +299,8 @@ class AccountManageViewModel @Inject constructor(
         val otherLoginOp: OtherLoginOperation,
         val serverOp: ServerOperation,
         val accountOp: AccountOperation,
-        val accountSkinOpMap: Map<String, AccountSkinOperation>
+        val accountSkinOpMap: Map<String, AccountSkinOperation>,
+        val changeSkinDialogStateMap: Map<String, ChangeSkinDialogUiState>
     )
 
     /**
@@ -304,6 +317,12 @@ class AccountManageViewModel @Inject constructor(
             is AccountManageIntent.UpdateAccountOp -> _accountOp.value = intent.operation
             is AccountManageIntent.UpdateAccountSkinOp -> {
                 _accountSkinOpMap.update { it + (intent.accountUuid to intent.operation) }
+            }
+            is AccountManageIntent.UpdateChangeSkinDialogState -> {
+                _changeSkinDialogStateMap.update { it + (intent.accountUuid to intent.state) }
+            }
+            is AccountManageIntent.ResetChangeSkinDialogState -> {
+                _changeSkinDialogStateMap.update { it - intent.accountUuid }
             }
 
             is AccountManageIntent.PerformMicrosoftLogin -> performMicrosoftLogin(intent)
