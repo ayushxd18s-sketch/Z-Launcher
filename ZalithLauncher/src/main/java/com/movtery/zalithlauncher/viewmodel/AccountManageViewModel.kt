@@ -378,6 +378,23 @@ class AccountManageViewModel @Inject constructor(
                     }
                 }
                 is ChangeSkinDialogIntent.SelectSkinFile -> {
+                    val fileName = context.getFileName(intent.skinUri) ?: UUID.randomUUID().toString().replace("-", "")
+                    val cacheFile = File(PathManager.DIR_IMAGE_CACHE, fileName)
+                    context.copyLocalFile(intent.skinUri, cacheFile)
+                    if (validateSkinFile(cacheFile)) {
+                        onIntent(
+                            AccountManageIntent.UploadMicrosoftSkin(
+                                account,
+                                cacheFile,
+                                model
+                            )
+                        )
+                    } else {
+                        emitError(
+                            context.getString(R.string.generic_warning),
+                            context.getString(R.string.account_change_skin_invalid)
+                        )
+                    }
                     state.copy(
                         pendingSkinData = ChangeSkin.ChangeSkinData(intent.skinUri),
                         showModelSelector = true
@@ -473,20 +490,13 @@ class AccountManageViewModel @Inject constructor(
                 dispatcher = Dispatchers.IO,
                 task = {
                     context.copyLocalFile(uri, cacheFile)
-                    if (validateSkinFile(cacheFile)) {
-                        onIntent(
-                            AccountManageIntent.UploadMicrosoftSkin(
-                                account,
-                                cacheFile,
-                                model
-                            )
+                    onIntent(
+                        AccountManageIntent.UploadMicrosoftSkin(
+                            account,
+                            cacheFile,
+                            model
                         )
-                    } else {
-                        emitError(
-                            context.getString(R.string.generic_warning),
-                            context.getString(R.string.account_change_skin_invalid)
-                        )
-                    }
+                    )
                 },
                 onError = { th ->
                     emitError(
@@ -690,29 +700,16 @@ class AccountManageViewModel @Inject constructor(
 
         TaskSystem.submitTask(Task.runTask(dispatcher = Dispatchers.IO, task = {
             context.copyLocalFile(uri, cacheFile)
-            if (validateSkinFile(cacheFile)) {
-                cacheFile.copyTo(skinFile, true)
-                FileUtils.deleteQuietly(cacheFile)
-                AccountsManager.suspendSaveAccount(account)
-                emitRefreshAvatar(account.uniqueUUID)
-                onIntent(
-                    AccountManageIntent.UpdateAccountSkinOp(
-                        account.uniqueUUID,
-                        AccountSkinOperation.None
-                    )
+            cacheFile.copyTo(skinFile, true)
+            FileUtils.deleteQuietly(cacheFile)
+            AccountsManager.suspendSaveAccount(account)
+            emitRefreshAvatar(account.uniqueUUID)
+            onIntent(
+                AccountManageIntent.UpdateAccountSkinOp(
+                    account.uniqueUUID,
+                    AccountSkinOperation.None
                 )
-            } else {
-                emitError(
-                    context.getString(R.string.generic_warning),
-                    context.getString(R.string.account_change_skin_invalid)
-                )
-                onIntent(
-                    AccountManageIntent.UpdateAccountSkinOp(
-                        account.uniqueUUID,
-                        AccountSkinOperation.None
-                    )
-                )
-            }
+            )
         }, onError = { th ->
             FileUtils.deleteQuietly(cacheFile)
             emitError(context.getString(R.string.error_import_image), th.getMessageOrToString())

@@ -77,16 +77,15 @@ fun getLocalUUIDWithSkinModel(userName: String, skinModelType: SkinModelType): S
 /**
  * 检查皮肤像素合法性，Minecraft仅支持使用64x64或64x32像素的皮肤
  */
-suspend fun validateSkinFile(skinFile: File): Boolean {
-    return withContext(Dispatchers.IO) {
-        val options = BitmapFactory.Options()
-        options.inJustDecodeBounds = true
-        BitmapFactory.decodeFile(skinFile.absolutePath, options)
+fun validateSkinFile(skinFile: File): Boolean {
+    val options = BitmapFactory.Options()
+    options.inJustDecodeBounds = true
+    BitmapFactory.decodeFile(skinFile.absolutePath, options)
 
-        val width = options.outWidth
-        val height = options.outHeight
+    val width = options.outWidth
+    val height = options.outHeight
 
-        //像素尺寸是否满足 64x64 或 32x32
-        (width == 64 && height == 32) || (width == 64 && height == 64)
-    }
+    //像素尺寸是否满足 64x64 或 32x32
+    return (width == 64 && height == 32) || (width == 64 && height == 64)
+
 }
