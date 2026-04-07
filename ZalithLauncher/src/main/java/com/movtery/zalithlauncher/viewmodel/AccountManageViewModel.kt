@@ -382,12 +382,9 @@ class AccountManageViewModel @Inject constructor(
                     val cacheFile = File(PathManager.DIR_IMAGE_CACHE, fileName)
                     context.copyLocalFile(intent.skinUri, cacheFile)
                     if (validateSkinFile(cacheFile)) {
-                        onIntent(
-                            AccountManageIntent.UploadMicrosoftSkin(
-                                account,
-                                cacheFile,
-                                model
-                            )
+                        state.copy(
+                            pendingSkinData = ChangeSkin.ChangeSkinData(intent.skinUri),
+                            showModelSelector = true
                         )
                     } else {
                         emitError(
@@ -395,10 +392,6 @@ class AccountManageViewModel @Inject constructor(
                             context.getString(R.string.account_change_skin_invalid)
                         )
                     }
-                    state.copy(
-                        pendingSkinData = ChangeSkin.ChangeSkinData(intent.skinUri),
-                        showModelSelector = true
-                    )
                 }
                 is ChangeSkinDialogIntent.SelectResetSkin -> {
                     state.copy(pendingSkinData = ChangeSkin.ResetSkin)
