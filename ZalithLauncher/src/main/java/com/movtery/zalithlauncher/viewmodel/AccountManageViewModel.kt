@@ -363,7 +363,8 @@ class AccountManageViewModel @Inject constructor(
     ) {
         _changeSkinDialogStateMap.update { current ->
             val state = current[accountUuid] ?: ChangeSkinDialogUiState()
-            val next = when (intent) {
+
+            val next: ChangeSkinDialogUiState? = when (intent) {
                 null -> null
                 is ChangeSkinDialogIntent.OnAvailableCapesChanged -> {
                     if (intent.capes.isNotEmpty()) {
@@ -391,6 +392,7 @@ class AccountManageViewModel @Inject constructor(
                             context.getString(R.string.generic_warning),
                             context.getString(R.string.account_change_skin_invalid)
                         )
+                        state
                     }
                 }
                 is ChangeSkinDialogIntent.SelectResetSkin -> {
@@ -423,6 +425,7 @@ class AccountManageViewModel @Inject constructor(
                     )
                 }
             }
+
             if (next == null) {
                 current - accountUuid
             } else {
