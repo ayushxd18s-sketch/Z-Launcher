@@ -28,6 +28,7 @@ import com.movtery.zalithlauncher.context.copyLocalFile
 import com.movtery.zalithlauncher.context.getFileName
 import com.movtery.zalithlauncher.coroutine.Task
 import com.movtery.zalithlauncher.coroutine.TaskSystem
+import com.movtery.zalithlauncher.coroutine.combine as typedCombine
 import com.movtery.zalithlauncher.game.account.Account
 import com.movtery.zalithlauncher.game.account.AccountsManager
 import com.movtery.zalithlauncher.game.account.addOtherServer
@@ -259,24 +260,20 @@ class AccountManageViewModel @Inject constructor(
         ) { msLoginOp, msCapes ->
             MicrosoftOps(msLoginOp, msCapes)
         },
-        kotlinxCombine(
-            kotlinxCombine(
-                _localLoginOp,
-                _otherLoginOp,
-                _serverOp,
-                _accountOp,
-                _accountSkinOpMap
-            ) { localLoginOp, otherLoginOp, serverOp, accountOp, accountSkinOpMap ->
-                BasicOtherOps(localLoginOp, otherLoginOp, serverOp, accountOp, accountSkinOpMap)
-            },
+        typedCombine(
+            _localLoginOp,
+            _otherLoginOp,
+            _serverOp,
+            _accountOp,
+            _accountSkinOpMap,
             _changeSkinDialogStateMap
-        ) { basicOtherOps, changeSkinDialogStateMap ->
+        ) { localLoginOp, otherLoginOp, serverOp, accountOp, accountSkinOpMap, changeSkinDialogStateMap ->
             OtherOps(
-                localLoginOp = basicOtherOps.localLoginOp,
-                otherLoginOp = basicOtherOps.otherLoginOp,
-                serverOp = basicOtherOps.serverOp,
-                accountOp = basicOtherOps.accountOp,
-                accountSkinOpMap = basicOtherOps.accountSkinOpMap,
+                localLoginOp = localLoginOp,
+                otherLoginOp = otherLoginOp,
+                serverOp = serverOp,
+                accountOp = accountOp,
+                accountSkinOpMap = accountSkinOpMap,
                 changeSkinDialogStateMap = changeSkinDialogStateMap
             )
         }
@@ -314,14 +311,6 @@ class AccountManageViewModel @Inject constructor(
         val changeSkinDialogStateMap: Map<String, ChangeSkinDialogUiState>
     )
 
-    private data class BasicOtherOps(
-        val localLoginOp: LocalLoginOperation,
-        val otherLoginOp: OtherLoginOperation,
-        val serverOp: ServerOperation,
-        val accountOp: AccountOperation,
-        val accountSkinOpMap: Map<String, AccountSkinOperation>
-    )
-
     /**
      * 处理来自 UI 层的所有 Intent
      */
@@ -338,10 +327,10 @@ class AccountManageViewModel @Inject constructor(
                 _accountSkinOpMap.update { it + (intent.accountUuid to intent.operation) }
             }
             is AccountManageIntent.UpdateChangeSkinDialogState -> {
-                _changeSkinDialogStateMap.update { it + (intent.accountUuid to intent.state) }
+                reduceChangeSkinState(intent.accountUuid) { intent.state }
             }
             is AccountManageIntent.ResetChangeSkinDialogState -> {
-                _changeSkinDialogStateMap.update { it - intent.accountUuid }
+                reduceChangeSkinState(intent.accountUuid) { null }
             }
 
             is AccountManageIntent.PerformMicrosoftLogin -> performMicrosoftLogin(intent)
@@ -361,6 +350,20 @@ class AccountManageViewModel @Inject constructor(
             is AccountManageIntent.RefreshAccount -> refreshAccount(intent.account)
             is AccountManageIntent.SaveLocalSkin -> saveLocalSkin(intent)
             is AccountManageIntent.ResetSkin -> resetSkin(intent.account)
+        }
+    }
+
+    private fun reduceChangeSkinState(
+        accountUuid: String,
+        reducer: (ChangeSkinDialogUiState?) -> ChangeSkinDialogUiState?
+    ) {
+        _changeSkinDialogStateMap.update { current ->
+            val next = reducer(current[accountUuid])
+            if (next == null) {
+                current - accountUuid
+            } else {
+                current + (accountUuid to next)
+            }
         }
     }
 
