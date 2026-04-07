@@ -260,14 +260,25 @@ class AccountManageViewModel @Inject constructor(
             MicrosoftOps(msLoginOp, msCapes)
         },
         kotlinxCombine(
-            _localLoginOp,
-            _otherLoginOp,
-            _serverOp,
-            _accountOp,
-            _accountSkinOpMap,
+            kotlinxCombine(
+                _localLoginOp,
+                _otherLoginOp,
+                _serverOp,
+                _accountOp,
+                _accountSkinOpMap
+            ) { localLoginOp, otherLoginOp, serverOp, accountOp, accountSkinOpMap ->
+                BasicOtherOps(localLoginOp, otherLoginOp, serverOp, accountOp, accountSkinOpMap)
+            },
             _changeSkinDialogStateMap
-        ) { localLoginOp, otherLoginOp, serverOp, accountOp, accountSkinOpMap, changeSkinDialogStateMap ->
-            OtherOps(localLoginOp, otherLoginOp, serverOp, accountOp, accountSkinOpMap, changeSkinDialogStateMap)
+        ) { basicOtherOps, changeSkinDialogStateMap ->
+            OtherOps(
+                localLoginOp = basicOtherOps.localLoginOp,
+                otherLoginOp = basicOtherOps.otherLoginOp,
+                serverOp = basicOtherOps.serverOp,
+                accountOp = basicOtherOps.accountOp,
+                accountSkinOpMap = basicOtherOps.accountSkinOpMap,
+                changeSkinDialogStateMap = changeSkinDialogStateMap
+            )
         }
     ) { (accounts, currentAccount, authServers), msOps, otherOps ->
         AccountManageUiState(
@@ -301,6 +312,14 @@ class AccountManageViewModel @Inject constructor(
         val accountOp: AccountOperation,
         val accountSkinOpMap: Map<String, AccountSkinOperation>,
         val changeSkinDialogStateMap: Map<String, ChangeSkinDialogUiState>
+    )
+
+    private data class BasicOtherOps(
+        val localLoginOp: LocalLoginOperation,
+        val otherLoginOp: OtherLoginOperation,
+        val serverOp: ServerOperation,
+        val accountOp: AccountOperation,
+        val accountSkinOpMap: Map<String, AccountSkinOperation>
     )
 
     /**
