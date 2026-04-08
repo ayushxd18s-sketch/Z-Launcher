@@ -371,7 +371,7 @@ class AccountManageViewModel @Inject constructor(
 
         TaskSystem.submitTask(
             Task.runTask(
-                id = account.uniqueUUID,
+                id = account.uniqueUUID + "_model",
                 dispatcher = Dispatchers.IO,
                 task = {
                     context.copyLocalFile(uri, cacheFile)
