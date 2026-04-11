@@ -155,6 +155,7 @@ import com.movtery.zalithlauncher.ui.components.itemLayoutShadowElevation
 import com.movtery.zalithlauncher.ui.screens.main.control_editor.InfoLayoutTextItem
 import com.movtery.zalithlauncher.utils.animation.getAnimateTween
 import com.movtery.zalithlauncher.utils.logging.Logger.lError
+import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.util.regex.Pattern
@@ -1129,7 +1130,7 @@ sealed interface ChangeSkin {
     data object None : ChangeSkin
 
     data class ChangeSkinData(
-        val skinUri: Uri,
+        val cacheFile: File,
         val skinModel: SkinModelType = SkinModelType.STEVE
     ) : ChangeSkin
 
@@ -1158,10 +1159,11 @@ fun ChangeSkinDialog(
     onSkinStateChange: (ChangeSkin) -> Unit,
     capeState: ChangeCape,
     onCapeStateChange: (ChangeCape) -> Unit,
+    isImportingSkin: Boolean,
     onSkinPicked: (Uri) -> Unit,
     onDismissRequest: () -> Unit,
     onResetSkin: () -> Unit,
-    onApplySkin: (Uri, SkinModelType) -> Unit,
+    onApplySkin: (File, SkinModelType) -> Unit,
     onApplyCape: (PlayerProfile.Cape) -> Unit,
     onFetchCapes: () -> Unit
 ) {
@@ -1274,15 +1276,9 @@ fun ChangeSkinDialog(
                                             ChangeSkin.None -> loadSkin()
                                             is ChangeSkin.ChangeSkinData -> {
                                                 runCatching {
-                                                    context.contentResolver.openInputStream(
-                                                        skinState.skinUri
-                                                    )
-                                                        .use { inputStream ->
-                                                            playerSkin.loadSkin(
-                                                                inputStream,
-                                                                skinState.skinModel
-                                                            )
-                                                        }
+                                                    skinState.cacheFile.inputStream().use { stream ->
+                                                        playerSkin.loadSkin(stream, skinState.skinModel)
+                                                    }
                                                 }.onFailure {
                                                     playerSkin.loadSkin(
                                                         skinId = null,
@@ -1316,15 +1312,23 @@ fun ChangeSkinDialog(
                                         modifier = Modifier.fillMaxWidth(),
                                         title = stringResource(R.string.account_change_skin),
                                         icon = {
-                                            Icon(
-                                                modifier = Modifier.size(22.dp),
-                                                imageVector = Icons.Outlined.FileUpload,
-                                                contentDescription = null
-                                            )
+                                            if (isImportingSkin) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(22.dp),
+                                                    strokeWidth = 2.dp
+                                                )
+                                            } else {
+                                                Icon(
+                                                    modifier = Modifier.size(22.dp),
+                                                    imageVector = Icons.Outlined.FileUpload,
+                                                    contentDescription = null
+                                                )
+                                            }
                                         },
                                         onClick = {
                                             skinPicker.launch(arrayOf("image/png"))
-                                        }
+                                        },
+                                        enabled = !isImportingSkin
                                     )
                                 }
 
@@ -1438,7 +1442,7 @@ fun ChangeSkinDialog(
                             onClick = {
                                 when (skinState) {
                                     is ChangeSkin.ChangeSkinData -> {
-                                        onApplySkin(skinState.skinUri, skinState.skinModel)
+                                        onApplySkin(skinState.cacheFile, skinState.skinModel)
                                     }
 
                                     is ChangeSkin.ResetSkin -> {

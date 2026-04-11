@@ -25,7 +25,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.context.copyLocalFile
-import com.movtery.zalithlauncher.context.getFileName
 import com.movtery.zalithlauncher.coroutine.Task
 import com.movtery.zalithlauncher.coroutine.TaskSystem
 import com.movtery.zalithlauncher.game.account.Account
@@ -129,7 +128,7 @@ sealed interface AccountManageIntent {
     ) : AccountManageIntent
 
     /** 应用选中的皮肤 */
-    data class ApplySkin(val account: Account, val uri: Uri, val model: SkinModelType) : AccountManageIntent
+    data class ApplySkin(val account: Account, val file: File, val model: SkinModelType) : AccountManageIntent
 
     /** 内部使用的 Intent，用于在文件导入后上传皮肤 */
     data class UploadMicrosoftSkin(
@@ -275,9 +274,16 @@ class AccountManageViewModel @Inject constructor(
         val accountCapeOpMap: Map<String, List<PlayerProfile.Cape>> = emptyMap()
     )
 
+    /**
+     * 更改账号皮肤状态流
+     * @param pendingSkinData 将要更改的皮肤
+     * @param pendingCapeData 将要更改的披风
+     * @param importingSkin 是否正在导入皮肤文件，不交给onIntent处理
+     */
     data class AccountSkinDialogState(
         val pendingSkinData: ChangeSkin = ChangeSkin.None,
-        val pendingCapeData: ChangeCape = ChangeCape.None
+        val pendingCapeData: ChangeCape = ChangeCape.None,
+        val importingSkin: Boolean = false
     )
 
     /**
@@ -345,7 +351,7 @@ class AccountManageViewModel @Inject constructor(
 
             is AccountManageIntent.PerformMicrosoftLogin -> performMicrosoftLogin(intent)
             is AccountManageIntent.ApplySkin ->
-                applySkin(intent.account, intent.uri, intent.model)
+                applySkin(intent.account, intent.file, intent.model)
 
             is AccountManageIntent.UploadMicrosoftSkin -> uploadMicrosoftSkin(intent)
             is AccountManageIntent.FetchMicrosoftCapes -> fetchMicrosoftCapes(intent.account)
@@ -369,6 +375,10 @@ class AccountManageViewModel @Inject constructor(
      */
     private fun onSkinPicked(intent: AccountManageIntent.OnSkinPicked) {
         viewModelScope.launch(Dispatchers.IO) {
+            _accountSkinDialogState.update {
+                it.copy(importingSkin = true)
+            }
+
             val cacheFile = File(
                 PathManager.DIR_IMAGE_CACHE,
                 "skin_pick_${UUID.randomUUID()}"
@@ -383,7 +393,7 @@ class AccountManageViewModel @Inject constructor(
                         context.getString(R.string.generic_warning),
                         context.getString(R.string.account_change_skin_invalid)
                     )
-                    return@launch
+                    return@onSuccess
                 }
                 val recommendedModel = if (cacheFile.isSlimModel()) {
                     SkinModelType.ALEX
@@ -394,7 +404,7 @@ class AccountManageViewModel @Inject constructor(
                 _accountSkinDialogState.update {
                     it.copy(
                         pendingSkinData = ChangeSkin.ChangeSkinData(
-                            skinUri = intent.uri,
+                            cacheFile = cacheFile,
                             skinModel = recommendedModel
                         )
                     )
@@ -406,7 +416,9 @@ class AccountManageViewModel @Inject constructor(
                 )
             }
 
-            FileUtils.deleteQuietly(cacheFile)
+            _accountSkinDialogState.update {
+                it.copy(importingSkin = false)
+            }
         }
     }
 
@@ -442,33 +454,30 @@ class AccountManageViewModel @Inject constructor(
     }
 
     /** 应用选中的皮肤 */
-    private fun applySkin(account: Account, uri: Uri, model: SkinModelType) {
+    private fun applySkin(account: Account, file: File, model: SkinModelType) {
         when {
-            account.isLocalAccount() -> saveLocalSkin(account, uri, model)
-            account.isMicrosoftAccount() -> importSkinFile(account, uri, model)
+            account.isLocalAccount() -> saveLocalSkin(account, file, model)
+            account.isMicrosoftAccount() -> importSkinFile(account, file, model)
         }
     }
 
     /** 处理皮肤文件导入 */
-    private fun importSkinFile(account: Account, uri: Uri, model: SkinModelType) {
-        val fileName = context.getFileName(uri) ?: UUID.randomUUID().toString().replace("-", "")
-        val cacheFile = File(PathManager.DIR_IMAGE_CACHE, fileName)
-
+    private fun importSkinFile(account: Account, file: File, model: SkinModelType) {
         TaskSystem.submitTask(
             Task.runTask(
                 id = account.uniqueUUID,
                 dispatcher = Dispatchers.IO,
                 task = {
-                    context.copyLocalFile(uri, cacheFile)
-                    if (validateSkinFile(cacheFile)) {
+                    if (validateSkinFile(file)) {
                         onIntent(
                             AccountManageIntent.UploadMicrosoftSkin(
-                                account,
-                                cacheFile,
-                                model
+                                account = account,
+                                skinFile = file,
+                                skinModel = model
                             )
                         )
                     } else {
+                        FileUtils.deleteQuietly(file)
                         emitError(
                             context.getString(R.string.generic_warning),
                             context.getString(R.string.account_change_skin_invalid)
@@ -476,6 +485,7 @@ class AccountManageViewModel @Inject constructor(
                     }
                 },
                 onError = { th ->
+                    FileUtils.deleteQuietly(file)
                     emitError(
                         context.getString(R.string.generic_error),
                         context.getString(R.string.account_change_skin_failed_to_import) + "\r\n" + th.getMessageOrToString()
@@ -687,17 +697,15 @@ class AccountManageViewModel @Inject constructor(
     }
 
     /** 保存离线账号皮肤到本地存储 */
-    private fun saveLocalSkin(account: Account, uri: Uri, model: SkinModelType) {
+    private fun saveLocalSkin(account: Account, file: File, model: SkinModelType) {
         val skinFile = account.getSkinFile()
-        val cacheFile = File(PathManager.DIR_IMAGE_CACHE, skinFile.name)
 
         TaskSystem.submitTask(Task.runTask(dispatcher = Dispatchers.IO, task = {
-            context.copyLocalFile(uri, cacheFile)
-            if (validateSkinFile(cacheFile)) {
+            if (validateSkinFile(file)) {
                 account.skinModelType = model
                 account.profileId = getLocalUUIDWithSkinModel(account.username, model)
-                cacheFile.copyTo(skinFile, true)
-                FileUtils.deleteQuietly(cacheFile)
+                file.copyTo(skinFile, true)
+                FileUtils.deleteQuietly(file)
                 AccountsManager.suspendSaveAccount(account)
                 AccountsManager.refreshWardrobe()
                 onIntent(
@@ -717,7 +725,7 @@ class AccountManageViewModel @Inject constructor(
                 )
             }
         }, onError = { th ->
-            FileUtils.deleteQuietly(cacheFile)
+            FileUtils.deleteQuietly(file)
             emitError(context.getString(R.string.error_import_image), th.getMessageOrToString())
             AccountsManager.refreshWardrobe()
             onIntent(
