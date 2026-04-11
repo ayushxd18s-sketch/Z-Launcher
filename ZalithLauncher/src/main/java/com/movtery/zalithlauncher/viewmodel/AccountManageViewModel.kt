@@ -129,19 +129,23 @@ sealed interface AccountManageIntent {
     ) : AccountManageIntent
 
     /** 应用选中的皮肤 */
-    data class ApplySkin(val uri: Uri, val model: SkinModelType) : AccountManageIntent
+    data class ApplySkin(val account: Account, val uri: Uri, val model: SkinModelType) : AccountManageIntent
 
     /** 内部使用的 Intent，用于在文件导入后上传皮肤 */
     data class UploadMicrosoftSkin(
+        val account: Account,
         val skinFile: File,
         val skinModel: SkinModelType
     ) : AccountManageIntent
 
     /** 抓取该账号可用的微软披风列表 */
-    data object FetchMicrosoftCapes : AccountManageIntent
+    data class FetchMicrosoftCapes(
+        val account: Account,
+    ) : AccountManageIntent
 
     /** 应用选中的微软披风 */
     data class ApplyMicrosoftCape(
+        val account: Account,
         val cape: PlayerProfile.Cape
     ) : AccountManageIntent
 
@@ -169,7 +173,7 @@ sealed interface AccountManageIntent {
     data class RefreshAccount(val account: Account) : AccountManageIntent
 
     /** 将账号皮肤重置为默认状态 */
-    data object ResetSkin : AccountManageIntent
+    data class ResetSkin(val account: Account) : AccountManageIntent
 }
 
 /**
@@ -271,9 +275,6 @@ class AccountManageViewModel @Inject constructor(
         val accountCapeOpMap: Map<String, List<PlayerProfile.Cape>> = emptyMap()
     )
 
-    private val activeSkinAccount: Account?
-        get() = (_accountSkinOp.value as? AccountSkinOperation.ChangeSkin)?.account
-
     data class AccountSkinDialogState(
         val pendingSkinData: ChangeSkin = ChangeSkin.None,
         val pendingCapeData: ChangeCape = ChangeCape.None
@@ -343,9 +344,11 @@ class AccountManageViewModel @Inject constructor(
             }
 
             is AccountManageIntent.PerformMicrosoftLogin -> performMicrosoftLogin(intent)
-            is AccountManageIntent.ApplySkin -> applySkin(intent.uri, intent.model)
+            is AccountManageIntent.ApplySkin ->
+                applySkin(intent.account, intent.uri, intent.model)
+
             is AccountManageIntent.UploadMicrosoftSkin -> uploadMicrosoftSkin(intent)
-            is AccountManageIntent.FetchMicrosoftCapes -> fetchMicrosoftCapes()
+            is AccountManageIntent.FetchMicrosoftCapes -> fetchMicrosoftCapes(intent.account)
             is AccountManageIntent.ApplyMicrosoftCape -> applyMicrosoftCape(intent)
             is AccountManageIntent.CreateLocalAccount -> createLocalAccount(
                 intent.userName,
@@ -357,7 +360,7 @@ class AccountManageViewModel @Inject constructor(
             is AccountManageIntent.DeleteServer -> deleteServer(intent.server)
             is AccountManageIntent.DeleteAccount -> deleteAccount(intent.account)
             is AccountManageIntent.RefreshAccount -> refreshAccount(intent.account)
-            is AccountManageIntent.ResetSkin -> resetSkin()
+            is AccountManageIntent.ResetSkin -> resetSkin(intent.account)
         }
     }
 
@@ -439,8 +442,7 @@ class AccountManageViewModel @Inject constructor(
     }
 
     /** 应用选中的皮肤 */
-    private fun applySkin(uri: Uri, model: SkinModelType) {
-        val account = activeSkinAccount ?: return
+    private fun applySkin(account: Account, uri: Uri, model: SkinModelType) {
         when {
             account.isLocalAccount() -> saveLocalSkin(account, uri, model)
             account.isMicrosoftAccount() -> importSkinFile(account, uri, model)
@@ -461,6 +463,7 @@ class AccountManageViewModel @Inject constructor(
                     if (validateSkinFile(cacheFile)) {
                         onIntent(
                             AccountManageIntent.UploadMicrosoftSkin(
+                                account,
                                 cacheFile,
                                 model
                             )
@@ -484,7 +487,7 @@ class AccountManageViewModel @Inject constructor(
 
     /** 上传微软皮肤 */
     private fun uploadMicrosoftSkin(intent: AccountManageIntent.UploadMicrosoftSkin) {
-        val account = activeSkinAccount ?: return
+        val account = intent.account
         val skinFile = intent.skinFile
         val skinModel = intent.skinModel
 
@@ -531,8 +534,7 @@ class AccountManageViewModel @Inject constructor(
     }
 
     /** 获取微软披风列表 */
-    private fun fetchMicrosoftCapes() {
-        val account = activeSkinAccount ?: return
+    private fun fetchMicrosoftCapes(account: Account) {
         TaskSystem.submitTask(
             Task.runTask(
                 id = account.uniqueUUID,
@@ -563,7 +565,7 @@ class AccountManageViewModel @Inject constructor(
 
     /** 更改微软账号披风 */
     private fun applyMicrosoftCape(intent: AccountManageIntent.ApplyMicrosoftCape) {
-        val account = activeSkinAccount ?: return
+        val account = intent.account
         val cape = intent.cape
         val capeId = cape.id
         val isReset = cape == EmptyCape
@@ -727,8 +729,7 @@ class AccountManageViewModel @Inject constructor(
     }
 
     /** 重置皮肤数据 */
-    private fun resetSkin() {
-        val account = activeSkinAccount ?: return
+    private fun resetSkin(account: Account) {
         TaskSystem.submitTask(Task.runTask(dispatcher = Dispatchers.IO, task = {
             account.apply {
                 FileUtils.deleteQuietly(getSkinFile())

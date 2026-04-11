@@ -773,16 +773,16 @@ private fun AccountSkinOperation(
                     actions.onIntent(AccountManageIntent.UpdateAccountSkinOp(AccountSkinOperation.None))
                 },
                 onResetSkin = {
-                    actions.onIntent(AccountManageIntent.ResetSkin)
+                    actions.onIntent(AccountManageIntent.ResetSkin(account))
                 },
                 onFetchCapes = {
-                    actions.onIntent(AccountManageIntent.FetchMicrosoftCapes)
+                    actions.onIntent(AccountManageIntent.FetchMicrosoftCapes(account))
                 },
                 onApplySkin = { uri, model ->
-                    actions.onIntent(AccountManageIntent.ApplySkin(uri, model))
+                    actions.onIntent(AccountManageIntent.ApplySkin(account, uri, model))
                 },
                 onApplyCape = { cape ->
-                    actions.onIntent(AccountManageIntent.ApplyMicrosoftCape(cape))
+                    actions.onIntent(AccountManageIntent.ApplyMicrosoftCape(account, cape))
                 }
             )
         }
