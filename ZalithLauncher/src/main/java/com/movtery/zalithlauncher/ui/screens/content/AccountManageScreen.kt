@@ -747,19 +747,25 @@ private fun AccountSkinOperation(
             ChangeSkinDialog(
                 account = account,
                 availableCapes = accountCapes[account.uniqueUUID] ?: emptyList(),
-                pendingSkinData = skinDialogState.pendingSkinData,
-                onSkinPicked = { uri ->
+                skinState = skinDialogState.pendingSkinData,
+                onSkinStateChange = { skinState ->
                     actions.onIntent(
-                        AccountManageIntent.OnSkinPicked(
-                            uri
+                        AccountManageIntent.UpdatePendingSkinData(
+                            skinState
                         )
                     )
                 },
-                onPendingSkinDataChange = { pendingSkinData ->
+                capeState = skinDialogState.pendingCapeData,
+                onCapeStateChange = { capeState ->
                     actions.onIntent(
-                        AccountManageIntent.UpdatePendingSkinData(
-                            pendingSkinData
+                        AccountManageIntent.UpdatePendingCapeData(
+                            capeState
                         )
+                    )
+                },
+                onSkinPicked = { uri ->
+                    actions.onIntent(
+                        AccountManageIntent.OnSkinPicked(uri)
                     )
                 },
                 onDismissRequest = {

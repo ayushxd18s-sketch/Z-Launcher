@@ -1139,24 +1139,34 @@ sealed interface ChangeSkin {
     data object ResetSkin : ChangeSkin
 }
 
+/**
+ * 更改披风流程
+ */
+sealed interface ChangeCape {
+    data object None : ChangeCape
+    data class ChangeCapeData(
+        val cape: PlayerProfile.Cape
+    ) : ChangeCape
+}
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun ChangeSkinDialog(
     account: Account,
     availableCapes: List<PlayerProfile.Cape> = emptyList(),
-    pendingSkinData: ChangeSkin,
-    onSkinPicked: (Uri) -> Unit = {},
-    onPendingSkinDataChange: (ChangeSkin) -> Unit = {},
-    onDismissRequest: () -> Unit = {},
-    onResetSkin: () -> Unit = {},
-    onApplySkin: (Uri, SkinModelType) -> Unit = { _, _ -> },
-    onApplyCape: (PlayerProfile.Cape) -> Unit = { _ -> },
-    onFetchCapes: () -> Unit = {}
+    skinState: ChangeSkin,
+    onSkinStateChange: (ChangeSkin) -> Unit,
+    capeState: ChangeCape,
+    onCapeStateChange: (ChangeCape) -> Unit,
+    onSkinPicked: (Uri) -> Unit,
+    onDismissRequest: () -> Unit,
+    onResetSkin: () -> Unit,
+    onApplySkin: (Uri, SkinModelType) -> Unit,
+    onApplyCape: (PlayerProfile.Cape) -> Unit,
+    onFetchCapes: () -> Unit
 ) {
     val context = LocalContext.current
     val playerSkin = remember { PlayerSkin(context) }
-
-    var pendingCape by remember { mutableStateOf<PlayerProfile.Cape?>(null) }
 
     var showCapeSelector by remember { mutableStateOf(false) }
 
@@ -1260,23 +1270,23 @@ fun ChangeSkinDialog(
                                 },
                                 update = {
                                     if (pageFinished) {
-                                        when (pendingSkinData) {
+                                        when (skinState) {
                                             ChangeSkin.None -> loadSkin()
                                             is ChangeSkin.ChangeSkinData -> {
                                                 runCatching {
                                                     context.contentResolver.openInputStream(
-                                                        pendingSkinData.skinUri
+                                                        skinState.skinUri
                                                     )
                                                         .use { inputStream ->
                                                             playerSkin.loadSkin(
                                                                 inputStream,
-                                                                pendingSkinData.skinModel
+                                                                skinState.skinModel
                                                             )
                                                         }
                                                 }.onFailure {
                                                     playerSkin.loadSkin(
                                                         skinId = null,
-                                                        pendingSkinData.skinModel
+                                                        skinState.skinModel
                                                     )
                                                 }
                                             }
@@ -1299,9 +1309,8 @@ fun ChangeSkinDialog(
                                 .verticalScroll(rememberScrollState()),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-
                             //更换皮肤：选择皮肤图片文件
-                            when (pendingSkinData) {
+                            when (skinState) {
                                 ChangeSkin.None, ChangeSkin.ResetSkin -> {
                                     InfoLayoutTextItem(
                                         modifier = Modifier.fillMaxWidth(),
@@ -1335,11 +1344,11 @@ fun ChangeSkinDialog(
                                         ) {
                                             //粗臂
                                             RadioCard(
-                                                selected = pendingSkinData.skinModel == SkinModelType.STEVE,
+                                                selected = skinState.skinModel == SkinModelType.STEVE,
                                                 text = stringResource(R.string.account_change_skin_arm_wide),
                                                 onClick = {
-                                                    onPendingSkinDataChange(
-                                                        pendingSkinData.copy(
+                                                    onSkinStateChange(
+                                                        skinState.copy(
                                                             skinModel = SkinModelType.STEVE
                                                         )
                                                     )
@@ -1347,11 +1356,11 @@ fun ChangeSkinDialog(
                                             )
                                             //细臂
                                             RadioCard(
-                                                selected = pendingSkinData.skinModel == SkinModelType.ALEX,
+                                                selected = skinState.skinModel == SkinModelType.ALEX,
                                                 text = stringResource(R.string.account_change_skin_arm_slim),
                                                 onClick = {
-                                                    onPendingSkinDataChange(
-                                                        pendingSkinData.copy(
+                                                    onSkinStateChange(
+                                                        skinState.copy(
                                                             skinModel = SkinModelType.ALEX
                                                         )
                                                     )
@@ -1393,7 +1402,7 @@ fun ChangeSkinDialog(
                             }
 
                             //离线账号重置皮肤
-                            if (account.isLocalAccount() && account.hasSkinFile && pendingSkinData != ChangeSkin.ResetSkin) {
+                            if (account.isLocalAccount() && account.hasSkinFile && skinState != ChangeSkin.ResetSkin) {
                                 InfoLayoutTextItem(
                                     modifier = Modifier.fillMaxWidth(),
                                     title = stringResource(R.string.generic_reset),
@@ -1405,7 +1414,7 @@ fun ChangeSkinDialog(
                                         )
                                     },
                                     onClick = {
-                                        onPendingSkinDataChange(ChangeSkin.ResetSkin)
+                                        onSkinStateChange(ChangeSkin.ResetSkin)
                                     }
                                 )
                             }
@@ -1425,15 +1434,11 @@ fun ChangeSkinDialog(
 
                         Button(
                             modifier = Modifier.weight(1f),
-                            enabled = pendingSkinData != ChangeSkin.None || pendingCape != null,
+                            enabled = skinState != ChangeSkin.None || capeState != ChangeCape.None,
                             onClick = {
-                                //提早拿到委托的值，否则吃不到Kotlin的智能转换
-                                val skinData = pendingSkinData
-                                val cape = pendingCape
-
-                                when (skinData) {
+                                when (skinState) {
                                     is ChangeSkin.ChangeSkinData -> {
-                                        onApplySkin(skinData.skinUri, skinData.skinModel)
+                                        onApplySkin(skinState.skinUri, skinState.skinModel)
                                     }
 
                                     is ChangeSkin.ResetSkin -> {
@@ -1443,10 +1448,8 @@ fun ChangeSkinDialog(
                                     ChangeSkin.None -> {}
                                 }
 
-                                if (cape != null) {
-                                    onApplyCape(
-                                        cape
-                                    )
+                                if (capeState is ChangeCape.ChangeCapeData) {
+                                    onApplyCape(capeState.cape)
                                 }
 
                                 onDismissRequest()
@@ -1461,16 +1464,27 @@ fun ChangeSkinDialog(
     }
 
     if (showCapeSelector) {
+        //若当前未更改披风，则使用使用中的披风
+        val cape = if (capeState is ChangeCape.ChangeCapeData) {
+            capeState.cape
+        } else {
+            currentUsingCape
+        }
+
         SelectCapeDialog(
             capes = buildList {
                 add(EmptyCape)
                 addAll(availableCapes)
             },
-            //若当前未更改披风，则使用使用中的披风
-            selectedCape = pendingCape ?: currentUsingCape,
+            selectedCape = cape,
             onSelected = { cape, _ ->
                 //检查是否已经为正在使用的披风
-                pendingCape = if (cape != currentUsingCape) cape else null
+                val state = if (cape != currentUsingCape) {
+                    ChangeCape.ChangeCapeData(cape)
+                } else {
+                    ChangeCape.None
+                }
+                onCapeStateChange(state)
                 currentCapeToLoad = cape
                 showCapeSelector = false
             },

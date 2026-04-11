@@ -60,6 +60,7 @@ import com.movtery.zalithlauncher.game.account.yggdrasil.uploadSkin
 import com.movtery.zalithlauncher.path.PathManager
 import com.movtery.zalithlauncher.ui.screens.content.elements.AccountOperation
 import com.movtery.zalithlauncher.ui.screens.content.elements.AccountSkinOperation
+import com.movtery.zalithlauncher.ui.screens.content.elements.ChangeCape
 import com.movtery.zalithlauncher.ui.screens.content.elements.ChangeSkin
 import com.movtery.zalithlauncher.ui.screens.content.elements.LocalLoginOperation
 import com.movtery.zalithlauncher.ui.screens.content.elements.LoginMenuOperation
@@ -112,7 +113,9 @@ sealed interface AccountManageIntent {
     data class UpdateAccountOp(val operation: AccountOperation) : AccountManageIntent
     data class UpdateAccountSkinOp(val operation: AccountSkinOperation) :
         AccountManageIntent
-    data class UpdatePendingSkinData(val pendingSkinData: ChangeSkin?) :
+    data class UpdatePendingSkinData(val skinState: ChangeSkin) :
+        AccountManageIntent
+    data class UpdatePendingCapeData(val capeState: ChangeCape) :
         AccountManageIntent
     data class OnSkinPicked(val uri: Uri) : AccountManageIntent
     data object ResetAccountSkinDialogState : AccountManageIntent
@@ -272,7 +275,8 @@ class AccountManageViewModel @Inject constructor(
         get() = (_accountSkinOp.value as? AccountSkinOperation.ChangeSkin)?.account
 
     data class AccountSkinDialogState(
-        val pendingSkinData: ChangeSkin = ChangeSkin.None
+        val pendingSkinData: ChangeSkin = ChangeSkin.None,
+        val pendingCapeData: ChangeCape = ChangeCape.None
     )
 
     /**
@@ -320,7 +324,15 @@ class AccountManageViewModel @Inject constructor(
             is AccountManageIntent.UpdatePendingSkinData -> {
                 _accountSkinDialogState.update {
                     it.copy(
-                        pendingSkinData = intent.pendingSkinData ?: ChangeSkin.None
+                        pendingSkinData = intent.skinState
+                    )
+                }
+            }
+
+            is AccountManageIntent.UpdatePendingCapeData -> {
+                _accountSkinDialogState.update {
+                    it.copy(
+                        pendingCapeData = intent.capeState
                     )
                 }
             }
