@@ -1150,7 +1150,7 @@ fun ChangeSkinDialog(
     onDismissRequest: () -> Unit = {},
     onResetSkin: () -> Unit = {},
     onApplySkin: (Uri, SkinModelType) -> Unit = { _, _ -> },
-    onApplyCape: (PlayerProfile.Cape?, String, Boolean) -> Unit = { _, _, _ -> },
+    onApplyCape: (PlayerProfile.Cape) -> Unit = { _ -> },
     onFetchCapes: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -1444,17 +1444,8 @@ fun ChangeSkinDialog(
                                 }
 
                                 if (cape != null) {
-                                    val name = if (cape == EmptyCape) {
-                                        ""
-                                    } else {
-                                        cape.capeLocalRes()?.let {
-                                            context.getString(it)
-                                        } ?: cape.alias
-                                    }
                                     onApplyCape(
-                                        cape.takeIf { it != EmptyCape },
-                                        name,
-                                        cape == EmptyCape
+                                        cape
                                     )
                                 }
 

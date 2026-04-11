@@ -44,7 +44,9 @@ import com.movtery.zalithlauncher.game.account.microsoft.XboxLoginException
 import com.movtery.zalithlauncher.game.account.microsoft.toLocal
 import com.movtery.zalithlauncher.game.account.microsoftLogin
 import com.movtery.zalithlauncher.game.account.refreshMicrosoft
+import com.movtery.zalithlauncher.game.account.wardrobe.EmptyCape
 import com.movtery.zalithlauncher.game.account.wardrobe.SkinModelType
+import com.movtery.zalithlauncher.game.account.wardrobe.capeLocalRes
 import com.movtery.zalithlauncher.game.account.wardrobe.getLocalUUIDWithSkinModel
 import com.movtery.zalithlauncher.game.account.wardrobe.isSlimModel
 import com.movtery.zalithlauncher.game.account.wardrobe.validateSkinFile
@@ -137,9 +139,7 @@ sealed interface AccountManageIntent {
 
     /** 应用选中的微软披风 */
     data class ApplyMicrosoftCape(
-        val cape: PlayerProfile.Cape?,
-        val capeName: String,
-        val isReset: Boolean
+        val cape: PlayerProfile.Cape
     ) : AccountManageIntent
 
     /** 创建新的离线账号 */
@@ -553,9 +553,8 @@ class AccountManageViewModel @Inject constructor(
     private fun applyMicrosoftCape(intent: AccountManageIntent.ApplyMicrosoftCape) {
         val account = activeSkinAccount ?: return
         val cape = intent.cape
-        val capeId = cape?.id
-        val capeName = intent.capeName
-        val isReset = intent.isReset
+        val capeId = cape.id
+        val isReset = cape == EmptyCape
 
         TaskSystem.submitTask(
             Task.runTask(
@@ -570,9 +569,9 @@ class AccountManageViewModel @Inject constructor(
                         AccountsManager.suspendSaveAccount(account)
                     })
 
-                    val capeFile = cape?.getFile(PathManager.DIR_ACCOUNT_CAPE)
+                    val capeFile = cape.getFile(PathManager.DIR_ACCOUNT_CAPE)
                     val targetCape = account.getCapeFile()
-                    if (capeFile?.exists() == true) {
+                    if (isReset || capeFile.exists()) {
                         runCatching {
                             FileUtils.deleteQuietly(targetCape)
                             capeFile.copyTo(targetCape)
@@ -601,7 +600,12 @@ class AccountManageViewModel @Inject constructor(
                     }
 
                     if (isReset) emitToast(R.string.account_change_cape_apply_reset)
-                    else emitToast(R.string.account_change_cape_apply_success, capeName)
+                    else emitToast(
+                        R.string.account_change_cape_apply_success,
+                        cape.capeLocalRes()?.let {
+                            context.getString(it)
+                        } ?: cape.alias
+                    )
                 },
                 onError = { th ->
                     val (title, msg) = if (th is KtorResponseException) {

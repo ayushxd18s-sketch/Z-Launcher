@@ -775,8 +775,8 @@ private fun AccountSkinOperation(
                 onApplySkin = { uri, model ->
                     actions.onIntent(AccountManageIntent.ApplySkin(uri, model))
                 },
-                onApplyCape = { cape, name, reset ->
-                    actions.onIntent(AccountManageIntent.ApplyMicrosoftCape(cape, name, reset))
+                onApplyCape = { cape ->
+                    actions.onIntent(AccountManageIntent.ApplyMicrosoftCape(cape))
                 }
             )
         }
