@@ -25,11 +25,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -37,12 +37,19 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -51,9 +58,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.movtery.zalithlauncher.BuildConfig
 import com.movtery.zalithlauncher.R
@@ -83,281 +90,243 @@ fun LauncherScreen(
         screenKey = NormalNavKey.LauncherMain,
         currentKey = backStackViewModel.mainScreen.currentKey
     ) { isVisible ->
-        Row(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            ContentMenu(
-                isVisible = isVisible,
-                modifier = Modifier
-                    .weight(6.5f)
-                    .padding(start = 16.dp, top = 16.dp, bottom = 16.dp)
-            )
+        val yOffset by swapAnimateDpAsState(
+            targetValue = (-40).dp,
+            swapIn = isVisible
+        )
 
-            val toAccountManageScreen: () -> Unit = {
-                backStackViewModel.mainScreen.navigateTo(NormalNavKey.AccountManager)
-            }
-            val toVersionManageScreen: () -> Unit = {
-                backStackViewModel.mainScreen.removeAndNavigateTo(
-                    remove = NestedNavKey.VersionSettings::class,
-                    screenKey = NormalNavKey.VersionsManager
-                )
-            }
-            val toVersionSettingsScreen: () -> Unit = {
-                VersionsManager.currentVersion.value?.let { version ->
-                    navigateToVersions(version)
-                }
-            }
-
-            RightMenu(
-                isVisible = isVisible,
-                modifier = Modifier
-                    .weight(3.5f)
-                    .fillMaxHeight()
-                    .padding(top = 16.dp, end = 16.dp, bottom = 16.dp),
-                launchGameViewModel = launchGameViewModel,
-                toAccountManageScreen = toAccountManageScreen,
-                toVersionManageScreen = toVersionManageScreen,
-                toVersionSettingsScreen = toVersionSettingsScreen
+        val toAccountManageScreen: () -> Unit = {
+            backStackViewModel.mainScreen.navigateTo(NormalNavKey.AccountManager)
+        }
+        val toVersionManageScreen: () -> Unit = {
+            backStackViewModel.mainScreen.removeAndNavigateTo(
+                remove = NestedNavKey.VersionSettings::class,
+                screenKey = NormalNavKey.VersionsManager
             )
         }
-    }
-}
+        val toVersionSettingsScreen: () -> Unit = {
+            VersionsManager.currentVersion.value?.let { version ->
+                navigateToVersions(version)
+            }
+        }
 
-@Composable
-private fun ContentMenu(
-    isVisible: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val yOffset by swapAnimateDpAsState(
-        targetValue = (-40).dp,
-        swapIn = isVisible
-    )
-
-    BackgroundCard(
-        modifier = modifier
-            .fillMaxSize()
-            .offset { IntOffset(x = 0, y = yOffset.roundToPx()) },
-        shape = MaterialTheme.shapes.extraLarge,
-        influencedByBackground = false
-    ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            if (BuildConfig.DEBUG) {
-                //debug版本关不掉的警告，防止有人把测试版当正式版用 XD
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .offset { IntOffset(x = 0, y = yOffset.roundToPx()) }
+            ) {
+                // Top Action Bar
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AccountCard(onClick = toAccountManageScreen)
+                    VersionCard(
+                        onClick = toVersionManageScreen,
+                        onSettingsClick = toVersionSettingsScreen
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Main Content Area
                 BackgroundCard(
-                    modifier = Modifier.padding(all = 12.dp),
-                    shape = MaterialTheme.shapes.extraLarge
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    shape = MaterialTheme.shapes.extraLarge,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    influencedByBackground = false
                 ) {
                     Column(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text(
-                            text = stringResource(R.string.generic_warning),
-                            style = MaterialTheme.typography.titleMedium
+                            text = stringResource(R.string.main_launch_game),
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Text(
-                            text = stringResource(R.string.launcher_version_debug_warning, InfoDistributor.LAUNCHER_NAME),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            modifier = Modifier
-                                .alpha(0.8f)
-                                .align(Alignment.End),
-                            text = stringResource(R.string.launcher_version_debug_warning_cant_close),
-                            style = MaterialTheme.typography.bodySmall
-                        )
+
+                        if (BuildConfig.DEBUG) {
+                            BackgroundCard(
+                                shape = MaterialTheme.shapes.large,
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.generic_warning),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.launcher_version_debug_warning, InfoDistributor.LAUNCHER_NAME),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Text(
+                                        modifier = Modifier.alpha(0.8f).align(Alignment.End),
+                                        text = stringResource(R.string.launcher_version_debug_warning_cant_close),
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
+
+            // Bottom Right Floating Action Button
+            val xOffsetFAB by swapAnimateDpAsState(
+                targetValue = 40.dp,
+                swapIn = isVisible,
+                isHorizontal = true
+            )
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset { IntOffset(x = xOffsetFAB.roundToPx(), y = 0) }
+                    .padding(16.dp)
+            ) {
+                ScalingActionButton(
+                    onClick = { launchGameViewModel.tryLaunch(VersionsManager.currentVersion.value) },
+                    shape = MaterialTheme.shapes.large,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.PlayArrow,
+                        contentDescription = "Launch",
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(R.string.main_launch_game),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun RightMenuContent(
-    modifier: Modifier = Modifier,
-    launchGameViewModel: LaunchGameViewModel,
-    toAccountManageScreen: () -> Unit,
-    toVersionManageScreen: () -> Unit,
-    toVersionSettingsScreen: () -> Unit,
-    launchButton: @Composable (
-        innerModifier: Modifier,
-        onClick: () -> Unit,
-        text: @Composable RowScope.() -> Unit
-    ) -> Unit
-) {
+private fun AccountCard(onClick: () -> Unit) {
     val account by AccountsManager.currentAccountFlow.collectAsStateWithLifecycle()
+
+    BackgroundCard(
+        shape = MaterialTheme.shapes.extraLarge,
+        onClick = onClick,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AccountAvatar(
+                modifier = Modifier.size(40.dp),
+                account = account,
+                onClick = onClick
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = account?.username ?: stringResource(R.string.account_no_account),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+private fun VersionCard(
+    onClick: () -> Unit,
+    onSettingsClick: () -> Unit
+) {
     val version by VersionsManager.currentVersion.collectAsStateWithLifecycle()
     val isRefreshing by VersionsManager.isRefreshing.collectAsStateWithLifecycle()
 
-    ConstraintLayout(
-        modifier = modifier
-    ) {
-        val (accountAvatar, versionManagerLayout, launchButton) = createRefs()
-
-        AccountAvatar(
-            modifier = Modifier
-                .constrainAs(accountAvatar) {
-                    top.linkTo(parent.top)
-                    bottom.linkTo(launchButton.top, margin = 32.dp)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                },
-            account = account,
-            onClick = toAccountManageScreen
+    BackgroundCard(
+        shape = MaterialTheme.shapes.extraLarge,
+        onClick = onClick,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
         )
-
+    ) {
         Row(
-            modifier = Modifier.constrainAs(versionManagerLayout) {
-                start.linkTo(parent.start)
-                end.linkTo(parent.end)
-                bottom.linkTo(launchButton.top)
-            },
+            modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            VersionManagerLayout(
-                isRefreshing = isRefreshing,
-                version = version,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(8.dp),
-                swapToVersionManage = toVersionManageScreen
-            )
-            version?.takeIf { !isRefreshing && it.isValid() }?.let {
-                IconButton(
-                    modifier = Modifier.padding(end = 8.dp),
-                    onClick = toVersionSettingsScreen
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Settings,
-                        contentDescription = stringResource(R.string.versions_manage_settings)
-                    )
-                }
-            }
-        }
-
-        launchButton(
-            Modifier
-                .fillMaxWidth()
-                .constrainAs(launchButton) {
-                    bottom.linkTo(parent.bottom, margin = 16.dp)
-                }
-                .padding(PaddingValues(horizontal = 16.dp)),
-            {
-                launchGameViewModel.tryLaunch(
-                    VersionsManager.currentVersion.value
+            if (isRefreshing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
                 )
-            },
-            {
-                MarqueeText(text = stringResource(R.string.main_launch_game))
-            }
-        )
-    }
-}
-
-@Composable
-private fun RightMenu(
-    isVisible: Boolean,
-    modifier: Modifier = Modifier,
-    launchGameViewModel: LaunchGameViewModel,
-    toAccountManageScreen: () -> Unit = {},
-    toVersionManageScreen: () -> Unit = {},
-    toVersionSettingsScreen: () -> Unit = {}
-) {
-    val xOffset by swapAnimateDpAsState(
-        targetValue = 40.dp,
-        swapIn = isVisible,
-        isHorizontal = true
-    )
-
-    BackgroundCard(
-        modifier = modifier.offset { IntOffset(x = xOffset.roundToPx(), y = 0) },
-        shape = MaterialTheme.shapes.extraLarge
-    ) {
-        RightMenuContent(
-            modifier = Modifier.fillMaxSize(),
-            launchGameViewModel = launchGameViewModel,
-            toAccountManageScreen = toAccountManageScreen,
-            toVersionManageScreen = toVersionManageScreen,
-            toVersionSettingsScreen = toVersionSettingsScreen
-        ) { innerModifier, onClick, text ->
-            ScalingActionButton(
-                modifier = innerModifier.padding(vertical = 8.dp),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
-                shape = MaterialTheme.shapes.extraLarge,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                ),
-                onClick = onClick,
-                content = text
-            )
-        }
-    }
-}
-
-@Composable
-private fun VersionManagerLayout(
-    isRefreshing: Boolean,
-    version: Version?,
-    modifier: Modifier = Modifier,
-    swapToVersionManage: () -> Unit = {}
-) {
-    Row(
-        modifier = modifier
-            .clip(shape = MaterialTheme.shapes.large)
-            .clickable(onClick = swapToVersionManage)
-            .padding(PaddingValues(all = 8.dp))
-    ) {
-        if (isRefreshing) {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                CircularProgressIndicator(modifier = Modifier
-                    .size(24.dp)
-                    .align(Alignment.Center))
-            }
-        } else {
-            VersionIconImage(
-                version = version,
-                modifier = Modifier
-                    .size(28.dp)
-                    .align(Alignment.CenterVertically)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-
-            if (version == null) {
-                Text(
-                    modifier = Modifier
-                        .align(Alignment.CenterVertically)
-                        .basicMarquee(iterations = Int.MAX_VALUE),
-                    text = stringResource(R.string.versions_manage_no_versions),
-                    style = MaterialTheme.typography.labelMedium,
-                    maxLines = 1
-                )
+                Spacer(modifier = Modifier.width(16.dp))
             } else {
+                VersionIconImage(
+                    version = version,
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
                 Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .align(Alignment.CenterVertically)
+                    modifier = Modifier.width(120.dp)
                 ) {
                     Text(
                         modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE),
-                        text = version.getVersionName(),
-                        style = MaterialTheme.typography.labelMedium,
+                        text = version?.getVersionName() ?: stringResource(R.string.versions_manage_no_versions),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 1
                     )
-                    if (version.isValid()) {
+                    if (version?.isValid() == true) {
                         Text(
                             modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE),
-                            text = version.getVersionSummary(),
-                            style = MaterialTheme.typography.labelSmall,
-                            maxLines = 1
+                            text = version?.getVersionSummary() ?: "",
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
                         )
                     }
+                }
+            }
+
+            if (version?.isValid() == true && !isRefreshing) {
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(onClick = onSettingsClick) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = stringResource(R.string.versions_manage_settings),
+                        tint = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
                 }
             }
         }
