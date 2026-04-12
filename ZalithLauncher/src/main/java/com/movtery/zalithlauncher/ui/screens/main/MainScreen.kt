@@ -328,7 +328,7 @@ private fun <E: TitledNavKey> TopBar(
             Crossfade(
                 modifier = Modifier.constrainAs(title) {
                     centerVerticallyTo(parent)
-                    start.linkTo(backCenter.end, margin = 16.dp)
+                    centerHorizontallyTo(parent)
                 },
                 targetState = parentRes to childRes
             ) { (parent, child) ->

@@ -88,7 +88,9 @@ fun LauncherScreen(
         ) {
             ContentMenu(
                 isVisible = isVisible,
-                modifier = Modifier.weight(7f)
+                modifier = Modifier
+                    .weight(6.5f)
+                    .padding(start = 16.dp, top = 16.dp, bottom = 16.dp)
             )
 
             val toAccountManageScreen: () -> Unit = {
@@ -109,9 +111,9 @@ fun LauncherScreen(
             RightMenu(
                 isVisible = isVisible,
                 modifier = Modifier
-                    .weight(3f)
+                    .weight(3.5f)
                     .fillMaxHeight()
-                    .padding(top = 12.dp, end = 12.dp, bottom = 12.dp),
+                    .padding(top = 16.dp, end = 16.dp, bottom = 16.dp),
                 launchGameViewModel = launchGameViewModel,
                 toAccountManageScreen = toAccountManageScreen,
                 toVersionManageScreen = toVersionManageScreen,
@@ -131,37 +133,45 @@ private fun ContentMenu(
         swapIn = isVisible
     )
 
-    Column(
+    BackgroundCard(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .offset { IntOffset(x = 0, y = yOffset.roundToPx()) }
+            .offset { IntOffset(x = 0, y = yOffset.roundToPx()) },
+        shape = MaterialTheme.shapes.extraLarge,
+        influencedByBackground = false
     ) {
-        if (BuildConfig.DEBUG) {
-            //debug版本关不掉的警告，防止有人把测试版当正式版用 XD
-            BackgroundCard(
-                modifier = Modifier.padding(all = 12.dp),
-                shape = MaterialTheme.shapes.extraLarge
-            ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+        ) {
+            if (BuildConfig.DEBUG) {
+                //debug版本关不掉的警告，防止有人把测试版当正式版用 XD
+                BackgroundCard(
+                    modifier = Modifier.padding(all = 12.dp),
+                    shape = MaterialTheme.shapes.extraLarge
                 ) {
-                    Text(
-                        text = stringResource(R.string.generic_warning),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = stringResource(R.string.launcher_version_debug_warning, InfoDistributor.LAUNCHER_NAME),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        modifier = Modifier
-                            .alpha(0.8f)
-                            .align(Alignment.End),
-                        text = stringResource(R.string.launcher_version_debug_warning_cant_close),
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.generic_warning),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = stringResource(R.string.launcher_version_debug_warning, InfoDistributor.LAUNCHER_NAME),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            modifier = Modifier
+                                .alpha(0.8f)
+                                .align(Alignment.End),
+                            text = stringResource(R.string.launcher_version_debug_warning_cant_close),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         }
@@ -235,9 +245,9 @@ private fun RightMenuContent(
             Modifier
                 .fillMaxWidth()
                 .constrainAs(launchButton) {
-                    bottom.linkTo(parent.bottom, margin = 8.dp)
+                    bottom.linkTo(parent.bottom, margin = 16.dp)
                 }
-                .padding(PaddingValues(horizontal = 12.dp)),
+                .padding(PaddingValues(horizontal = 16.dp)),
             {
                 launchGameViewModel.tryLaunch(
                     VersionsManager.currentVersion.value
@@ -277,8 +287,13 @@ private fun RightMenu(
             toVersionSettingsScreen = toVersionSettingsScreen
         ) { innerModifier, onClick, text ->
             ScalingActionButton(
-                modifier = innerModifier,
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp),
+                modifier = innerModifier.padding(vertical = 8.dp),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
+                shape = MaterialTheme.shapes.extraLarge,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
                 onClick = onClick,
                 content = text
             )
