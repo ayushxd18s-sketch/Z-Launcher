@@ -110,6 +110,7 @@ fun BoxWithConstraintsScope.ControlEditor(
                 viewModel.selectedWidget = SelectedWidgetData(data, layer)
                 viewModel.editorOperation = EditorOperation.SelectButton
             },
+            focusedWidget = viewModel.selectedWidget?.data,
             enableSnap = AllSettings.editorEnableWidgetSnap.state,
             snapInAllLayers = AllSettings.editorSnapInAllLayers.state,
             snapMode = AllSettings.editorWidgetSnapMode.state,

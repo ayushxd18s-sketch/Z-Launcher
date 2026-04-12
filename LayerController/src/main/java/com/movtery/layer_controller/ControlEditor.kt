@@ -65,6 +65,7 @@ import com.movtery.layer_controller.utils.snap.SnapMode
 fun ControlEditorLayer(
     observedLayout: ObservableControlLayout,
     onButtonTap: (data: ObservableWidget, layer: ObservableControlLayer) -> Unit,
+    focusedWidget: ObservableWidget? = null,
     enableSnap: Boolean,
     snapInAllLayers: Boolean,
     snapMode: SnapMode,
@@ -102,6 +103,7 @@ fun ControlEditorLayer(
                 localSnapRange = localSnapRange,
                 snapThresholdValue = snapThresholdValue,
                 onButtonTap = onButtonTap,
+                focusedWidget = focusedWidget,
                 drawLine = { data, line ->
                     guideLines[data] = line
                 },
@@ -171,6 +173,7 @@ private fun BoxWithConstraintsScope.ControlWidgetRenderer(
     localSnapRange: Dp,
     snapThresholdValue: Dp,
     onButtonTap: (data: ObservableWidget, layer: ObservableControlLayer) -> Unit,
+    focusedWidget: ObservableWidget?,
     drawLine: (ObservableWidget, List<GuideLine>) -> Unit,
     onLineCancel: (ObservableWidget) -> Unit
 ) {
@@ -213,6 +216,7 @@ private fun BoxWithConstraintsScope.ControlWidgetRenderer(
             drawLine = drawLine,
             onLineCancel = onLineCancel,
             isPressed = isPressed,
+            showResizeCursor = focusedWidget == data,
             onTapInEditMode = {
                 onButtonTap(data, layer)
             }

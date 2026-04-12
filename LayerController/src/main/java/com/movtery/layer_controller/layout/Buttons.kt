@@ -21,13 +21,23 @@ package com.movtery.layer_controller.layout
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.consume
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -35,6 +45,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.movtery.layer_controller.data.ButtonSize
+import com.movtery.layer_controller.data.MIN_SIZE_DP
 import com.movtery.layer_controller.data.TextAlignment
 import com.movtery.layer_controller.event.EventHandler
 import com.movtery.layer_controller.observable.*
@@ -45,6 +57,7 @@ import com.movtery.layer_controller.utils.buttonStyle
 import com.movtery.layer_controller.utils.editMode
 import com.movtery.layer_controller.utils.snap.GuideLine
 import com.movtery.layer_controller.utils.snap.SnapMode
+import kotlin.math.roundToInt
 
 private data class ButtonTextStyle(
     val text: ObservableTranslatableString,
@@ -83,6 +96,7 @@ internal fun TextButton(
     drawLine: (ObservableWidget, List<GuideLine>) -> Unit = { _, _ -> },
     onLineCancel: (ObservableWidget) -> Unit = {},
     isPressed: Boolean,
+    showResizeCursor: Boolean = false,
     onTapInEditMode: () -> Unit = {}
 ) {
     if (visible) {
@@ -93,6 +107,7 @@ internal fun TextButton(
             ?: DefaultObservableButtonStyle
 
         val locale = LocalConfiguration.current.locales[0]
+        val density = LocalDensity.current.density
 
         Box(
             modifier = Modifier
@@ -163,12 +178,99 @@ internal fun TextButton(
                     data.onCompositionDispose(eventHandler)
                 }
             }
+
+            if (isEditMode && showResizeCursor) {
+                ResizeCursor(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(x = 6.dp, y = 6.dp),
+                    isDark = isDark,
+                    onDrag = { dragAmount ->
+                        data.resizeByDrag(
+                            dragAmount = dragAmount,
+                            screenSize = screenSize,
+                            density = density
+                        )
+                    }
+                )
+            }
         }
     } else {
         //虚假的控件，使用一个空的组件，只是让Layout有东西能测
         Spacer(
             modifier = Modifier.buttonSize(data, screenSize)
         )
+    }
+}
+
+@Composable
+private fun ResizeCursor(
+    modifier: Modifier = Modifier,
+    isDark: Boolean,
+    onDrag: (androidx.compose.ui.geometry.Offset) -> Unit
+) {
+    val handleColor = if (isDark) Color(0xFF80CBC4) else Color(0xFF00695C)
+    Box(
+        modifier = modifier
+            .size(18.dp)
+            .clip(CircleShape)
+            .background(handleColor.copy(alpha = 0.85f))
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        onDrag(dragAmount)
+                    }
+                )
+            }
+    )
+}
+
+private fun ObservableWidget.resizeByDrag(
+    dragAmount: androidx.compose.ui.geometry.Offset,
+    screenSize: IntSize,
+    density: Float
+) {
+    val size = when (this) {
+        is ObservableNormalData -> this.buttonSize
+        is ObservableTextData -> this.buttonSize
+        else -> return
+    }
+
+    val resized = when (size.type) {
+        ButtonSize.Type.Dp -> size.copy(
+            widthDp = (size.widthDp + dragAmount.x / density).coerceAtLeast(MIN_SIZE_DP),
+            heightDp = (size.heightDp + dragAmount.y / density).coerceAtLeast(MIN_SIZE_DP)
+        )
+
+        ButtonSize.Type.Percentage -> {
+            val widthReference = if (size.widthReference == ButtonSize.Reference.ScreenWidth) {
+                screenSize.width.toFloat()
+            } else {
+                screenSize.height.toFloat()
+            }
+            val heightReference = if (size.heightReference == ButtonSize.Reference.ScreenWidth) {
+                screenSize.width.toFloat()
+            } else {
+                screenSize.height.toFloat()
+            }
+
+            size.copy(
+                widthPercentage = (size.widthPercentage + dragAmount.x / widthReference * 10000f).roundToInt().coerceAtLeast(100),
+                heightPercentage = (size.heightPercentage + dragAmount.y / heightReference * 10000f).roundToInt().coerceAtLeast(100)
+            )
+        }
+
+        ButtonSize.Type.WrapContent -> size.copy(
+            type = ButtonSize.Type.Dp,
+            widthDp = (internalRenderSize.width / density + dragAmount.x / density).coerceAtLeast(MIN_SIZE_DP),
+            heightDp = (internalRenderSize.height / density + dragAmount.y / density).coerceAtLeast(MIN_SIZE_DP)
+        )
+    }
+
+    when (this) {
+        is ObservableNormalData -> this.buttonSize = resized
+        is ObservableTextData -> this.buttonSize = resized
     }
 }
 
