@@ -123,9 +123,8 @@ private fun shouldUseNode(
     region: String?
 ): Boolean {
     if (region.isNullOrBlank()) return true
-    if (!isChinese()) return false
+    if (!isChinese() && region.equals("CN", ignoreCase = true)) return false
+    if (isChinese() && !isChinaMainland() && region.equals("CN", ignoreCase = true)) return false
 
-    //仅限中国大陆地区使用
-    val isMainLand = isChinaMainland()
-    return isMainLand && region.equals("CN", ignoreCase = true)
+    return true
 }
