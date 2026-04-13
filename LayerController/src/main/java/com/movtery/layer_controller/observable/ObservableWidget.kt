@@ -44,6 +44,11 @@ abstract class ObservableWidget {
     var movingOffset by mutableStateOf(Offset.Zero)
 
     /**
+     * 编辑模式中，控件是否被拖动过位置（用于保持显示拖拽光标）
+     */
+    internal var wasDragged by mutableStateOf(false)
+
+    /**
      * 控件的内部渲染大小
      */
     internal var internalRenderSize by mutableStateOf(IntSize.Zero)

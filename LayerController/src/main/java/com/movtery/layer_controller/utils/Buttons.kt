@@ -109,6 +109,7 @@ internal fun Modifier.editMode(
                         onDragStart = {
                             data.isEditingPos = false
                             data.movingOffset = Offset.Zero
+                            data.wasDragged = true
                             val currentOffset = getWidgetPosition(data, widgetSize, screenSize1)
                             data.movingOffset = currentOffset
                             data.isEditingPos = true

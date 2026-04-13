@@ -216,8 +216,14 @@ private fun BoxWithConstraintsScope.ControlWidgetRenderer(
             drawLine = drawLine,
             onLineCancel = onLineCancel,
             isPressed = isPressed,
-            showResizeCursor = focusedWidget == data || data.isEditingPos,
+            showResizeCursor = focusedWidget == data || data.isEditingPos || data.wasDragged,
             onTapInEditMode = {
+                // 清除其他控件的 wasDragged 状态
+                allWidgetsMap.values.flatten().forEach { widget ->
+                    if (widget != data) {
+                        widget.wasDragged = false
+                    }
+                }
                 onButtonTap(data, layer)
             }
         )

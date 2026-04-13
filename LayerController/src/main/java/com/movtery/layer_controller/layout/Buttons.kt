@@ -261,8 +261,8 @@ private fun ObservableWidget.resizeByDrag(
                 screenSize.height.toFloat()
             }
 
-            val newWidthPercentage = max(100, (size.widthPercentage + dragAmount.x / widthReference * 10000f).roundToInt())
-            val newHeightPercentage = max(100, (size.heightPercentage + dragAmount.y / heightReference * 10000f).roundToInt())
+            val newWidthPercentage = (size.widthPercentage + dragAmount.x / widthReference * 10000f).roundToInt().coerceIn(100, 10000)
+            val newHeightPercentage = (size.heightPercentage + dragAmount.y / heightReference * 10000f).roundToInt().coerceIn(100, 10000)
             
             size.copy(
                 widthPercentage = newWidthPercentage,
