@@ -36,6 +36,7 @@ import com.movtery.zalithlauncher.game.keycodes.LwjglGlfwKeycode
 import com.movtery.zalithlauncher.game.launch.GameLauncher
 import com.movtery.zalithlauncher.game.launch.MCOptions
 import com.movtery.zalithlauncher.game.launch.loadLanguage
+import com.movtery.zalithlauncher.game.version.installed.GraphicsApi
 import com.movtery.zalithlauncher.game.version.installed.Version
 import com.movtery.zalithlauncher.setting.AllSettings
 import com.movtery.zalithlauncher.terracotta.Terracotta
@@ -70,7 +71,8 @@ class GameHandler(
     private val _inputArea = MutableStateFlow<IntRect?>(null)
     override val inputArea = _inputArea.asStateFlow()
 
-    private var isGameRendering by mutableStateOf(false)
+    private var isGameRendering = false
+    private var showGameInfo by mutableStateOf(true)
 
     /**
      * 日志展示状态
@@ -78,7 +80,7 @@ class GameHandler(
     private var logState by mutableStateOfLog()
 
     override suspend fun execute(
-        surface: Surface?,
+        surface: Surface,
         screenSize: IntSize,
         scope: CoroutineScope
     ) {
@@ -96,6 +98,17 @@ class GameHandler(
 
             set("overrideWidth", screenSize.width.toString())
             set("overrideHeight", screenSize.height.toString())
+
+            val graphicsApi = version.getGraphicsApi()
+            val graphicsOption = "preferredGraphicsBackend"
+            if (graphicsApi == GraphicsApi.DEFAULT) {
+                if (!containsKey(graphicsOption)) {
+                    set(graphicsOption, graphicsApi.option)
+                }
+            } else {
+                set(graphicsOption, graphicsApi.option)
+            }
+
             loadLanguage(version.getVersionInfo()!!.minecraftVersion)
             save()
         }
@@ -118,6 +131,7 @@ class GameHandler(
     override fun onGraphicOutput() {
         if (!isGameRendering) {
             isGameRendering = true
+            showGameInfo = false
             //游戏已经开始渲染，如果日志状态为渲染前显示，则在这里关闭日志
             if (logState == LogState.SHOW_BEFORE_LOADING) {
                 logState = LogState.CLOSE
@@ -186,7 +200,7 @@ class GameHandler(
         GameScreen(
             version = version,
             gameHandler = this,
-            isGameRendering = isGameRendering,
+            showGameInfo = showGameInfo,
             logState = logState,
             onLogStateChange = { logState = it },
             textInputMode = textInputMode,

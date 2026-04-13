@@ -764,6 +764,8 @@
     <string name="settings_renderer_vsync_in_zink_summary">透過系統介面為 Zink 渲染器啟用垂直同步</string>
     <string name="settings_renderer_force_big_core_title">強制在高效能核心執行</string>
     <string name="settings_renderer_force_big_core_summary">將 Minecraft 的渲染執行緒綁定到 CPU 的高效能核心（大核）上，啟用後可能增加功耗與發熱</string>
+    <string name="settings_renderer_surface_title">使用 SurfaceView 渲染</string>
+    <string name="settings_renderer_surface_summary">使用獨立於介面之外的圖層進行渲染，適用於高效能、低延遲的場景</string>
     <string name="settings_game_version_isolation_title">全域版本隔離</string>
     <string name="settings_game_version_isolation_summary">預設隔離所有版本，使版本之間的資料互不干擾</string>
     <string name="settings_game_skip_game_integrity_check_title">不檢查遊戲完整性</string>
@@ -780,6 +782,9 @@
     <string name="settings_game_java_memory_allocation_text">已分配：%dMB</string>
     <string name="settings_game_native_lib_plugin_title">原生函式庫外掛</string>
     <string name="settings_game_native_lib_plugin_summary">列出所有已載入的原生函式庫外掛，您可在清單中啟用或停用它們</string>
+    <string name="settings_game_graphics_api_title">圖形 API</string>
+    <string name="settings_game_graphics_api_summary">設定 Minecraft 26.2+ 將使用的圖形 API</string>
+    <string name="settings_game_graphics_api_default">依照遊戲設定</string>
     <string name="settings_game_jvm_args_title">JVM 啟動參數</string>
     <string name="settings_game_jvm_args_summary">啟動 JVM 時額外加入的 JVM 參數，不建議在沒有把握的情況下修改，因為這很可能導致崩潰</string>
     <string name="settings_game_show_log_automatic_title">自動顯示日誌</string>

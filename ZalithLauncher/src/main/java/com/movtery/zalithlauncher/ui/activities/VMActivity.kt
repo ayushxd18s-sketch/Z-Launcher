@@ -27,6 +27,8 @@ import android.os.Bundle
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.Surface
+import android.view.SurfaceHolder
+import android.view.SurfaceView
 import android.view.TextureView
 import android.view.TextureView.SurfaceTextureListener
 import android.view.WindowManager
@@ -56,7 +58,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.lifecycle.viewModelScope
 import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.bridge.CURSOR_DISABLED
 import com.movtery.zalithlauncher.bridge.LoggerBridge
@@ -99,13 +100,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.lwjgl.glfw.CallbackBridge
 import java.io.File
 import java.io.IOException
 import android.graphics.Color as NativeColor
+
 
 private const val INTENT_RUN_GAME = "BUNDLE_RUN_GAME"
 private const val INTENT_RUN_JAR = "INTENT_RUN_JAR"
@@ -250,7 +250,6 @@ class VMViewModel : ViewModel() {
         if (textInputMode == TextInputMode.ENABLE) textInputMode = TextInputMode.DISABLE
     }
 
-    private val inputMutex = Mutex()
 
     /**
      * 直接发送文本到游戏
@@ -262,13 +261,15 @@ class VMViewModel : ViewModel() {
     }
 
     fun sendInputText(text: String) {
-        viewModelScope.launch {
-            inputMutex.withLock {
-                withContext(Dispatchers.Main) {
-                    text.sendText()
-                }
-            }
-        }
+        text.sendText()
+    }
+
+    fun sendBackspace() {
+        sender.sendBackspace()
+    }
+
+    fun sendEnder() {
+        sender.sendEnter()
     }
 
     /**
@@ -276,14 +277,15 @@ class VMViewModel : ViewModel() {
      */
     fun handleSpecialKey(keyEvent: KeyEvent) {
         when (keyEvent.keyCode) {
-            KeyEvent.KEYCODE_DEL -> sender.sendBackspace()
+            KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_ENTER -> {
+                //忽略掉删除事件，避免状态不同步
+            }
 
             KeyEvent.KEYCODE_DPAD_LEFT -> sender.sendLeft()
             KeyEvent.KEYCODE_DPAD_RIGHT -> sender.sendRight()
             KeyEvent.KEYCODE_DPAD_UP -> sender.sendUp()
             KeyEvent.KEYCODE_DPAD_DOWN -> sender.sendDown()
 
-//            KeyEvent.KEYCODE_ENTER -> sender.sendEnter()
             KeyEvent.KEYCODE_TAB -> sender.sendTab()
 
             else -> sender.sendOther(keyEvent)
@@ -305,7 +307,7 @@ class VMViewModel : ViewModel() {
     }
 }
 
-class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener {
+class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener, SurfaceHolder.Callback {
     private val errorViewModel: ErrorViewModel by viewModels()
 
     private val eventViewModel: EventViewModel by viewModels()
@@ -316,7 +318,7 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener {
 
     private val vmViewModel: VMViewModel by viewModels()
 
-    private var mTextureView: TextureView? = null
+    private var applySizeToSurface: ((width: Int, height: Int) -> Unit)? = null
 
     private inline fun <T> withHandler(block: AbstractHandler.() -> T): T {
         return vmViewModel.session.handler.block()
@@ -348,6 +350,11 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener {
                 }
             }
         )
+
+        //设置画面渲染输出回调
+        CallbackBridge.setGraphicOutputListener {
+            withHandler { onGraphicOutput() }
+        }
 
         window?.apply {
             setBackgroundDrawable(NativeColor.BLACK.toDrawable())
@@ -423,11 +430,14 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener {
                     if (vmViewModel.textInputMode == TextInputMode.ENABLE) {
                         //输入栏控制区域
                         HidableInputLayout(
-                            onEnterClick = {
-                                vmViewModel.sender.sendEnter()
-                            },
                             onSend = { text ->
                                 vmViewModel.sendInputText(text)
+                            },
+                            onBackspace = {
+                                vmViewModel.sendBackspace()
+                            },
+                            onEnter = {
+                                vmViewModel.sendEnder()
                             },
                             onClose = {
                                 vmViewModel.textInputMode = TextInputMode.DISABLE
@@ -502,7 +512,6 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener {
     }
 
     private fun refreshWindowSize(
-        surface: SurfaceTexture? = mTextureView?.surfaceTexture,
         screenSize: IntSize
     ): IntSize {
         fun getDisplayPixels(pixels: Int): Int {
@@ -516,7 +525,7 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener {
 
         val windowWidth = getDisplayPixels(screenSize.width)
         val windowHeight = getDisplayPixels(screenSize.height)
-        surface?.setDefaultBufferSize(windowWidth, windowHeight)
+        applySizeToSurface?.invoke(windowWidth, windowHeight)
         ZLBridgeStates.onWindowChange()
         CallbackBridge.sendUpdateWindowSize(windowWidth, windowHeight)
 
@@ -589,7 +598,7 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener {
         withHandler { mIsSurfaceDestroyed = false }
         lifecycleScope.launch(Dispatchers.Default) {
             val screenSize = vmViewModel.screenSizeBridge.awaitData()
-            val currentSize = refreshWindowSize(surface, screenSize)
+            val currentSize = refreshWindowSize(screenSize = screenSize)
             withHandler {
                 execute(
                     surface = Surface(surface),
@@ -609,7 +618,35 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener {
     }
 
     override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
-        withHandler { onGraphicOutput() }
+    }
+
+    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+    }
+
+    override fun surfaceCreated(holder: SurfaceHolder) {
+        val surface = holder.surface
+        if (vmViewModel.isRunning) {
+            ZLBridge.setupBridgeWindow(surface)
+            return
+        }
+        vmViewModel.isRunning = true
+
+        withHandler { mIsSurfaceDestroyed = false }
+        lifecycleScope.launch(Dispatchers.Default) {
+            val screenSize = vmViewModel.screenSizeBridge.awaitData()
+            val currentSize = refreshWindowSize(screenSize = screenSize)
+            withHandler {
+                execute(
+                    surface = surface,
+                    screenSize = currentSize,
+                    scope = lifecycleScope
+                )
+            }
+        }
+    }
+
+    override fun surfaceDestroyed(holder: SurfaceHolder) {
+        withHandler { mIsSurfaceDestroyed = true }
     }
 
     override fun getWindowMode(): WindowMode {
@@ -655,13 +692,26 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener {
                         IntOffset(0, -bottomPadding)
                     },
                 factory = { context ->
-                    TextureView(context).apply {
-                        isOpaque = true
-                        alpha = 1.0f
+                    if (AllSettings.useSurfaceView.getValue()) {
+                        //使用 SurfaceView 渲染
+                        SurfaceView(context).apply {
+                            holder.addCallback(this@VMActivity)
+                        }.also { view ->
+                            applySizeToSurface = { width, height ->
+                                view.holder.setFixedSize(width, height)
+                            }
+                        }
+                    } else {
+                        TextureView(context).apply {
+                            isOpaque = true
+                            alpha = 1.0f
 
-                        surfaceTextureListener = this@VMActivity
-                    }.also { view ->
-                        mTextureView = view
+                            surfaceTextureListener = this@VMActivity
+                        }.also { view ->
+                            applySizeToSurface = { width, height ->
+                                view.surfaceTexture?.setDefaultBufferSize(width, height)
+                            }
+                        }
                     }
                 }
             )

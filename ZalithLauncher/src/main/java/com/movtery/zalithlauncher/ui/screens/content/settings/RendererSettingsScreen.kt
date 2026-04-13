@@ -46,6 +46,7 @@ import com.movtery.zalithlauncher.game.plugin.driver.Driver
 import com.movtery.zalithlauncher.game.plugin.driver.DriverPluginManager
 import com.movtery.zalithlauncher.game.renderer.RendererInterface
 import com.movtery.zalithlauncher.game.renderer.Renderers
+import com.movtery.zalithlauncher.game.version.installed.GraphicsApi
 import com.movtery.zalithlauncher.setting.AllSettings
 import com.movtery.zalithlauncher.setting.unit.floatRange
 import com.movtery.zalithlauncher.ui.base.BaseScreen
@@ -111,6 +112,21 @@ fun RendererSettingsScreen(
                         getItemId = { it.id },
                         getItemSummary = {
                             DriverSummaryLayout(it)
+                        }
+                    )
+
+                    ListSettingsCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        position = CardPosition.Middle,
+                        unit = AllSettings.graphicsApi,
+                        items = GraphicsApi.entries,
+                        title = stringResource(R.string.settings_game_graphics_api_title),
+                        summary = stringResource(R.string.settings_game_graphics_api_summary),
+                        getItemText = {
+                            when (it) {
+                                GraphicsApi.DEFAULT -> stringResource(R.string.settings_game_graphics_api_default)
+                                else -> it.displayName
+                            }
                         }
                     )
 
@@ -193,6 +209,14 @@ fun RendererSettingsScreen(
                         unit = AllSettings.bigCoreAffinity,
                         title = stringResource(R.string.settings_renderer_force_big_core_title),
                         summary = stringResource(R.string.settings_renderer_force_big_core_summary)
+                    )
+
+                    SwitchSettingsCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        position = CardPosition.Middle,
+                        unit = AllSettings.useSurfaceView,
+                        title = stringResource(R.string.settings_renderer_surface_title),
+                        summary = stringResource(R.string.settings_renderer_surface_summary)
                     )
 
                     SwitchSettingsCard(
