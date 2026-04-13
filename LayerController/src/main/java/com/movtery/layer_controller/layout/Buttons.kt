@@ -18,22 +18,21 @@
 
 package com.movtery.layer_controller.layout
 
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -56,6 +55,7 @@ import com.movtery.layer_controller.utils.buttonStyle
 import com.movtery.layer_controller.utils.editMode
 import com.movtery.layer_controller.utils.snap.GuideLine
 import com.movtery.layer_controller.utils.snap.SnapMode
+import kotlin.math.max
 import kotlin.math.roundToInt
 
 private data class ButtonTextStyle(
@@ -183,7 +183,6 @@ internal fun TextButton(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .offset(x = 6.dp, y = 6.dp),
-                    isDark = isDark,
                     onDrag = { dragAmount ->
                         data.resizeByDrag(
                             dragAmount = dragAmount,
@@ -205,15 +204,12 @@ internal fun TextButton(
 @Composable
 private fun ResizeCursor(
     modifier: Modifier = Modifier,
-    isDark: Boolean,
-    onDrag: (androidx.compose.ui.geometry.Offset) -> Unit
+    onDrag: (Offset) -> Unit
 ) {
-    val handleColor = if (isDark) Color(0xFF80CBC4) else Color(0xFF00695C)
+    val primaryColor = MaterialTheme.colorScheme.primary
     Box(
         modifier = modifier
-            .size(18.dp)
-            .clip(CircleShape)
-            .background(handleColor.copy(alpha = 0.85f))
+            .size(24.dp)
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDrag = { change, dragAmount ->
@@ -222,7 +218,17 @@ private fun ResizeCursor(
                     }
                 )
             }
-    )
+    ) {
+        Canvas(modifier = Modifier.matchParentSize()) {
+            val path = Path().apply {
+                moveTo(size.width * 0.15f, size.height * 0.15f)
+                lineTo(size.width, size.height * 0.15f)
+                lineTo(size.width, size.height)
+                close()
+            }
+            drawPath(path, primaryColor, alpha = 0.9f)
+        }
+    }
 }
 
 private fun ObservableWidget.resizeByDrag(
@@ -238,8 +244,8 @@ private fun ObservableWidget.resizeByDrag(
 
     val resized = when (size.type) {
         ButtonSize.Type.Dp -> size.copy(
-            widthDp = (size.widthDp + dragAmount.x / density).coerceAtLeast(MIN_SIZE_DP),
-            heightDp = (size.heightDp + dragAmount.y / density).coerceAtLeast(MIN_SIZE_DP)
+            widthDp = max(MIN_SIZE_DP, size.widthDp + dragAmount.x / density),
+            heightDp = max(MIN_SIZE_DP, size.heightDp + dragAmount.y / density)
         )
 
         ButtonSize.Type.Percentage -> {
@@ -254,16 +260,19 @@ private fun ObservableWidget.resizeByDrag(
                 screenSize.height.toFloat()
             }
 
+            val newWidthPercentage = max(100, (size.widthPercentage + dragAmount.x / widthReference * 10000f).roundToInt())
+            val newHeightPercentage = max(100, (size.heightPercentage + dragAmount.y / heightReference * 10000f).roundToInt())
+            
             size.copy(
-                widthPercentage = (size.widthPercentage + dragAmount.x / widthReference * 10000f).roundToInt().coerceAtLeast(100),
-                heightPercentage = (size.heightPercentage + dragAmount.y / heightReference * 10000f).roundToInt().coerceAtLeast(100)
+                widthPercentage = newWidthPercentage,
+                heightPercentage = newHeightPercentage
             )
         }
 
         ButtonSize.Type.WrapContent -> size.copy(
             type = ButtonSize.Type.Dp,
-            widthDp = (internalRenderSize.width / density + dragAmount.x / density).coerceAtLeast(MIN_SIZE_DP),
-            heightDp = (internalRenderSize.height / density + dragAmount.y / density).coerceAtLeast(MIN_SIZE_DP)
+            widthDp = max(MIN_SIZE_DP, (internalRenderSize.width / density + dragAmount.x / density)),
+            heightDp = max(MIN_SIZE_DP, (internalRenderSize.height / density + dragAmount.y / density))
         )
     }
 

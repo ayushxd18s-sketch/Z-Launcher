@@ -216,7 +216,7 @@ private fun BoxWithConstraintsScope.ControlWidgetRenderer(
             drawLine = drawLine,
             onLineCancel = onLineCancel,
             isPressed = isPressed,
-            showResizeCursor = focusedWidget == data,
+            showResizeCursor = focusedWidget == data || data.isEditingPos,
             onTapInEditMode = {
                 onButtonTap(data, layer)
             }
