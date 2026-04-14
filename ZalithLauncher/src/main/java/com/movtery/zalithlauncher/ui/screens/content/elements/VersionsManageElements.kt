@@ -39,6 +39,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FileCopy
+import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -60,11 +61,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -74,7 +77,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import coil3.gif.GifDecoder
 import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.game.addons.modloader.ModLoader
 import com.movtery.zalithlauncher.game.path.GamePath
@@ -236,58 +241,68 @@ fun GamePathOperation(
     changeState: (GamePathOperation) -> Unit,
     submitError: (ErrorViewModel.ThrowableMessage) -> Unit
 ) {
-    runCatching {
-        when(gamePathOperation) {
-            is GamePathOperation.None -> {}
-            is GamePathOperation.AddNewPath -> {
-                NameEditPathDialog(
-                    onDismissRequest = { changeState(GamePathOperation.None) },
-                    onConfirm = { value ->
-                        if (GamePathManager.containsPath(gamePathOperation.path)) {
-                            changeState(GamePathOperation.PathExists)
-                        } else {
-                            GamePathManager.addNewPath(title = value, path = gamePathOperation.path)
-                            changeState(GamePathOperation.None)
-                        }
-                    }
+    val errorText = stringResource(R.string.versions_manage_game_path_error_title)
+    fun doRunCatching(block: () -> Unit) {
+        runCatching {
+            block()
+        }.onFailure { e ->
+            submitError(
+                ErrorViewModel.ThrowableMessage(
+                    title = errorText,
+                    message = e.getMessageOrToString()
                 )
-            }
-            is GamePathOperation.RenamePath -> {
-                NameEditPathDialog(
-                    initValue = gamePathOperation.item.title,
-                    onDismissRequest = { changeState(GamePathOperation.None) },
-                    onConfirm = { value ->
-                        GamePathManager.modifyTitle(gamePathOperation.item, value)
-                        changeState(GamePathOperation.None)
-                    }
-                )
-            }
-            is GamePathOperation.DeletePath -> {
-                SimpleAlertDialog(
-                    title = stringResource(R.string.versions_manage_game_path_delete_title),
-                    text = stringResource(R.string.versions_manage_game_path_delete_message),
-                    onDismiss = { changeState(GamePathOperation.None) },
-                    onConfirm = {
-                        GamePathManager.removePath(gamePathOperation.item)
-                        changeState(GamePathOperation.None)
-                    }
-                )
-            }
-            is GamePathOperation.PathExists -> {
-                SimpleAlertDialog(
-                    title = stringResource(R.string.versions_manage_game_path_exists_title),
-                    text = stringResource(R.string.versions_manage_game_path_exists_message),
-                    onDismiss = { changeState(GamePathOperation.None) }
-                )
-            }
-        }
-    }.onFailure { e ->
-        submitError(
-            ErrorViewModel.ThrowableMessage(
-                title = stringResource(R.string.versions_manage_game_path_error_title),
-                message = e.getMessageOrToString()
             )
-        )
+        }
+    }
+    when (gamePathOperation) {
+        is GamePathOperation.None -> {}
+        is GamePathOperation.AddNewPath -> {
+            NameEditPathDialog(
+                onDismissRequest = { changeState(GamePathOperation.None) },
+                onConfirm = { value ->
+                    if (GamePathManager.containsPath(gamePathOperation.path)) {
+                        changeState(GamePathOperation.PathExists)
+                    } else {
+                        doRunCatching {
+                            GamePathManager.addNewPath(title = value, path = gamePathOperation.path)
+                        }
+                        changeState(GamePathOperation.None)
+                    }
+                }
+            )
+        }
+        is GamePathOperation.RenamePath -> {
+            NameEditPathDialog(
+                initValue = gamePathOperation.item.title,
+                onDismissRequest = { changeState(GamePathOperation.None) },
+                onConfirm = { value ->
+                    doRunCatching {
+                        GamePathManager.modifyTitle(gamePathOperation.item, value)
+                    }
+                    changeState(GamePathOperation.None)
+                }
+            )
+        }
+        is GamePathOperation.DeletePath -> {
+            SimpleAlertDialog(
+                title = stringResource(R.string.versions_manage_game_path_delete_title),
+                text = stringResource(R.string.versions_manage_game_path_delete_message),
+                onDismiss = { changeState(GamePathOperation.None) },
+                onConfirm = {
+                    doRunCatching {
+                        GamePathManager.removePath(gamePathOperation.item)
+                    }
+                    changeState(GamePathOperation.None)
+                }
+            )
+        }
+        is GamePathOperation.PathExists -> {
+            SimpleAlertDialog(
+                title = stringResource(R.string.versions_manage_game_path_exists_title),
+                text = stringResource(R.string.versions_manage_game_path_exists_message),
+                onDismiss = { changeState(GamePathOperation.None) }
+            )
+        }
     }
 }
 
@@ -575,7 +590,8 @@ fun CleanupOperation(
                     Spacer(Modifier.height(4.dp))
                     Text(stringResource(R.string.versions_manage_cleanup_warning))
                     Text("../assets/..")
-                    Text("../libraries/..")
+                    //不再清理依赖库，文件并不会太大，也有可能导致其他问题：#617
+//                    Text("../libraries/..")
                 },
                 onConfirm = onClean,
                 onCancel = { changeOperation(CleanupOperation.None) }
@@ -662,6 +678,7 @@ fun VersionItemLayout(
     onSettingsClick: () -> Unit = {},
     onRenameClick: () -> Unit = {},
     onCopyClick: () -> Unit = {},
+    onExportClick: () -> Unit = {},
     onDeleteClick: () -> Unit = {},
     onPinned: () -> Unit = {}
 ) {
@@ -793,6 +810,20 @@ fun VersionItemLayout(
                         }
                     )
                     DropdownMenuItem(
+                        text = { Text(text = stringResource(R.string.versions_export)) },
+                        leadingIcon = {
+                            Icon(
+                                modifier = Modifier.size(20.dp),
+                                imageVector = Icons.Filled.FolderZip,
+                                contentDescription = stringResource(R.string.versions_export)
+                            )
+                        },
+                        onClick = {
+                            onExportClick()
+                            menuExpanded = false
+                        }
+                    )
+                    DropdownMenuItem(
                         text = { Text(text = stringResource(R.string.generic_delete)) },
                         leadingIcon = {
                             Icon(
@@ -817,6 +848,11 @@ fun CommonVersionInfoLayout(
     modifier: Modifier = Modifier,
     version: Version
 ) {
+    val isValid = remember(version) { version.isValid() }
+    val versionName = remember(version) { version.getVersionName() }
+    val isSummaryValid = remember(version) { version.isSummaryValid() }
+    val versionInfo = remember(version) { version.getVersionInfo() }
+
     Row(modifier = modifier) {
         VersionIconImage(
             modifier = Modifier
@@ -832,23 +868,28 @@ fun CommonVersionInfoLayout(
             Text(
                 modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE),
                 maxLines = 1,
-                text = version.getVersionName(),
+                text = versionName,
                 style = MaterialTheme.typography.labelLarge
             )
             //版本描述
-            if (version.isValid() && version.isSummaryValid()) {
+            if (isValid && isSummaryValid) {
+                val versionSummary = remember(version) {
+                    version.getVersionSummary()
+                }
+
                 Text(
                     modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE),
                     maxLines = 1,
-                    text = version.getVersionSummary(),
-                    style = MaterialTheme.typography.labelLarge
+                    text = versionSummary,
+                    style = MaterialTheme.typography.labelMedium
                 )
             }
             //版本详细信息
             FlowRow(
+                modifier = Modifier.alpha(0.7f),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (!version.isValid()) {
+                if (!isValid) {
                     LittleTextLabel(
                         text = stringResource(R.string.versions_manage_invalid),
                         color = MaterialTheme.colorScheme.errorContainer,
@@ -856,7 +897,7 @@ fun CommonVersionInfoLayout(
                         textStyle = MaterialTheme.typography.labelSmall
                     )
                 } else {
-                    version.getVersionInfo()?.let { versionInfo ->
+                    versionInfo?.let { versionInfo ->
                         Text(
                             text = versionInfo.minecraftVersion,
                             style = MaterialTheme.typography.labelSmall,
@@ -884,20 +925,30 @@ fun VersionIconImage(
     modifier: Modifier = Modifier,
     refreshKey: Any? = null
 ) {
+    val defaultIconRes = remember(version) {
+        version?.let { getLoaderIconRes(it) } ?: R.drawable.img_minecraft
+    }
+    val defaultIcon = painterResource(defaultIconRes)
+
+    val context = LocalContext.current
+    val loader = remember(version, refreshKey) {
+        ImageLoader.Builder(context)
+            .components { add(GifDecoder.Factory()) }
+            .build()
+    }
+
     val model = remember(version, refreshKey) {
         version?.let {
             val iconFile = VersionsManager.getVersionIconFile(it)
-            when {
-                iconFile.exists() -> iconFile
-                else -> getLoaderIconRes(it)
-            }
-        } ?: R.drawable.img_minecraft
+            if (iconFile.exists()) iconFile
+            else null
+        } ?: defaultIcon
     }
 
     when (model) {
-        is Int -> {
+        is Painter -> {
             Image(
-                painter = painterResource(id = model),
+                painter = model,
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
                 modifier = modifier
@@ -906,6 +957,7 @@ fun VersionIconImage(
         else -> {
             AsyncImage(
                 model = model,
+                imageLoader = loader,
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
                 modifier = modifier
@@ -916,7 +968,10 @@ fun VersionIconImage(
 
 private fun getLoaderIconRes(version: Version): Int {
     return when (version.getVersionInfo()?.loaderInfo?.loader) {
-        ModLoader.FABRIC -> R.drawable.img_loader_fabric
+        ModLoader.FABRIC,
+        ModLoader.BABRIC -> R.drawable.img_loader_fabric
+        ModLoader.LEGACY_FABRIC -> R.drawable.img_loader_legacy_fabric
+
         ModLoader.FORGE -> R.drawable.img_anvil
         ModLoader.QUILT -> R.drawable.img_loader_quilt
         ModLoader.NEOFORGE -> R.drawable.img_loader_neoforge

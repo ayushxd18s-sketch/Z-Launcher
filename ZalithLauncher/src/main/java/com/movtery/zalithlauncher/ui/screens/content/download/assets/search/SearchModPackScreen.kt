@@ -43,7 +43,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation3.runtime.NavKey
 import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.game.download.assets.platform.Platform
 import com.movtery.zalithlauncher.game.download.assets.platform.PlatformClasses
@@ -55,10 +54,13 @@ import com.movtery.zalithlauncher.game.download.assets.platform.modrinth.models.
 import com.movtery.zalithlauncher.ui.components.MarqueeText
 import com.movtery.zalithlauncher.ui.components.SimpleAlertDialog
 import com.movtery.zalithlauncher.ui.screens.NormalNavKey
+import com.movtery.zalithlauncher.ui.screens.TitledNavKey
 import com.movtery.zalithlauncher.ui.screens.content.download.assets.elements.BaseFilterLayout
 import com.movtery.zalithlauncher.viewmodel.AllSupportPackDisplay
+import com.movtery.zalithlauncher.viewmodel.EventViewModel
 import com.movtery.zalithlauncher.viewmodel.ModpackImportOperation
 import com.movtery.zalithlauncher.viewmodel.ModpackImportViewModel
+import com.movtery.zalithlauncher.viewmodel.sendKeepScreen
 
 private sealed interface SelectUriOperation {
     data object None : SelectUriOperation
@@ -81,11 +83,12 @@ private fun rememberModpackViewModel(): ModpackViewModel {
 
 @Composable
 fun SearchModPackScreen(
-    mainScreenKey: NavKey?,
-    downloadScreenKey: NavKey?,
-    downloadModPackScreenKey: NavKey,
-    downloadModPackScreenCurrentKey: NavKey?,
+    mainScreenKey: TitledNavKey?,
+    downloadScreenKey: TitledNavKey?,
+    downloadModPackScreenKey: TitledNavKey,
+    downloadModPackScreenCurrentKey: TitledNavKey?,
     viewModel: ModpackImportViewModel,
+    eventViewModel: EventViewModel,
     swapToDownload: (Platform, projectId: String, iconUrl: String?) -> Unit = { _, _, _ -> }
 ) {
     val context = LocalContext.current
@@ -95,7 +98,16 @@ fun SearchModPackScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let { uri ->
-            viewModel.import(context, uri)
+            viewModel.import(
+                context = context,
+                uri = uri,
+                onStart = {
+                    eventViewModel.sendKeepScreen(true)
+                },
+                onStop = {
+                    eventViewModel.sendKeepScreen(false)
+                }
+            )
         }
     }
 

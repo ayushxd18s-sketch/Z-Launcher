@@ -54,6 +54,7 @@ import com.movtery.zalithlauncher.utils.logging.Logger.lDebug
 import com.movtery.zalithlauncher.utils.logging.Logger.lError
 import com.movtery.zalithlauncher.utils.logging.Logger.lInfo
 import com.movtery.zalithlauncher.utils.logging.Logger.lWarning
+import com.movtery.zalithlauncher.utils.string.isBiggerTo
 import com.movtery.zalithlauncher.utils.string.isEqualTo
 import org.lwjgl.glfw.CallbackBridge
 import java.io.File
@@ -64,9 +65,9 @@ import javax.microedition.khronos.egl.EGLContext
 class GameLauncher(
     private val activity: Activity,
     private val version: Version,
-    private val getWindowSize: () -> IntSize,
-    onExit: (code: Int, isSignal: Boolean) -> Unit
-) : Launcher(onExit) {
+    onExit: (code: Int, isSignal: Boolean) -> Unit,
+    openPath: (folder: File) -> Unit
+) : Launcher(onExit, openPath) {
     private lateinit var gameManifest: GameManifest
     private val offlineServer = OfflineYggdrasilServer(0)
 
@@ -74,7 +75,7 @@ class GameLauncher(
         offlineServer.stop()
     }
 
-    override suspend fun launch(): Int {
+    override suspend fun launch(screenSize: IntSize): Int {
         if (!Renderers.isCurrentRendererValid()) {
             Renderers.setCurrentRenderer(activity, version.getRenderer())
         }
@@ -101,6 +102,7 @@ class GameLauncher(
         )
 
         return launchGame(
+            screenSize = screenSize,
             account = account,
             javaRuntime = javaRuntime,
             customArgs = customArgs
@@ -137,8 +139,8 @@ class GameLauncher(
 
     override fun getLogName(): String = LogName.GAME.fileName
 
-    override fun initEnv(): MutableMap<String, String> {
-        val envMap = super.initEnv()
+    override fun initEnv(screenSize: IntSize): MutableMap<String, String> {
+        val envMap = super.initEnv(screenSize)
 
         DriverPluginManager.setDriverById(version.getDriver())
         envMap["DRIVER_PATH"] = DriverPluginManager.getDriver().path
@@ -177,6 +179,7 @@ class GameLauncher(
     }
 
     private suspend fun launchGame(
+        screenSize: IntSize,
         account: Account,
         javaRuntime: String,
         customArgs: String
@@ -201,8 +204,7 @@ class GameLauncher(
             runtime = runtime,
             readAssetsFile = { path -> activity.readAssetFile(path) },
             getCacioJavaArgs = { isJava8 ->
-                val size = getWindowSize()
-                getCacioJavaArgs(size.width, size.height, isJava8)
+                getCacioJavaArgs(screenSize, isJava8)
             }
         ).getAllArgs()
 
@@ -212,13 +214,17 @@ class GameLauncher(
             context = activity,
             jvmArgs = launchArgs,
             userArgs = customArgs,
-            getWindowSize = getWindowSize
+            screenSize = screenSize
         )
     }
 
     private fun tryStartTouchProxy() {
-        if (version.isTouchProxyEnabled()) {
-            ControllerProxy.startProxy(activity, version.getTouchVibrateDuration())
+        if (version.enableTouchProxy) {
+            ControllerProxy.startProxy(
+                context = activity,
+                vibrateDuration = version.getTouchVibrateDuration(),
+                vibrateKind = version.getTouchVibrateKind(),
+            )
         }
     }
 
@@ -261,11 +267,18 @@ class GameLauncher(
         val pickedRuntime = RuntimesManager.loadRuntime(runtime)
 
         if (AllSettings.autoPickJavaRuntime.getValue()) {
+            val loaderInfo = version.getVersionInfo()?.loaderInfo
             //开启了自动选择，根据游戏需求的版本做选择
-            val targetJavaVersion = if (version.getVersionInfo()?.loaderInfo?.loader == ModLoader.CLEANROOM) {
-                21 //Cleanroom 要求使用 21
-            } else {
-                gameManifest.javaVersion?.majorVersion ?: 8
+            val targetJavaVersion = when (loaderInfo?.loader) {
+                ModLoader.BABRIC -> 17 //Babric 推荐使用 17
+                ModLoader.CLEANROOM -> {
+                    if (loaderInfo.version.isBiggerTo("0.4.4-alpha")) {
+                        25 //0.5.0-alpha 及以上要求使用 25
+                    } else {
+                        21 //0.4.4-alpha 及以下要求使用 21
+                    }
+                }
+                else -> gameManifest.javaVersion?.majorVersion ?: 8
             }
             if (pickedRuntime.javaVersion == 0 || pickedRuntime.javaVersion < targetJavaVersion) {
                 val runtime0 = RuntimesManager.getNearestJreName(targetJavaVersion)

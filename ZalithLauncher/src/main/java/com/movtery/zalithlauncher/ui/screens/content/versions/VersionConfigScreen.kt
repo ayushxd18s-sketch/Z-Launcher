@@ -19,6 +19,8 @@
 package com.movtery.zalithlauncher.ui.screens.content.versions
 
 import android.content.Context
+import android.os.Build
+import android.os.Vibrator
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -38,13 +40,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.core.content.getSystemService
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation3.runtime.NavKey
 import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.game.control.ControlManager
 import com.movtery.zalithlauncher.game.multirt.RuntimesManager
 import com.movtery.zalithlauncher.game.plugin.driver.DriverPluginManager
 import com.movtery.zalithlauncher.game.renderer.Renderers
+import com.movtery.zalithlauncher.game.support.touch_controller.VibrationHandler
+import com.movtery.zalithlauncher.game.version.installed.GraphicsApi
 import com.movtery.zalithlauncher.game.version.installed.Version
 import com.movtery.zalithlauncher.game.version.installed.VersionConfig
 import com.movtery.zalithlauncher.setting.AllSettings
@@ -55,18 +59,19 @@ import com.movtery.zalithlauncher.ui.components.AnimatedColumn
 import com.movtery.zalithlauncher.ui.components.IDItem
 import com.movtery.zalithlauncher.ui.screens.NestedNavKey
 import com.movtery.zalithlauncher.ui.screens.NormalNavKey
+import com.movtery.zalithlauncher.ui.screens.TitledNavKey
 import com.movtery.zalithlauncher.ui.screens.content.elements.MemoryPreview
 import com.movtery.zalithlauncher.ui.screens.content.elements.MicrophoneCheckOperation
 import com.movtery.zalithlauncher.ui.screens.content.elements.MicrophoneCheckState
 import com.movtery.zalithlauncher.ui.screens.content.settings.DriverSummaryLayout
 import com.movtery.zalithlauncher.ui.screens.content.settings.RendererSummaryLayout
 import com.movtery.zalithlauncher.ui.screens.content.settings.layouts.CardPosition
+import com.movtery.zalithlauncher.ui.screens.content.settings.layouts.EnumSettingsCard
 import com.movtery.zalithlauncher.ui.screens.content.settings.layouts.IntSliderSettingsCard
 import com.movtery.zalithlauncher.ui.screens.content.settings.layouts.ListSettingsCard
 import com.movtery.zalithlauncher.ui.screens.content.settings.layouts.SettingsCard
 import com.movtery.zalithlauncher.ui.screens.content.settings.layouts.SettingsCardColumn
 import com.movtery.zalithlauncher.ui.screens.content.settings.layouts.SimpleIDListCard
-import com.movtery.zalithlauncher.ui.screens.content.settings.layouts.SwitchSettingsCard
 import com.movtery.zalithlauncher.ui.screens.content.settings.layouts.TextInputSettingsCard
 import com.movtery.zalithlauncher.ui.screens.content.versions.layouts.StatefulDropdownMenuFollowGlobal
 import com.movtery.zalithlauncher.ui.screens.content.versions.layouts.ToggleableIntSliderSettingsCard
@@ -77,8 +82,8 @@ import com.movtery.zalithlauncher.viewmodel.ErrorViewModel
 
 @Composable
 fun VersionConfigScreen(
-    mainScreenKey: NavKey?,
-    versionsScreenKey: NavKey?,
+    mainScreenKey: TitledNavKey?,
+    versionsScreenKey: TitledNavKey?,
     version: Version,
     backToMainScreen: () -> Unit,
     submitError: (ErrorViewModel.ThrowableMessage) -> Unit
@@ -225,6 +230,31 @@ private fun VersionConfigs(
             onValueChange = { item ->
                 if (config.driver != item.id) {
                     config.driver = item.id
+                    config.saveOrShowError(context, submitError)
+                }
+            }
+        )
+
+        val graphicsApis = GraphicsApi.entries
+        val defaultGraphicsTitle = stringResource(R.string.settings_game_graphics_api_default)
+        val graphicsApisList = getIDList(graphicsApis) {
+            val title = if (it == GraphicsApi.DEFAULT) defaultGraphicsTitle
+            else it.displayName
+            IDItem(it.name, title)
+        }
+        ListSettingsCard(
+            modifier = Modifier.fillMaxWidth(),
+            position = CardPosition.Middle,
+            items = graphicsApisList,
+            currentId = config.graphicsApi?.name ?: "",
+            defaultId = "",
+            title = stringResource(R.string.settings_game_graphics_api_title),
+            summary = stringResource(R.string.settings_game_graphics_api_summary),
+            getItemText = { it.title },
+            getItemId = { it.id },
+            onValueChange = { item ->
+                if (config.graphicsApi?.name != item.id) {
+                    config.graphicsApi = GraphicsApi.entries.find { it.name == item.id }
                     config.saveOrShowError(context, submitError)
                 }
             }
@@ -401,40 +431,76 @@ private fun SupportConfigs(
             style = MaterialTheme.typography.labelLarge
         )
 
-        var enableTouchProxy by remember { mutableStateOf(config.enableTouchProxy) }
-        SwitchSettingsCard(
+        val vibrator = remember(context) { context.getSystemService<Vibrator>() }
+        var touchVibrateKind by remember { mutableStateOf(config.touchVibrateKind) }
+        val effectiveVibrateKind = touchVibrateKind ?: VibrationHandler.VibrateKind.default
+        var touchVibrateDuration by remember { mutableIntStateOf(config.touchVibrateDuration) }
+        EnumSettingsCard(
             modifier = Modifier.fillMaxWidth(),
             position = CardPosition.Top,
-            checked = enableTouchProxy,
-            onCheckedChange = { value ->
-                enableTouchProxy = value
-                if (config.enableTouchProxy != value) {
-                    config.enableTouchProxy = value
-                    config.saveOrShowError(context, submitError)
+            value = effectiveVibrateKind,
+            title = stringResource(R.string.versions_config_vibrate_kind_title),
+            summary = stringResource(R.string.versions_config_vibrate_kind_summary),
+            entries = VibrationHandler.VibrateKind.entries,
+            getRadioEnable = { enum ->
+                if (enum == VibrationHandler.VibrateKind.ONE_SHOT) {
+                    true
+                } else {
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
                 }
             },
-            title = stringResource(R.string.versions_config_enable_touch_proxy_title),
-            summary = stringResource(R.string.versions_config_enable_touch_proxy_summary)
+            getRadioText = { enum ->
+                when (enum) {
+                    VibrationHandler.VibrateKind.ONE_SHOT -> stringResource(R.string.vibrate_kind_one_shot)
+                    VibrationHandler.VibrateKind.CLICK -> stringResource(R.string.vibrate_kind_click)
+                    VibrationHandler.VibrateKind.DOUBLE_CLICK -> stringResource(R.string.vibrate_kind_double_click)
+                    VibrationHandler.VibrateKind.HEAVY_CLICK -> stringResource(R.string.vibrate_kind_heavy_click)
+                    VibrationHandler.VibrateKind.TICK -> stringResource(R.string.vibrate_kind_tick)
+                }
+            },
+            maxItemsInEachRow = 4,
+            onRadioClick = { enum ->
+                touchVibrateKind = enum
+                vibrator?.let { vibrator ->
+                    VibrationHandler.vibrate(
+                        vibrator = vibrator,
+                        vibrateDuration = touchVibrateDuration,
+                        vibrateKind = touchVibrateKind,
+                    )
+                }
+                if (config.touchVibrateKind != enum) {
+                    config.touchVibrateKind = enum
+                    config.saveOrShowError(context, submitError)
+                }
+            }
         )
 
-        var touchVibrateDuration by remember { mutableIntStateOf(config.touchVibrateDuration) }
-        IntSliderSettingsCard(
-            modifier = Modifier.fillMaxWidth(),
-            position = CardPosition.Middle,
-            value = touchVibrateDuration,
-            title = stringResource(R.string.versions_config_vibrate_duration_title),
-            summary = stringResource(R.string.versions_config_vibrate_duration_summary),
-            valueRange = 80f..500f,
-            onValueChange = {
-                touchVibrateDuration = it
-                config.touchVibrateDuration = touchVibrateDuration
-            },
-            onValueChangeFinished = {
-                config.saveOrShowError(context, submitError)
-            },
-            suffix = "ms",
-            fineTuningControl = true
-        )
+        AnimatedVisibility(effectiveVibrateKind == VibrationHandler.VibrateKind.ONE_SHOT) {
+            IntSliderSettingsCard(
+                modifier = Modifier.fillMaxWidth(),
+                position = CardPosition.Middle,
+                value = touchVibrateDuration,
+                title = stringResource(R.string.versions_config_vibrate_duration_title),
+                summary = stringResource(R.string.versions_config_vibrate_duration_summary),
+                valueRange = 80f..500f,
+                onValueChange = {
+                    touchVibrateDuration = it
+                    config.touchVibrateDuration = touchVibrateDuration
+                },
+                onValueChangeFinished = {
+                    vibrator?.let { vibrator ->
+                        VibrationHandler.vibrate(
+                            vibrator = vibrator,
+                            vibrateDuration = touchVibrateDuration,
+                            vibrateKind = touchVibrateKind,
+                        )
+                    }
+                    config.saveOrShowError(context, submitError)
+                },
+                suffix = "ms",
+                fineTuningControl = true
+            )
+        }
 
         //检查麦克风
         var microphoneState by remember { mutableStateOf<MicrophoneCheckState>(MicrophoneCheckState.None) }

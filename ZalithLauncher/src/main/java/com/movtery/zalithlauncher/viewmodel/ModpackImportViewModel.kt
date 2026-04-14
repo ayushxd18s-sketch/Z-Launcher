@@ -85,12 +85,20 @@ sealed interface VersionNameOperation {
     data class Waiting(val name: String) : VersionNameOperation
 }
 
+/** 整合包安装确认使用移动网络状态操作 */
+sealed interface ConfirmMobileDataOperation {
+    data object None : ConfirmMobileDataOperation
+    /** 等待用户确认使用移动网络 */
+    data object Waiting : ConfirmMobileDataOperation
+}
+
 /**
  * 导入整合包ViewModel
  */
 class ModpackImportViewModel : ViewModel() {
     var importOperation by mutableStateOf<ModpackImportOperation>(ModpackImportOperation.None)
     var versionNameOperation by mutableStateOf<VersionNameOperation>(VersionNameOperation.None)
+    var confirmMobileDataOperation by mutableStateOf<ConfirmMobileDataOperation>(ConfirmMobileDataOperation.None)
 
     //等待用户输入版本名称相关
     private var versionNameContinuation: (Continuation<String>)? = null
@@ -111,6 +119,25 @@ class ModpackImportViewModel : ViewModel() {
         versionNameOperation = VersionNameOperation.None
     }
 
+    //警告使用移动网络相关
+    private var confirmMobileData : (Continuation<Boolean>)? = null
+    suspend fun waitForConfirmMobileData(): Boolean {
+        return suspendCancellableCoroutine { cont ->
+            confirmMobileData = cont
+            confirmMobileDataOperation = ConfirmMobileDataOperation.Waiting
+        }
+    }
+
+    /**
+     * 用户是否确认使用移动网络
+     */
+    fun confirmUseMobileData(use: Boolean) {
+        //恢复continuation
+        confirmMobileData?.resume(use)
+        confirmMobileData = null
+        confirmMobileDataOperation = ConfirmMobileDataOperation.None
+    }
+
     /**
      * 整合包导入器
      */
@@ -121,7 +148,9 @@ class ModpackImportViewModel : ViewModel() {
      */
     fun import(
         context: Context,
-        uri: Uri
+        uri: Uri,
+        onStart: () -> Unit = {},
+        onStop: () -> Unit = {}
     ) {
         if (importOperation != ModpackImportOperation.None) {
             //当前有别的导入任务，拒绝这次导入
@@ -132,13 +161,20 @@ class ModpackImportViewModel : ViewModel() {
             context = context,
             uri = uri,
             scope = viewModelScope,
-            waitForVersionName = ::waitForVersionName
+            waitForVersionName = ::waitForVersionName,
+            waitForConfirmMobileData = ::waitForConfirmMobileData
         ).also {
             it.startImport(
                 onFinished = { version ->
                     importer = null
                     VersionsManager.refresh("[Modpack] ModpackImporter.onFinished", version)
                     importOperation = ModpackImportOperation.Finished
+                    onStop()
+                },
+                onCancelled = {
+                    importer = null
+                    importOperation = ModpackImportOperation.None
+                    onStop()
                 },
                 onError = { th ->
                     importer = null
@@ -148,15 +184,19 @@ class ModpackImportViewModel : ViewModel() {
                     } else {
                         ModpackImportOperation.Error(th)
                     }
+                    onStop()
                 }
             )
         }
+        onStart()
     }
 
     fun cancel() {
         importer?.cancel()
         importer = null
         importOperation = ModpackImportOperation.None
+        versionNameOperation = VersionNameOperation.None
+        confirmMobileDataOperation = ConfirmMobileDataOperation.None
     }
 
     override fun onCleared() {
@@ -307,14 +347,40 @@ fun AllSupportPackDisplay(
 @Composable
 fun ModpackVersionNameOperation(
     operation: VersionNameOperation,
-    onConfirmVersionName: (String) -> Unit
+    onConfirmVersionName: (String) -> Unit,
+    onCancel: () -> Unit
 ) {
     when (operation) {
         is VersionNameOperation.None -> {}
         is VersionNameOperation.Waiting -> {
             ModpackVersionNameDialog(
                 name = operation.name,
-                onConfirmVersionName = onConfirmVersionName
+                onConfirmVersionName = onConfirmVersionName,
+                onCancel = onCancel
+            )
+        }
+    }
+}
+
+@Composable
+fun ModpackConfirmUseMobileDataOperation(
+    operation: ConfirmMobileDataOperation,
+    onConfirmUse: (Boolean) -> Unit
+) {
+    when (operation) {
+        is ConfirmMobileDataOperation.None -> {}
+        is ConfirmMobileDataOperation.Waiting -> {
+            SimpleAlertDialog(
+                title = stringResource(R.string.generic_warning),
+                text = stringResource(R.string.download_install_warning_mobile_data),
+                confirmText = stringResource(R.string.generic_anyway),
+                onDismiss = {
+                    onConfirmUse(false)
+                },
+                onConfirm = {
+                    //用户坚持使用移动网络
+                    onConfirmUse(true)
+                }
             )
         }
     }

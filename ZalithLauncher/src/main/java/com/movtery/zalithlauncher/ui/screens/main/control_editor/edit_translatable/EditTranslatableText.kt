@@ -32,15 +32,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -54,16 +51,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.movtery.layer_controller.observable.ObservableLocalizedString
 import com.movtery.layer_controller.observable.ObservableTranslatableString
+import com.movtery.layer_controller.utils.toSimpleLangTag
 import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.ui.components.MarqueeText
+import com.movtery.zalithlauncher.ui.components.OwnOutlinedTextField
+import com.movtery.zalithlauncher.ui.components.SingleLineTextCheck
 import com.movtery.zalithlauncher.ui.components.fadeEdge
 import com.movtery.zalithlauncher.ui.components.itemLayoutColorOnSurface
 import com.movtery.zalithlauncher.utils.string.isEmptyOrBlank
@@ -122,12 +120,10 @@ fun EditTranslatableTextDialog(
                 val locale = LocalConfiguration.current.locales[0]
                 Text(
                     modifier = Modifier.fillMaxWidth(),
-                    text = stringResource(R.string.control_editor_edit_translatable_other_tip, locale.toLanguageTag()),
+                    text = stringResource(R.string.control_editor_edit_translatable_other_tip, locale.toSimpleLangTag()),
                     style = MaterialTheme.typography.labelMedium,
                     textAlign = TextAlign.Center
                 )
-
-                val focusManager = LocalFocusManager.current
 
                 val scrollState = rememberLazyListState()
                 LazyColumn(
@@ -139,11 +135,21 @@ fun EditTranslatableTextDialog(
                     contentPadding = PaddingValues(vertical = 12.dp)
                 ) {
                     item {
+                        if (singleLine) {
+                            SingleLineTextCheck(
+                                text = text.default,
+                                onSingleLined = { text.default = it }
+                            )
+                        }
+
                         //默认文本
-                        OutlinedTextField(
+                        OwnOutlinedTextField(
                             modifier = Modifier.fillMaxWidth(),
                             value = text.default,
-                            onValueChange = { text.default = take.take(it) },
+                            onValueChange = { string ->
+                                val new = take.take(string)
+                                text.default = new
+                            },
                             label = {
                                 Text(stringResource(R.string.control_editor_edit_translatable_default))
                             },
@@ -156,18 +162,6 @@ fun EditTranslatableTextDialog(
                                 }
                             },
                             singleLine = singleLine,
-                            keyboardOptions = if (singleLine) {
-                                KeyboardOptions.Default.copy(
-                                    imeAction = ImeAction.Done
-                                )
-                            } else {
-                                KeyboardOptions.Default
-                            },
-                            keyboardActions = KeyboardActions(
-                                onDone = {
-                                    focusManager.clearFocus(true)
-                                }
-                            ),
                             shape = MaterialTheme.shapes.large
                         )
                     }
@@ -307,10 +301,20 @@ private fun SimpleEditBox(
         fieldError != null
     }
 
-    OutlinedTextField(
+    if (singleLine) {
+        SingleLineTextCheck(
+            text = value,
+            onSingleLined = onValueChange
+        )
+    }
+
+    OwnOutlinedTextField(
         modifier = modifier,
         value = value,
-        onValueChange = { onValueChange(take.take(it)) },
+        onValueChange = { string ->
+            val new = take.take(string)
+            onValueChange(new)
+        },
         label = {
             Text(text = label)
         },

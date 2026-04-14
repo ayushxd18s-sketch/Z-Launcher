@@ -20,6 +20,7 @@ package com.movtery.zalithlauncher.ui.screens.content.elements
 
 import android.app.Activity
 import android.net.Uri
+import android.os.Parcelable
 import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,6 +38,8 @@ import coil3.request.crossfade
 import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.game.account.AccountsManager
 import com.movtery.zalithlauncher.game.launch.LaunchGame
+import com.movtery.zalithlauncher.game.plugin.ApkPlugin
+import com.movtery.zalithlauncher.game.plugin.natives.NativePluginManager
 import com.movtery.zalithlauncher.game.plugin.renderer.RendererPluginManager
 import com.movtery.zalithlauncher.game.renderer.RendererInterface
 import com.movtery.zalithlauncher.game.renderer.Renderers
@@ -53,7 +56,19 @@ import com.movtery.zalithlauncher.viewmodel.BackgroundViewModel
 import com.movtery.zalithlauncher.viewmodel.ErrorViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.parcelize.Parcelize
 import java.io.File
+
+@Parcelize
+sealed interface QuickPlay : Parcelable {
+    /** 快速启动游玩存档  仅支持 1.20+ 23w14a+ */
+    @Parcelize
+    data class Save(val saveName: String): QuickPlay
+
+    /** 快速启动游玩服务器 */
+    @Parcelize
+    data class Server(val serverAddress: String): QuickPlay
+}
 
 sealed interface LaunchGameOperation {
     data object None : LaunchGameOperation
@@ -68,26 +83,33 @@ sealed interface LaunchGameOperation {
     data class RendererNoStoragePermission(
         val renderer: RendererInterface,
         val version: Version,
-        val quickPlay: String?
+        val quickPlay: QuickPlay?
     ) : LaunchGameOperation
 
     /** 当前渲染器不支持选中版本 */
     data class UnsupportedRenderer(
         val renderer: RendererInterface,
         val version: Version,
-        val quickPlay: String?
+        val quickPlay: QuickPlay?
+    ): LaunchGameOperation
+
+    /** 当前已加载的插件不支持选中的版本 */
+    data class UnsupportedPlugins(
+        val plugins: List<ApkPlugin>,
+        val version: Version,
+        val quickPlay: QuickPlay?
     ): LaunchGameOperation
 
     /** 尝试启动：启动前检查一些东西 */
     data class TryLaunch(
         val version: Version?,
-        val quickPlay: String? = null
+        val quickPlay: QuickPlay? = null
     ) : LaunchGameOperation
 
     /** 正式启动 */
     data class RealLaunch(
         val version: Version,
-        val quickPlay: String?
+        val quickPlay: QuickPlay?
     ) : LaunchGameOperation
 }
 
@@ -167,6 +189,22 @@ fun LaunchGameOperation(
                 }
             )
         }
+        is LaunchGameOperation.UnsupportedPlugins -> {
+            val plugins = launchGameOperation.plugins
+            val version = launchGameOperation.version
+            val quickPlay = launchGameOperation.quickPlay
+            SimpleAlertDialog(
+                title = stringResource(R.string.generic_warning),
+                text = stringResource(R.string.plugin_unsupported_warning, plugins.joinToString(", ") { it.appName }),
+                confirmText = stringResource(R.string.generic_anyway),
+                onConfirm = {
+                    updateOperation(LaunchGameOperation.RealLaunch(version, quickPlay))
+                },
+                onDismiss = {
+                    updateOperation(LaunchGameOperation.None)
+                }
+            )
+        }
         is LaunchGameOperation.TryLaunch -> {
             LaunchedEffect(Unit) {
                 val version = launchGameOperation.version ?: run {
@@ -196,12 +234,21 @@ fun LaunchGameOperation(
 
                 val mcVer = version.getVersionInfo()!!.minecraftVersion
 
-                val isUnsupported =
+                val isRendererUnsupported =
                     (rendererMinVer?.let { mcVer.isLowerTo(it) } ?: false) ||
                             (rendererMaxVer?.let { mcVer.isBiggerTo(it) } ?: false)
 
-                if (isUnsupported) {
+                if (isRendererUnsupported) {
                     updateOperation(LaunchGameOperation.UnsupportedRenderer(currentRenderer, version, quickPlay))
+                    return@LaunchedEffect
+                }
+
+                val unsupportedPlugins = NativePluginManager.getCheckedPlugins().filter { plugin ->
+                    (plugin.minMCVer?.let { mcVer.isLowerTo(it) } ?: false) ||
+                            (plugin.maxMCVer?.let { mcVer.isBiggerTo(it) } ?: false)
+                }
+                if (unsupportedPlugins.isNotEmpty()) {
+                    updateOperation(LaunchGameOperation.UnsupportedPlugins(unsupportedPlugins, version, quickPlay))
                     return@LaunchedEffect
                 }
 
@@ -238,19 +285,16 @@ fun Background(
     viewModel: BackgroundViewModel,
     modifier: Modifier = Modifier
 ) {
-    val isValid = viewModel.isValid
-    val isVideo = viewModel.isVideo
-    val isImage = viewModel.isImage
-
-    if (isValid) {
-        if (isVideo) {
+    when {
+        viewModel.isVideo -> {
             VideoPlayer(
                 videoUri = Uri.fromFile(viewModel.backgroundFile),
                 modifier = modifier,
                 refreshTrigger = viewModel.refreshTrigger,
                 volume = AllSettings.videoBackgroundVolume.state / 100f
             )
-        } else if (isImage) {
+        }
+        viewModel.isImage -> {
             BackgroundImage(
                 modifier = modifier,
                 imageFile = viewModel.backgroundFile,

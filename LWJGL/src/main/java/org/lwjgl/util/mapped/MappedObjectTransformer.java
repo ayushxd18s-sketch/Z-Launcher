@@ -129,7 +129,7 @@ public class MappedObjectTransformer {
 
 	/**
 	 * Registers a class as a mapped object.
-	 * The class must extend {@link org.lwjgl.util.mapped.MappedObject} and be annotated with {@link org.lwjgl.util.mapped.MappedField}.
+	 * The class must extend {@link MappedObject} and be annotated with {@link MappedField}.
 	 *
 	 * @param type the mapped object class.
 	 */

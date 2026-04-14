@@ -59,8 +59,9 @@ sealed interface LauncherUpgradeOperation {
 /**
  * 最新版本的信息获取源
  */
-private const val LATEST_API_URL = "$URL_PROJECT_INFO/latest_version.json"
-private const val LATEST_API_CHINESE_URL = "https://fcl.lemwood.icu/zalith-info/v2/latest_version.json"
+private const val LATEST_VERSION = "latest_version_md.json"
+private const val LATEST_API_URL = "$URL_PROJECT_INFO/$LATEST_VERSION"
+private const val LATEST_API_CHINESE_URL = "https://fcl.lemwood.icu/zalith-info/v2/$LATEST_VERSION"
 
 /**
  * 用于记录启动器更新 ViewModel
@@ -74,13 +75,17 @@ class LauncherUpgradeViewModel: ViewModel() {
      * 检查是否在限频时间内
      * @param time 限频时间（毫秒）
      * @param lastCheckTime 上次检查的时间戳
-     * @return true 如果已经超过限频时间，可以进行检查；false 如果还在限频时间内
      */
     private fun isWithinRateLimit(
         time: Long,
         lastCheckTime: Long
     ): Boolean {
         val currentTime = System.currentTimeMillis()
+        if (lastCheckTime > currentTime) {
+            //用户调整到了未来的时间，无法正常判断
+            //直接允许进行检查
+            return false
+        }
         return currentTime - lastCheckTime < time
     }
 

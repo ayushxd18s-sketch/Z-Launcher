@@ -30,17 +30,26 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.movtery.layer_controller.layout.ControlLayout
 import com.movtery.layer_controller.layout.loadLayoutFromFile
-import com.movtery.zalithlauncher.ui.base.BaseComponentActivity
+import com.movtery.zalithlauncher.ui.base.BaseAppCompatActivity
+import com.movtery.zalithlauncher.ui.screens.content.elements.Background
 import com.movtery.zalithlauncher.ui.screens.main.control_editor.ControlEditor
 import com.movtery.zalithlauncher.ui.theme.ZalithLauncherTheme
+import com.movtery.zalithlauncher.viewmodel.BackgroundViewModel
 import com.movtery.zalithlauncher.viewmodel.EditorViewModel
+import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 
 private const val BUNDLE_CONTROL = "BUNDLE_CONTROL"
 
-class ControlEditorActivity : BaseComponentActivity() {
+@AndroidEntryPoint
+class ControlEditorActivity : BaseAppCompatActivity() {
     /** 编辑器 */
     private val editorViewModel: EditorViewModel by viewModels()
+
+    /**
+     * 启动器背景内容管理 ViewModel
+     */
+    private val backgroundViewModel: BackgroundViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,11 +76,18 @@ class ControlEditorActivity : BaseComponentActivity() {
         })
 
         setContent {
-            ZalithLauncherTheme {
+            ZalithLauncherTheme(
+                backgroundViewModel = backgroundViewModel
+            ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     BoxWithConstraints(
                         modifier = Modifier.fillMaxSize()
                     ) {
+                        Background(
+                            modifier = Modifier.fillMaxSize(),
+                            viewModel = backgroundViewModel
+                        )
+
                         ControlEditor(
                             viewModel = editorViewModel,
                             targetFile = controlFile,

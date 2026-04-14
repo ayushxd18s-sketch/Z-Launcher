@@ -39,6 +39,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Dashboard
+import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Lightbulb
@@ -54,6 +55,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -68,7 +70,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavBackStack
-import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -89,6 +90,7 @@ import com.movtery.zalithlauncher.ui.components.NotificationCheck
 import com.movtery.zalithlauncher.ui.components.fadeEdge
 import com.movtery.zalithlauncher.ui.screens.NestedNavKey
 import com.movtery.zalithlauncher.ui.screens.NormalNavKey
+import com.movtery.zalithlauncher.ui.screens.TitledNavKey
 import com.movtery.zalithlauncher.ui.screens.content.elements.CategoryIcon
 import com.movtery.zalithlauncher.ui.screens.content.elements.CategoryItem
 import com.movtery.zalithlauncher.ui.screens.content.elements.TitleTaskFlowDialog
@@ -96,6 +98,7 @@ import com.movtery.zalithlauncher.ui.screens.content.versions.AddonDiffs
 import com.movtery.zalithlauncher.ui.screens.content.versions.ModsManagerScreen
 import com.movtery.zalithlauncher.ui.screens.content.versions.ResourcePackManageScreen
 import com.movtery.zalithlauncher.ui.screens.content.versions.SavesManagerScreen
+import com.movtery.zalithlauncher.ui.screens.content.versions.ServerListScreen
 import com.movtery.zalithlauncher.ui.screens.content.versions.ShadersManagerScreen
 import com.movtery.zalithlauncher.ui.screens.content.versions.UpdateLoaderScreen
 import com.movtery.zalithlauncher.ui.screens.content.versions.VersionConfigScreen
@@ -106,6 +109,7 @@ import com.movtery.zalithlauncher.ui.screens.rememberTransitionSpec
 import com.movtery.zalithlauncher.utils.animation.swapAnimateDpAsState
 import com.movtery.zalithlauncher.utils.logging.Logger.lError
 import com.movtery.zalithlauncher.viewmodel.ErrorViewModel
+import com.movtery.zalithlauncher.viewmodel.EventViewModel
 import com.movtery.zalithlauncher.viewmodel.LaunchGameViewModel
 import com.movtery.zalithlauncher.viewmodel.ScreenBackStackViewModel
 import io.ktor.client.plugins.HttpRequestTimeoutException
@@ -170,7 +174,9 @@ private class UpdateLoaderViewModel: ViewModel() {
     }
 
     fun cancel() {
-        installer?.cancelInstall()
+        installer?.cancelInstall(
+            clearTarget = false
+        )
         installer = null
         installOperation = UpdateLoaderOperation.None
     }
@@ -196,7 +202,9 @@ fun VersionSettingsScreen(
     key: NestedNavKey.VersionSettings,
     backScreenViewModel: ScreenBackStackViewModel,
     backToMainScreen: () -> Unit,
+    onExportModpack: () -> Unit,
     launchGameViewModel: LaunchGameViewModel,
+    eventViewModel: EventViewModel,
     submitError: (ErrorViewModel.ThrowableMessage) -> Unit
 ) {
     val context = LocalContext.current
@@ -232,11 +240,15 @@ fun VersionSettingsScreen(
         currentKey = backScreenViewModel.mainScreen.currentKey
     ) { isVisible ->
         Row(modifier = Modifier.fillMaxSize()) {
+            val loaderInfo = remember(key) {
+                key.version.getVersionInfo()?.loaderInfo
+            }
+
             TabMenu(
                 isVisible = isVisible,
                 backStack = key.backStack,
                 versionsScreenKey = key.currentKey,
-                canUpdateLoader = key.version.getVersionInfo()?.loaderInfo?.loader?.autoDownloadable == true,
+                isUpdateLoader = loaderInfo != null && loaderInfo.loader.autoDownloadable,
                 modifier = Modifier.fillMaxHeight()
             )
 
@@ -250,8 +262,10 @@ fun VersionSettingsScreen(
                     key.currentKey = newKey
                 },
                 backToMainScreen = backToMainScreen,
+                onExport = onExportModpack,
                 launchGameViewModel = launchGameViewModel,
                 version = key.version,
+                eventViewModel = eventViewModel,
                 submitError = submitError
             )
         }
@@ -265,15 +279,16 @@ private val settingItems = listOf(
     CategoryItem(NormalNavKey.Versions.ModsManager, { CategoryIcon(Icons.Outlined.Extension, R.string.mods_manage) }, R.string.mods_manage, division = true),
     CategoryItem(NormalNavKey.Versions.SavesManager, { CategoryIcon(Icons.Outlined.Public, R.string.saves_manage) }, R.string.saves_manage),
     CategoryItem(NormalNavKey.Versions.ResourcePackManager, { CategoryIcon(Icons.Outlined.Image, R.string.resource_pack_manage) }, R.string.resource_pack_manage),
-    CategoryItem(NormalNavKey.Versions.ShadersManager, { CategoryIcon(Icons.Outlined.Lightbulb, R.string.shader_pack_manage) }, R.string.shader_pack_manage)
+    CategoryItem(NormalNavKey.Versions.ShadersManager, { CategoryIcon(Icons.Outlined.Lightbulb, R.string.shader_pack_manage) }, R.string.shader_pack_manage),
+    CategoryItem(NormalNavKey.Versions.ServerList, { CategoryIcon(Icons.Outlined.Dns, R.string.servers_list) }, R.string.servers_list, division = true),
 )
 
 @Composable
 private fun TabMenu(
     isVisible: Boolean,
-    backStack: NavBackStack<NavKey>,
-    versionsScreenKey: NavKey?,
-    canUpdateLoader: Boolean,
+    backStack: NavBackStack<TitledNavKey>,
+    versionsScreenKey: TitledNavKey?,
+    isUpdateLoader: Boolean,
     modifier: Modifier = Modifier
 ) {
     val xOffset by swapAnimateDpAsState(
@@ -294,11 +309,6 @@ private fun TabMenu(
     ) {
         Spacer(modifier = Modifier.height(12.dp))
         settingItems.forEach { item ->
-            if (!canUpdateLoader && item.key == NormalNavKey.Versions.UpdateLoader) {
-                //无法更新模组加载器，跳过这个选项
-                return@forEach
-            }
-
             if (item.division) {
                 HorizontalDivider(
                     modifier = Modifier
@@ -312,15 +322,33 @@ private fun TabMenu(
             NavigationRailItem(
                 selected = versionsScreenKey === item.key,
                 onClick = {
+                    if (item.key == NormalNavKey.Versions.UpdateLoader) {
+                        if (isUpdateLoader) {
+                            NormalNavKey.Versions.UpdateLoader.title = R.string.versions_update_loader
+                        } else {
+                            NormalNavKey.Versions.UpdateLoader.title = R.string.versions_install_loader
+                        }
+                    }
                     backStack.navigateOnce(item.key)
                 },
                 icon = {
                     item.icon()
                 },
                 label = {
+                    val text = if (item.key == NormalNavKey.Versions.UpdateLoader) {
+                        if (isUpdateLoader) {
+                            NormalNavKey.Versions.UpdateLoader.title = R.string.versions_update_loader
+                            stringResource(item.textRes)
+                        } else {
+                            NormalNavKey.Versions.UpdateLoader.title = R.string.versions_install_loader
+                            stringResource(R.string.versions_install_loader)
+                        }
+                    } else {
+                        stringResource(item.textRes)
+                    }
                     Text(
                         modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE),
-                        text = stringResource(item.textRes),
+                        text = text,
                         maxLines = 1,
                         style = MaterialTheme.typography.labelMedium
                     )
@@ -338,11 +366,13 @@ private fun NavigationUI(
     key: NestedNavKey.VersionSettings,
     viewModel: UpdateLoaderViewModel,
     backScreenViewModel: ScreenBackStackViewModel,
-    versionsScreenKey: NavKey?,
-    onCurrentKeyChange: (NavKey?) -> Unit,
+    versionsScreenKey: TitledNavKey?,
+    onCurrentKeyChange: (TitledNavKey?) -> Unit,
     backToMainScreen: () -> Unit,
+    onExport: () -> Unit,
     launchGameViewModel: LaunchGameViewModel,
     version: Version,
+    eventViewModel: EventViewModel,
     submitError: (ErrorViewModel.ThrowableMessage) -> Unit
 ) {
     val context = LocalContext.current
@@ -369,6 +399,7 @@ private fun NavigationUI(
                         mainScreenKey = mainScreenKey,
                         versionsScreenKey = versionsScreenKey,
                         backToMainScreen = backToMainScreen,
+                        onExport = onExport,
                         version = version,
                         submitError = submitError
                     )
@@ -420,6 +451,7 @@ private fun NavigationUI(
                                 }
                             )
                         },
+                        eventViewModel = eventViewModel,
                         submitError = submitError
                     )
                 }
@@ -464,6 +496,15 @@ private fun NavigationUI(
                             )
                         },
                         submitError = submitError
+                    )
+                }
+                entry<NormalNavKey.Versions.ServerList> {
+                    ServerListScreen(
+                        mainScreenKey = mainScreenKey,
+                        versionsScreenKey = versionsScreenKey,
+                        launchGameViewModel = launchGameViewModel,
+                        version = version,
+                        backToMainScreen = backToMainScreen,
                     )
                 }
             }

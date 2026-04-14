@@ -74,6 +74,16 @@ abstract class ObservableWidget {
     open fun canTouch(): Boolean = true
 
     /**
+     * Compose 树开始布局时
+     */
+    abstract fun onCompositionStart(eventHandler: EventHandler?)
+
+    /**
+     * Compose 树结束布局时
+     */
+    abstract fun onCompositionDispose(eventHandler: EventHandler?)
+
+    /**
      * 获取该组件可见类型
      */
     abstract fun onCheckVisibilityType(): VisibilityType
@@ -93,7 +103,7 @@ abstract class ObservableWidget {
      * 响应触摸事件
      * @param allLayers 当前所有可观察控制层
      * @param activeWidgets 当前指针活动中的组件
-     * @param setActiveWidgets 标记组件在该指针活动
+     * @param addThis 标记组件在该指针活动
      * @param consumeEvent 是否要求标记消费事件
      */
     abstract fun onTouchEvent(
@@ -101,7 +111,7 @@ abstract class ObservableWidget {
         allLayers: List<ObservableControlLayer>,
         change: PointerInputChange,
         activeWidgets: List<ObservableWidget>,
-        setActiveWidgets: (List<ObservableWidget>) -> Unit,
+        addThis: () -> Unit,
         consumeEvent: (Boolean) -> Unit
     )
 

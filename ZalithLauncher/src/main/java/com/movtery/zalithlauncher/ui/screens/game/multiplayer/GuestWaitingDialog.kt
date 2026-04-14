@@ -75,7 +75,7 @@ private fun InviteCodeInputDialog(
     var code by remember { mutableStateOf("") }
 
     /** 验证不通过时 */
-    var isError by mutableStateOf(false)
+    var isError by remember { mutableStateOf(false) }
     val supportingText: String? = remember(code) {
         if (code.isEmpty()) {
             //还未填写内容
@@ -85,18 +85,10 @@ private fun InviteCodeInputDialog(
 
         val type = Terracotta.parseRoomCode(code)
         when (type) {
-            TerracottaAndroidAPI.RoomType.TERRACOTTA_LEGACY -> {
-                terracottaLegacyText
-            }
-            TerracottaAndroidAPI.RoomType.PCL2CE -> {
-                pcl2ceLegacyText
-            }
-            TerracottaAndroidAPI.RoomType.SCAFFOLDING -> {
-                scaffoldingText
-            }
-            else -> {
-                null
-            }
+            TerracottaAndroidAPI.RoomType.TERRACOTTA_LEGACY -> terracottaLegacyText
+            TerracottaAndroidAPI.RoomType.PCL2CE -> pcl2ceLegacyText
+            TerracottaAndroidAPI.RoomType.SCAFFOLDING -> scaffoldingText
+            else -> null
         }.also { text ->
             //根据是否检测出对应格式判断
             isError = text == null
@@ -123,6 +115,7 @@ private fun InviteCodeInputDialog(
                 Toast.makeText(context, codeInvalid, Toast.LENGTH_SHORT).show()
             } else {
                 onPositive(code)
+                onDismiss()
             }
         },
         onDismissRequest = onDismiss

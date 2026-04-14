@@ -26,9 +26,11 @@ import androidx.compose.ui.unit.IntSize
 import androidx.core.app.NotificationCompat
 import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.bridge.LoggerBridge
+import com.movtery.zalithlauncher.bridge.NativeLibraryLoader
 import com.movtery.zalithlauncher.game.launch.JvmLaunchInfo
 import com.movtery.zalithlauncher.game.launch.JvmLauncher
 import com.movtery.zalithlauncher.game.launch.Launcher
+import com.movtery.zalithlauncher.notification.NoticeProgress
 import com.movtery.zalithlauncher.notification.NotificationChannelData
 import com.movtery.zalithlauncher.path.PathManager
 import com.movtery.zalithlauncher.utils.logging.Logger.lError
@@ -51,11 +53,16 @@ class JvmService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        postNotification()
-
         val jvmArgs = intent?.extras?.getString(SERVICE_JVM_ARGS) ?: error("The JVM parameters must be set.")
         val jreName = intent.extras?.getString(SERVICE_JRE_NAME)
         val userHome = intent.extras?.getString(SERVICE_USER_HOME)
+        val postSummary = intent.extras?.getString(SERVICE_POST_SUMMARY)
+        val postProgress = intent.extras?.getParcelable<NoticeProgress?>(SERVICE_POST_PROGRESS)
+
+        postNotification(
+            postSummary = postSummary,
+            postProgress = postProgress
+        )
 
         scope.launch(Dispatchers.Default) {
             preLaunch (
@@ -94,12 +101,25 @@ class JvmService : Service() {
         android.os.Process.killProcess(android.os.Process.myPid())
     }
 
-    private fun postNotification() {
+    private fun postNotification(
+        postSummary: String? = null,
+        postProgress: NoticeProgress? = null
+    ) {
         //Jvm服务渠道
         val data = NotificationChannelData.JVM_SERVICE_CHANNEL
 
         val notification: Notification = NotificationCompat.Builder(this, data.channelId)
             .setContentTitle(getString(R.string.notification_data_jvm_service_running))
+            .setContentText(postSummary)
+            .also { notification ->
+                postProgress?.let { progress ->
+                    notification.setProgress(
+                        progress.max,
+                        progress.progress.coerceAtMost(progress.max),
+                        progress.indeterminate
+                    )
+                }
+            }
             .setSmallIcon(R.mipmap.ic_launcher)
             .build()
 
@@ -120,11 +140,9 @@ class JvmService : Service() {
 
         val launcher = JvmLauncher(
             context = applicationContext,
-            getWindowSize = {
-                IntSize(1920, 1080) //fake
-            },
             jvmLaunchInfo = jvmLaunchInfo,
-            onExit = onExit
+            onExit = onExit,
+            openPath = { /* 忽略 */ }
         )
 
         runJvm(launcher, onExit)
@@ -136,7 +154,7 @@ class JvmService : Service() {
     ): Unit = withContext(Dispatchers.IO) {
         withContext(Dispatchers.Main) {
             //在主线程加载 exec
-            System.loadLibrary("pojavexec")
+            NativeLibraryLoader.loadPojavLib()
         }
 
         //开始记录日志
@@ -147,7 +165,9 @@ class JvmService : Service() {
         lInfo("start jvm!")
 
         val code = runCatching {
-            launcher.launch()
+            launcher.launch(
+                screenSize = IntSize(1920, 1080) //fake
+            )
         }.onFailure { e ->
             lWarning("jvm crashed!", e)
         }.getOrElse { 1 }

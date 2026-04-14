@@ -24,7 +24,6 @@ import androidx.annotation.CallSuper
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
-import com.movtery.zalithlauncher.game.input.CharacterSenderStrategy
 import com.movtery.zalithlauncher.game.launch.Launcher
 import com.movtery.zalithlauncher.ui.control.input.TextInputMode
 import com.movtery.zalithlauncher.viewmodel.ErrorViewModel
@@ -39,8 +38,6 @@ abstract class AbstractHandler(
     val type: HandlerType,
     protected val errorViewModel: ErrorViewModel,
     protected val eventViewModel: EventViewModel,
-    protected val getWindowSize: () -> IntSize,
-    val sender: CharacterSenderStrategy,
     val launcher: Launcher,
     val onExit: (code: Int) -> Unit
 ) {
@@ -49,11 +46,12 @@ abstract class AbstractHandler(
 
     @CallSuper
     open suspend fun execute(
-        surface: Surface?,
+        surface: Surface,
+        screenSize: IntSize,
         scope: CoroutineScope
     ) {
         scope.launch(Dispatchers.Default) {
-            val code = launcher.launch()
+            val code = launcher.launch(screenSize)
             onExit(code)
         }
     }

@@ -42,7 +42,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
-import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
@@ -61,6 +60,7 @@ import com.movtery.zalithlauncher.ui.components.SimpleAlertDialog
 import com.movtery.zalithlauncher.ui.components.fadeEdge
 import com.movtery.zalithlauncher.ui.screens.NestedNavKey
 import com.movtery.zalithlauncher.ui.screens.NormalNavKey
+import com.movtery.zalithlauncher.ui.screens.TitledNavKey
 import com.movtery.zalithlauncher.ui.screens.content.download.game.DownloadGameWithAddonScreen
 import com.movtery.zalithlauncher.ui.screens.content.download.game.SelectGameVersionScreen
 import com.movtery.zalithlauncher.ui.screens.content.elements.TitleTaskFlowDialog
@@ -68,7 +68,9 @@ import com.movtery.zalithlauncher.ui.screens.navigateTo
 import com.movtery.zalithlauncher.ui.screens.onBack
 import com.movtery.zalithlauncher.ui.screens.rememberTransitionSpec
 import com.movtery.zalithlauncher.utils.logging.Logger.lError
+import com.movtery.zalithlauncher.utils.network.isUsingMobileData
 import com.movtery.zalithlauncher.viewmodel.EventViewModel
+import com.movtery.zalithlauncher.viewmodel.sendKeepScreen
 import io.ktor.client.plugins.HttpRequestTimeoutException
 import kotlinx.serialization.SerializationException
 import java.net.ConnectException
@@ -83,6 +85,8 @@ private sealed interface GameInstallOperation {
     data object Install : GameInstallOperation
     /** 警告通知权限，可以无视，并直接开始安装 */
     data class WarningForNotification(val info: GameDownloadInfo) : GameInstallOperation
+    /** 警告正在使用流量 */
+    data class WarningForMobileData(val info: GameDownloadInfo) : GameInstallOperation
     /** 游戏安装出现异常 */
     data class Error(val th: Throwable) : GameInstallOperation
     /** 游戏已成功安装 */
@@ -110,7 +114,9 @@ private class GameDownloadViewModel(): ViewModel() {
 
     fun install(
         context: Context,
-        info: GameDownloadInfo
+        info: GameDownloadInfo,
+        onStart: () -> Unit = {},
+        onStop: () -> Unit = {},
     ) {
         installOperation = GameInstallOperation.Install
         installer = GameInstaller(context, info, viewModelScope).also {
@@ -120,11 +126,13 @@ private class GameDownloadViewModel(): ViewModel() {
                     VersionsManager.refresh("[DownloadGame] GameInstaller.onInstalled", version)
                     installOperation = GameInstallOperation.Success
                     refreshVersionNameCheck()
+                    onStop()
                 },
                 onError = { th ->
                     installer = null
                     installOperation = GameInstallOperation.Error(th)
                     refreshVersionNameCheck()
+                    onStop()
                 },
                 onGameAlreadyInstalled = {
                     //很有可能发生在刚安装完成，再次点击安装按钮时
@@ -132,9 +140,11 @@ private class GameDownloadViewModel(): ViewModel() {
                     installOperation = GameInstallOperation.None
                     //保险起见，再次刷新版本名称错误检查
                     refreshVersionNameCheck()
+                    onStop()
                 }
             )
         }
+        onStart()
     }
 
     fun cancel() {
@@ -163,10 +173,10 @@ private fun rememberGameDownloadViewModel(
 @Composable
 fun DownloadGameScreen(
     key: NestedNavKey.DownloadGame,
-    mainScreenKey: NavKey?,
-    downloadScreenKey: NavKey?,
-    downloadGameScreenKey: NavKey?,
-    onCurrentKeyChange: (NavKey?) -> Unit,
+    mainScreenKey: TitledNavKey?,
+    downloadScreenKey: TitledNavKey?,
+    downloadGameScreenKey: TitledNavKey?,
+    onCurrentKeyChange: (TitledNavKey?) -> Unit,
     eventViewModel: EventViewModel
 ) {
     val viewModel: GameDownloadViewModel = rememberGameDownloadViewModel(key)
@@ -183,10 +193,20 @@ fun DownloadGameScreen(
         updateOperation = { viewModel.installOperation = it },
         installer = viewModel.installer,
         onInstall = { info ->
-            viewModel.install(context, info)
+            viewModel.install(
+                context = context,
+                info = info,
+                onStart = {
+                    eventViewModel.sendKeepScreen(true)
+                },
+                onStop = {
+                    eventViewModel.sendKeepScreen(false)
+                }
+            )
         },
         onCancel = {
             viewModel.cancel()
+            eventViewModel.sendKeepScreen(false)
         }
     )
 
@@ -233,7 +253,21 @@ fun DownloadGameScreen(
                             //警告通知权限
                             viewModel.installOperation = GameInstallOperation.WarningForNotification(info)
                         } else {
-                            viewModel.install(context, info)
+                            if (isUsingMobileData(context)) {
+                                //警告正在使用流量
+                                viewModel.installOperation = GameInstallOperation.WarningForMobileData(info)
+                            } else {
+                                viewModel.install(
+                                    context = context,
+                                    info = info,
+                                    onStart = {
+                                        eventViewModel.sendKeepScreen(true)
+                                    },
+                                    onStop = {
+                                        eventViewModel.sendKeepScreen(false)
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -267,6 +301,20 @@ private fun GameInstallOperation(
                 },
                 onDismiss = {
                     updateOperation(GameInstallOperation.None)
+                }
+            )
+        }
+        is GameInstallOperation.WarningForMobileData -> {
+            SimpleAlertDialog(
+                title = stringResource(R.string.generic_warning),
+                text = stringResource(R.string.download_install_warning_mobile_data),
+                confirmText = stringResource(R.string.generic_anyway),
+                onDismiss = {
+                    updateOperation(GameInstallOperation.None)
+                },
+                onConfirm = {
+                    //用户坚持使用移动网络
+                    onInstall(gameInstallOperation.info)
                 }
             )
         }

@@ -97,8 +97,8 @@ import com.movtery.zalithlauncher.setting.enums.toAction
 import com.movtery.zalithlauncher.terracotta.Terracotta
 import com.movtery.zalithlauncher.ui.components.BackgroundCard
 import com.movtery.zalithlauncher.ui.components.MenuState
+import com.movtery.zalithlauncher.ui.components.rememberBoxSize
 import com.movtery.zalithlauncher.ui.control.MinecraftHotbar
-import com.movtery.zalithlauncher.ui.control.event.KeyEventHandler
 import com.movtery.zalithlauncher.ui.control.event.launcherEvent
 import com.movtery.zalithlauncher.ui.control.event.lwjglEvent
 import com.movtery.zalithlauncher.ui.control.gamepad.GamepadKeyListener
@@ -242,25 +242,6 @@ private class GameViewModel(
     /** 游戏内消息发送器 */
     val gameTextSender = GameTextSender(viewModelScope)
 
-    /** 所有已按下的按键 */
-    val pressedKeyEvents = KeyEventHandler { key, pressed ->
-        lwjglEvent(eventKey = key, isMouse = key.startsWith("GLFW_MOUSE_", false), isPressed = pressed)
-    }
-    /** 所有已按下的启动器事件 */
-    val pressedLauncherEvents = KeyEventHandler { key, pressed ->
-        launcherEvent(
-            eventKey = key,
-            isPressed = pressed,
-            onSwitchIME = { onChangeTextInputMode(null) },
-            onSwitchMenu = { switchMenu() },
-            onSingleScrollUp = { mouseScrollUpEvent.scrollSingle() },
-            onSingleScrollDown = { mouseScrollDownEvent.scrollSingle() },
-            onLongScrollUp = { mouseScrollUpEvent.scrollLongPress() },
-            onLongScrollUpCancel = { mouseScrollUpEvent.cancel() },
-            onLongScrollDown = { mouseScrollDownEvent.scrollLongPress() },
-            onLongScrollDownCancel = { mouseScrollDownEvent.cancel() }
-        )
-    }
     /** 控制布局控件点击事件处理器 */
     val eventHandler = EventHandler { event, pressed ->
         onKeyEvent(event, pressed)
@@ -268,24 +249,39 @@ private class GameViewModel(
 
     /** 处理控制布局类点击事件 */
     fun onKeyEvent(event: ClickEvent, pressed: Boolean) {
-        val events = when (event.type) {
-            ClickEvent.Type.Key -> pressedKeyEvents
-            ClickEvent.Type.LauncherEvent -> pressedLauncherEvents
+        val key = event.key
+        when (event.type) {
+            ClickEvent.Type.Key -> {
+                lwjglEvent(
+                    eventKey = key,
+                    isMouse = key.startsWith("GLFW_MOUSE_", false),
+                    isPressed = pressed
+                )
+            }
+            ClickEvent.Type.LauncherEvent -> {
+                launcherEvent(
+                    eventKey = key,
+                    isPressed = pressed,
+                    onSwitchIME = { onChangeTextInputMode(null) },
+                    onSwitchMenu = { switchMenu() },
+                    onSingleScrollUp = { mouseScrollUpEvent.scrollSingle() },
+                    onSingleScrollDown = { mouseScrollDownEvent.scrollSingle() },
+                    onLongScrollUp = { mouseScrollUpEvent.scrollLongPress() },
+                    onLongScrollUpCancel = { mouseScrollUpEvent.cancel() },
+                    onLongScrollDown = { mouseScrollDownEvent.scrollLongPress() },
+                    onLongScrollDownCancel = { mouseScrollDownEvent.cancel() }
+                )
+            }
             ClickEvent.Type.SendText -> {
                 //游戏内文本发送事件
                 if (pressed) {
                     val text = event.key
-                    val inGame = ZLBridgeStates.cursorMode == CURSOR_DISABLED
+                    val inGame = ZLBridgeStates.cursorMode.value == CURSOR_DISABLED
                     gameTextSender.send(GameTextSender.Data(text, inGame))
                 }
                 return
             }
             else -> return
-        }
-        if (pressed) {
-            events.pressKey(event.key)
-        } else {
-            events.releaseKey(event.key)
         }
     }
 
@@ -360,8 +356,6 @@ private class GameViewModel(
         mouseScrollUpEvent.cancel()
         mouseScrollDownEvent.cancel()
         gameTextSender.cancel()
-        pressedKeyEvents.clearEvent()
-        pressedLauncherEvents.clearEvent()
         onChangeTextInputMode(TextInputMode.DISABLE)
     }
 
@@ -515,7 +509,7 @@ private fun rememberEditorViewModel(
 fun GameScreen(
     version: Version,
     gameHandler: GameHandler,
-    isGameRendering: Boolean,
+    showGameInfo: Boolean,
     logState: LogState,
     onLogStateChange: (LogState) -> Unit,
     textInputMode: TextInputMode,
@@ -532,8 +526,9 @@ fun GameScreen(
     }
     val joystickState = rememberHalfScreenJoystickState()
     val editorViewModel = rememberEditorViewModel("ControlEditor_Times=${viewModel.editorRefresh}")
-    val isGrabbing = remember(ZLBridgeStates.cursorMode) {
-        ZLBridgeStates.cursorMode == CURSOR_DISABLED
+    val cursorMode by ZLBridgeStates.cursorMode.collectAsStateWithLifecycle()
+    val isGrabbing = remember(cursorMode) {
+        cursorMode == CURSOR_DISABLED
     }
     val joystickMovementViewModel: JoystickMovementViewModel = viewModel()
     val terracottaViewModel = rememberTerracottaViewModel(
@@ -580,22 +575,14 @@ fun GameScreen(
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize()
     ) {
-        val density = LocalDensity.current
-        val screenSize = remember(maxWidth, maxHeight) {
-            with(density) {
-                IntSize(
-                    width = maxWidth.roundToPx(),
-                    height = maxHeight.roundToPx()
-                )
-            }
-        }
+        val screenSize = rememberBoxSize()
 
         GameInfoBox(
             modifier = Modifier
                 .align(Alignment.Center)
                 .padding(all = 16.dp),
             version = version,
-            isGameRendering = isGameRendering
+            visible = showGameInfo
         )
 
         if (!viewModel.isEditingLayout) {
@@ -632,6 +619,7 @@ fun GameScreen(
                 checkOccupiedPointers = { viewModel.occupiedPointers.contains(it) },
                 opacity = (AllSettings.controlsOpacity.state.toFloat() / 100f).coerceIn(0f, 1f),
                 markPointerAsMoveOnly = { viewModel.moveOnlyPointers.add(it) },
+                isUsingJoystick = isGrabbing && AllSettings.enableJoystickControl.state,
                 isCursorGrabbing = isGrabbing,
                 hideLayerWhen = viewModel.controlLayerHideState,
                 isDark = isLauncherInDarkTheme()
@@ -640,6 +628,7 @@ fun GameScreen(
                 MouseControlLayout(
                     isTouchProxyEnabled = isTouchProxyEnabled,
                     modifier = Modifier.fillMaxSize(),
+                    cursorMode = cursorMode,
                     screenSize = screenSize,
                     onInputAreaRectUpdated = onInputAreaRectUpdated,
                     textInputMode = textInputMode,
@@ -754,6 +743,7 @@ fun GameScreen(
             state = viewModel.gameMenuState,
             controlMenuTabIndex = viewModel.controlMenuTabIndex,
             onControlMenuTabChange = { viewModel.controlMenuTabIndex = it },
+            gamepadViewModel = gamepadViewModel,
             closeScreen = { viewModel.gameMenuState = MenuState.HIDE },
             onForceClose = { viewModel.forceCloseState = ForceCloseOperation.Show },
             onSwitchLog = { onLogStateChange(logState.next()) },
@@ -867,11 +857,13 @@ fun GameScreen(
                             viewModel.switchMenu()
                         } else {
                             //按下返回键
-                            val events = viewModel.pressedKeyEvents
-                            val escape = ControlEventKeycode.GLFW_KEY_ESCAPE
-                            events.pressKey(escape)
+                            val event = ClickEvent(
+                                type = ClickEvent.Type.Key,
+                                key = ControlEventKeycode.GLFW_KEY_ESCAPE
+                            )
+                            viewModel.onKeyEvent(event, true)
                             delay(10)
-                            events.releaseKey(escape)
+                            viewModel.onKeyEvent(event, false)
                         }
                     }
                     is EventViewModel.Event.Game.OnResume -> {
@@ -887,10 +879,10 @@ fun GameScreen(
 private fun GameInfoBox(
     modifier: Modifier = Modifier,
     version: Version,
-    isGameRendering: Boolean
+    visible: Boolean
 ) {
     AnimatedVisibility(
-        visible = !isGameRendering,
+        visible = visible,
         enter = fadeIn(),
         exit = fadeOut(),
         modifier = modifier
@@ -936,6 +928,7 @@ private fun GameInfoBox(
 /**
  * 鼠标控制层
  * @param isTouchProxyEnabled 是否启用控制代理（TouchController模组支持）
+ * @param cursorMode 当前鼠标模式
  * @param textInputMode 输入法状态
  * @param isMoveOnlyPointer 检查指针是否被标记为仅处理滑动事件
  * @param onOccupiedPointer 标记指针已被占用
@@ -947,6 +940,7 @@ private fun GameInfoBox(
 private fun MouseControlLayout(
     isTouchProxyEnabled: Boolean,
     modifier: Modifier = Modifier,
+    cursorMode: Int,
     screenSize: IntSize,
     onInputAreaRectUpdated: (IntRect?) -> Unit,
     textInputMode: TextInputMode,
@@ -962,8 +956,11 @@ private fun MouseControlLayout(
             .then(
                 if (isTouchProxyEnabled) {
                     Modifier
-                        .touchControllerTouchModifier()
+                        .touchControllerTouchModifier(
+                            screenSize = screenSize
+                        )
                         .touchControllerInputModifier(
+                            screenSize = screenSize,
                             onInputAreaRectUpdated = onInputAreaRectUpdated,
                         )
                 } else Modifier
@@ -977,7 +974,7 @@ private fun MouseControlLayout(
         SwitchableMouseLayout(
             modifier = Modifier.fillMaxSize(),
             screenSize = screenSize,
-            cursorMode = ZLBridgeStates.cursorMode,
+            cursorMode = cursorMode,
             onTouch = onTouch,
             onMouse = onMouseMoved,
             gamepadViewModel = gamepadViewModel,
@@ -1149,7 +1146,7 @@ private fun JoystickControlLayout(
                 val size = AllSettings.joystickControlSize.state.dp
                 val x = AllSettings.joystickControlX.state
                 val y = AllSettings.joystickControlY.state
-    
+
                 val position = remember(screenSize, size, x, y) {
                     val widgetSize = with(density) {
                         val pixelSize = size.roundToPx()
@@ -1158,7 +1155,7 @@ private fun JoystickControlLayout(
                             height = pixelSize
                         )
                     }
-    
+
                     widgetPosition(
                         xPercentage = x / 10000f,
                         yPercentage = y / 10000f,
@@ -1166,14 +1163,13 @@ private fun JoystickControlLayout(
                         screenSize = screenSize
                     )
                 }
-    
+
                 StyleableJoystick(
                     modifier = Modifier
                         .absoluteOffset {
                             IntOffset(x = position.x.toInt(), y = position.y.toInt())
                         },
                     style = if (AllSettings.joystickUseStyleByLayout.state) {
-                        //启用后，优先使用控制布局提供的样式
                         joystickStyle ?: defaultStyle
                     } else {
                         defaultStyle
@@ -1183,8 +1179,9 @@ private fun JoystickControlLayout(
                         viewModel.onListen(direction)
                     },
                     deadZoneRatio = AllSettings.joystickDeadZoneRatio.state / 100f,
+                    lockThreshold = AllSettings.joystickLockThreshold.state / 100f,
                     canLock = AllSettings.joystickControlCanLock.state,
-                    onLock = { lock ->
+                    onCanLock = { lock ->
                         if (AllSettings.joystickControlLockSpring.state) {
                             mapToControlEvent(SPRING, SPRING_VALUE)?.let { key ->
                                 val event = ClickEvent(

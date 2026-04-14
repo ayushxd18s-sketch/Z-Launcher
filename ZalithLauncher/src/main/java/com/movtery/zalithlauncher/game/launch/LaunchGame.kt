@@ -30,6 +30,8 @@ import com.movtery.zalithlauncher.game.account.microsoft.toLocal
 import com.movtery.zalithlauncher.game.version.download.DownloadMode
 import com.movtery.zalithlauncher.game.version.download.MinecraftDownloader
 import com.movtery.zalithlauncher.game.version.installed.Version
+import com.movtery.zalithlauncher.game.version.installed.VersionFolders
+import com.movtery.zalithlauncher.game.version.mod.AllModReader
 import com.movtery.zalithlauncher.ui.activities.runGame
 import com.movtery.zalithlauncher.utils.logging.Logger.lError
 import com.movtery.zalithlauncher.utils.network.isNetworkAvailable
@@ -41,7 +43,8 @@ import java.net.UnknownHostException
 import java.nio.channels.UnresolvedAddressException
 
 object LaunchGame {
-    private var isLaunching: Boolean = false
+    var isLaunching: Boolean = false
+        private set
 
     fun launchGame(
         context: Context,
@@ -62,6 +65,16 @@ object LaunchGame {
             verifyIntegrity = !version.skipGameIntegrityCheck(),
             mode = DownloadMode.VERIFY_AND_REPAIR,
             onCompletion = {
+                val modsDir = VersionFolders.MOD.getDir(version.getGameDir())
+                val reader = AllModReader(modsDir)
+                for (mod in reader.readAllLocals()) {
+                    if (mod.id == "touchcontroller") {
+                        //安装TouchController后，自动开启代理
+                        version.enableTouchProxy = true
+                        break
+                    }
+                }
+
                 runGame(context, version)
                 exitActivity()
             },
@@ -79,7 +92,10 @@ object LaunchGame {
             TaskSystem.submitTask(downloadTask) { isLaunching = false }
         }
 
-        val loginTask = if (isNetworkAvailable(context)) {
+        val hasNetwork = isNetworkAvailable(context)
+        //刷新条件：已联网且令牌过期
+        //认证服务器账号的expiresAt为0，能够保证每次都刷新账号
+        val loginTask = if (hasNetwork && System.currentTimeMillis() > account.expiresAt - 5 * 60 * 1000) {
             AccountsManager.performLoginTask(
                 context = context,
                 account = account,
@@ -127,7 +143,10 @@ object LaunchGame {
         loginTask?.let { task ->
             TaskSystem.submitTask(task)
         } ?: run {
-            version.offlineAccountLogin = true
+            if (!hasNetwork) {
+                //没联网时使用离线账号
+                version.offlineAccountLogin = true
+            }
             runDownloadTask()
         }
     }

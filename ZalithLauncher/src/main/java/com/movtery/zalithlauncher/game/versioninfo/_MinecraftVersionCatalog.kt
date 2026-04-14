@@ -19,12 +19,13 @@
 package com.movtery.zalithlauncher.game.versioninfo
 
 import com.movtery.zalithlauncher.R
-import java.util.regex.Pattern
+import org.jackhuang.hmcl.util.versioning.GameVersionNumber
 
 /**
  * 所有支持的资源下载过滤的版本号
  */
 val allGameVersions = listOf(
+    "26.1.2", "26.1.1", "26.1",
     "1.21.11", "1.21.10", "1.21.9", "1.21.8", "1.21.7", "1.21.6", "1.21.5", "1.21.4", "1.21.3", "1.21.2", "1.21.1", "1.21",
     "1.20.6", "1.20.5", "1.20.4", "1.20.3", "1.20.2", "1.20.1", "1.20",
     "1.19.4", "1.19.3", "1.19.2", "1.19.1", "1.19",
@@ -53,8 +54,13 @@ val allGameVersions = listOf(
  * 愚人节版本类型
  */
 enum class AprilFoolsType(
-    val summary: Int? = null
+    val summary: Int? = null,
+    val urlSuffix: String? = null
 ) {
+    /**
+     * [Wiki](https://zh.minecraft.wiki/w/26w14a)
+     */
+    HerdCraft(R.string.version_summary_fools_herd_craft),
     /**
      * [Wiki](https://zh.minecraft.wiki/w/25w14craftmine)
      */
@@ -86,7 +92,11 @@ enum class AprilFoolsType(
     /**
      * [Wiki](https://zh.minecraft.wiki/w/15w14a)
      */
-    TheLoveAndHugsUpdate(R.string.version_summary_fools_the_love_and_hugs_update)
+    TheLoveAndHugsUpdate(R.string.version_summary_fools_the_love_and_hugs_update),
+    /**
+     * [Wiki](https://zh.minecraft.wiki/w/Java%E7%89%882.0)
+     */
+    `2_0`(R.string.version_summary_fools_2_0, "2.0")
 }
 
 /**
@@ -101,6 +111,7 @@ data class AprilFoolsVersion(
  * 可供下载的愚人节版本
  */
 val allAprilFools = listOf(
+    AprilFoolsVersion("26w14a", AprilFoolsType.HerdCraft),
     AprilFoolsVersion("25w14craftmine", AprilFoolsType.CraftMine),
     AprilFoolsVersion("24w14potato", AprilFoolsType.Potato),
     AprilFoolsVersion("23w13a_or_b", AprilFoolsType.AOrB),
@@ -109,20 +120,15 @@ val allAprilFools = listOf(
     AprilFoolsVersion("20w14∞", AprilFoolsType.Infinite),
     AprilFoolsVersion("3D Shareware v1.34", AprilFoolsType.Minecraft3DShareware),
     AprilFoolsVersion("1.RV-Pre1", AprilFoolsType.TrendyUpdate),
-    AprilFoolsVersion("15w14a", AprilFoolsType.TheLoveAndHugsUpdate)
+    AprilFoolsVersion("15w14a", AprilFoolsType.TheLoveAndHugsUpdate),
+    AprilFoolsVersion("2.0_blue", AprilFoolsType.`2_0`),
+    AprilFoolsVersion("2.0_red", AprilFoolsType.`2_0`),
+    AprilFoolsVersion("2.0_purple", AprilFoolsType.`2_0`),
 )
-
-/**
- * 旧的 MC 正式版版本规则匹配
- */
-const val LEGACY_RELEASE_REGEX = """^\d+\.\d+\.\d+$|^\d+\.\d+$"""
 
 /**
  * 给出的 MC 版本号是否为正式版
  */
 fun filterRelease(versionString: String): Boolean {
-    //先检查旧的正式版版本规则匹配
-    if (Pattern.compile(LEGACY_RELEASE_REGEX).matcher(versionString).find()) return true
-    //开始使用新的版本号规则进行匹配
-    return parseNewVersionFormat(versionString)?.isRelease() ?: false
+    return GameVersionNumber.asGameVersion(versionString).isRelease
 }

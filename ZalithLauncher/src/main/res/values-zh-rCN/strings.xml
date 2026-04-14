@@ -51,7 +51,18 @@
     <string name="generic_save">保存</string>
     <string name="generic_saved">已保存</string>
     <string name="generic_share">分享</string>
+    <string name="generic_copied">已复制</string>
     <string name="generic_no_matching_items">没有符合条件的项目</string>
+    <string name="generic_follow_system">跟随系统</string>
+    <!--  页面标题  -->
+    <string name="page_title_version_list">版本列表</string>
+    <string name="page_title_version_manage">管理版本</string>
+    <string name="page_title_account_list">账号列表</string>
+    <string name="page_title_select_files">选择路径</string>
+    <!--  文件  -->
+    <string name="files_browse_folder">浏览目录</string>
+    <string name="files_importing">导入文件中</string>
+    <string name="files_delete_file">你确定要删除 %s 吗？</string>
     <!--  单位  -->
     <string name="unit_day">天</string>
     <string name="date_format">yyyy \'年\' MM \'月\' dd \'日\' HH:mm:ss</string>
@@ -82,7 +93,6 @@
     <string name="theme_color_picker_title">颜色选择器</string>
     <string name="theme_color_picker_edit_hex">编辑 Hex</string>
     <string name="theme_color_picker_edit_hex_invalid">无效 Hex</string>
-    <string name="theme_dark_mode_follow_system">跟随系统</string>
     <!--  动画  -->
     <string name="animate_type_bounce">弹跳</string>
     <string name="animate_type_jelly_bounce">回弹</string>
@@ -99,6 +109,11 @@
     <string name="crash_share_logs">分享日志</string>
     <string name="crash_restart">重启应用</string>
     <string name="crash_exit">退出应用</string>
+    <string name="crash_link_share_button">分享链接</string>
+    <string name="crash_link_share_tip">启动器会上传游戏日志到公共平台，您可获得一个链接，用于便捷地分享给他人进行诊断。</string>
+    <string name="crash_link_share_uploading">正在上传日志到 %s</string>
+    <string name="crash_link_share_failed">上传失败</string>
+    <string name="crash_link_share_failed_link_not_found">未找到可用的链接，请稍后重试</string>
     <string name="crash_launch_crash_title">应用启动失败</string>
     <string name="crash_launch_crash_message">启动器在启动的过程中遇到了严重的问题崩溃了</string>
     <!--  错误  -->
@@ -132,6 +147,7 @@
     <string name="unpack_screen_jre8">Java 8 环境，Minecraft 1.16- 依赖 Java 8</string>
     <string name="unpack_screen_jre17">Java 17 环境，Minecraft 1.17+ 依赖 Java 17</string>
     <string name="unpack_screen_jre21">Java 21 环境，Minecraft 1.20.5+ 依赖 Java 21</string>
+    <string name="unpack_screen_jre25">Java 25 环境，Minecraft 26.1+ 依赖 Java 25</string>
     <string name="unpack_screen_authlib_injector">通过运行时修改 authlib 实现游戏外登录</string>
     <string name="unpack_screen_cacio">为 OpenJDK 提供可移植的 GUI 后端</string>
     <string name="unpack_screen_lwjgl">轻量级 Java 游戏库，Minecraft 依赖它运行游戏</string>
@@ -166,6 +182,7 @@
     <string name="download_game_addon_debug">测试版</string>
     <string name="download_game_addon_recommended">%s 官方推荐</string>
     <string name="download_game_addon_not_installable">不支持自动安装</string>
+    <string name="download_game_addon_warning_api">未选择 %s，若不安装它，大多数模组将无法使用！</string>
     <string name="download_game_install_title">安装游戏中</string>
     <string name="download_game_install_vanilla">下载安装原版 %s</string>
     <string name="download_game_install_base_download_file">下载 %1$s %2$s 主文件</string>
@@ -187,6 +204,7 @@
     <string name="download_install_clear_temp">清理缓存文件</string>
     <string name="download_install_input_version_name">等待用户输入版本名称</string>
     <string name="download_install_input_version_name_title">输入预安装的版本名称</string>
+    <string name="download_install_warning_mobile_data">您正在使用移动数据网络，继续下载将消耗流量。</string>
     <string name="download_assets_filter_search_name">搜索名称</string>
     <string name="download_assets_filter_search_platform">目标平台</string>
     <string name="download_assets_filter_game_version">游戏版本</string>
@@ -339,6 +357,7 @@
     <string name="import_modpack_failed_title">导入失败</string>
     <string name="import_modpack_failed_text">在安装整合包的过程中遇到了异常：</string>
     <!--  版本描述  -->
+    <string name="version_summary_fools_2_0">我们不会更新它们！如果您发现漏洞，那您就倒霉了！XD</string>
     <string name="version_summary_fools_the_love_and_hugs_update">爱与拥抱更新，让世界充满和平与彩虹。</string>
     <string name="version_summary_fools_trendy_update">未来已来！我们为 Minecraft 加入了现代科技！</string>
     <string name="version_summary_fools_3d_shareware">我们从地下室深处挖出了这款“1994 年 DOS 版”Minecraft！</string>
@@ -347,6 +366,7 @@
     <string name="version_summary_fools_a_or_b">研究表明：玩家最喜欢作出选择，所以我们让你为一切投票！</string>
     <string name="version_summary_fools_potato">多年来，毒马铃薯一直被玩家忽视和低估，于是我们史诗级加强了它！</string>
     <string name="version_summary_fools_creaft_mine">现在你可以合成任何东西，甚至合成整个世界！</string>
+    <string name="version_summary_fools_herd_craft">别整理背包了，你的物品和方块想跟你一起浪！</string>
     <!--  启动游戏  -->
     <string name="game_launch_no_version">未选择游戏版本！</string>
     <string name="game_launch_no_account">未登录游戏账号！</string>
@@ -385,16 +405,20 @@
     <string name="game_styles_joystick_edit">编辑摇杆样式</string>
     <string name="game_styles_joystick_edit_use_control_layout">使用控制布局提供的样式</string>
     <string name="game_styles_joystick_deadzone">摇杆死区范围</string>
+    <string name="game_styles_joystick_lock_threshold">摇杆前进锁判定范围</string>
     <string name="game_styles_joystick_can_lock">前进锁定</string>
     <string name="game_styles_joystick_lock_sprint">锁定时强制疾跑</string>
     <string name="game_styles_joystick_hide_when_mouse">在实体鼠标操作时隐藏</string>
     <string name="game_styles_joystick_hide_when_gamepad">在手柄操作时隐藏</string>
     <string name="game_styles_save_failed">保存样式失败</string>
+    <string name="game_saponsorship_finished_game">启动器已经成功运行了 %s 次游戏！如果您觉得好用的话，可以考虑赞助支持一下作者喔！qwq</string>
     <!--  渲染器  -->
     <string name="renderer_version_support">MC 版本支持：</string>
     <string name="renderer_version_unsupported_warning">当前渲染器 %s 不支持该游戏版本，继续使用可能导致渲染错误或游戏崩溃！您确定要无视风险坚持访问吗？</string>
     <string name="renderer_version_storage_permissions">当前渲染器 %s 可通过配置文件修改设置，请先为启动器开启外部存储权限，否则启动器无法读取并加载该渲染器的配置！</string>
     <string name="renderer_version_storage_permissions_sdk30">当前渲染器 %s 可通过配置文件修改设置，请先为启动器开启“管理设备所有文件”的权限，否则启动器无法读取并加载该渲染器的配置！</string>
+    <!--  插件  -->
+    <string name="plugin_unsupported_warning">当前插件 %s 不支持该游戏版本，继续使用可能导致游戏崩溃！您确定要无视风险坚持访问吗？</string>
     <!--  账号  -->
     <string name="account_no_account">未找到可用账号</string>
     <string name="account_login">登录</string>
@@ -424,11 +448,9 @@
     <string name="account_label_email">填写邮箱或用户名</string>
     <string name="account_label_password">填写密码</string>
     <string name="account_change_skin">更换皮肤</string>
-    <string name="account_change_skin_select_model_title">选择皮肤模型</string>
-    <string name="account_change_skin_select_model_message">该皮肤是 Steve 模型（粗臂）还是 Alex 模型（细臂）？</string>
-    <string name="account_change_skin_model_steve">Steve 模型</string>
-    <string name="account_change_skin_model_alex">Alex 模型</string>
-    <string name="account_change_skin_reset_skin_message">您确定要重置当前账号的皮肤吗？</string>
+    <string name="account_change_skin_arm_style">手臂样式</string>
+    <string name="account_change_skin_arm_wide">粗臂</string>
+    <string name="account_change_skin_arm_slim">细臂</string>
     <string name="account_change_skin_failed_to_import">无法缓存目标文件</string>
     <string name="account_change_skin_invalid">皮肤像素尺寸无效，应为 64x32 像素或 64x64 像素</string>
     <string name="account_change_skin_uploading">上传皮肤文件中</string>
@@ -481,7 +503,15 @@
     <string name="account_microsoft_verify_game_ownership">验证是否拥有 Minecraft</string>
     <string name="account_microsoft_getting_player_profile">获取玩家账户信息</string>
     <string name="account_microsoft_exit_by_user">您离开了网页屏幕，已为您取消了微软登录流程。</string>
+    <string name="account_advanced">高级设置</string>
     <string name="account_local_create_account">创建离线账号</string>
+    <string name="account_local_uuid_tip_1">UUID 是 Minecraft 玩家的唯一身份标识。</string>
+    <string name="account_local_uuid_tip_2">不同启动器可能生成不同的 UUID。</string>
+    <string name="account_local_uuid_tip_3">如果切换启动器时保持 UUID 不变，游戏就能继续识别你的角色，保留背包物品等数据。</string>
+    <string name="account_local_uuid_tip_4">此选项适用于高级用户，一般情况下无需调整。</string>
+    <string name="account_local_uuid_invalid">无效 UUID 格式</string>
+    <string name="account_local_uuid_copy">复制 UUID</string>
+    <string name="account_local_uuid_copied">已复制账号 %s 的 UUID</string>
     <string name="account_other_login_baseurl_not_set">未设置基础 URL</string>
     <string name="account_other_login_getting_full_url">尝试解析完整 Url 中</string>
     <string name="account_other_login_getting_server_info">获取服务器信息中</string>
@@ -608,6 +638,7 @@
     <string name="versions_overview_screenshot_folder">屏幕截图文件夹</string>
     <string name="versions_overview_logs_folder">日志文件夹</string>
     <string name="versions_overview_crash_report_folder">崩溃报告文件夹</string>
+    <string name="versions_overview_cant_share_folder_message">当前设备没有第三方应用可以打开该目录！</string>
     <string name="versions_config_version_settings">版本独立设置</string>
     <string name="versions_config_game_settings">游戏独立设置</string>
     <string name="versions_config_support_settings">额外支持设置</string>
@@ -619,15 +650,16 @@
     <string name="versions_config_java_runtime_summary">指定当前版本所使用的 Java 环境</string>
     <string name="versions_config_auto_join_server_ip_title">自动加入服务器</string>
     <string name="versions_config_auto_join_server_ip_summary">在这里填入服务器 IP，启动游戏后将自动加入目标服务器。例如 114.514.114.514:114514</string>
-    <string name="versions_config_enable_touch_proxy_title">启用控制代理</string>
-    <string name="versions_config_enable_touch_proxy_summary">启用为支持 Touch Controller 模组准备的控制代理</string>
-    <string name="versions_config_vibrate_duration_title">震动时长</string>
-    <string name="versions_config_vibrate_duration_summary">设置 Touch Controller 模组要求设备的震动时长</string>
+    <string name="versions_config_vibrate_kind_title">振动类型</string>
+    <string name="versions_config_vibrate_kind_summary">设置 Touch Controller 模组振动时的振动类型</string>
+    <string name="versions_config_vibrate_duration_title">振动时长</string>
+    <string name="versions_config_vibrate_duration_summary">设置 Touch Controller 模组要求设备的振动时长</string>
     <string name="versions_config_follow_global_if_blank">留白则跟随全局设置</string>
     <string name="versions_config_disable_if_blank">留白则不使用此功能</string>
     <string name="versions_config_failed_to_save">保存版本配置时出现异常</string>
     <string name="versions_config_microphone_check_title">检查麦克风</string>
     <string name="versions_config_microphone_check_summary">检查系统麦克风是否可用，或确认启动器是否已获得麦克风权限。这项检查将确保您可以使用像“简单的语音聊天”这样的需要使用麦克风的模组。</string>
+    <string name="versions_install_loader">安装加载器</string>
     <string name="versions_update_loader">更新加载器</string>
     <string name="versions_update_loader_waiting_for_others">等待其他项完成加载</string>
     <string name="versions_update_loader_diff_message">你确定要变更当前游戏的加载器吗？</string>
@@ -636,6 +668,52 @@
     <string name="versions_update_loader_diff_load">载入：%1$s %2$s</string>
     <string name="versions_update_loader_error_message">在安装加载器的过程中出现了异常：</string>
     <string name="versions_update_loader_success_message">已成功变更该游戏的加载器版本！</string>
+    <string name="versions_export">导出整合包</string>
+    <string name="versions_export_type_mcbbs">MCBBS 整合包</string>
+    <string name="versions_export_type_mcbbs_summary">可被 %s，HMCL 等启动器导入</string>
+    <string name="versions_export_type_modrinth">Modrinth 整合包</string>
+    <string name="versions_export_type_summary_common">可被常见第三方启动器导入</string>
+    <string name="versions_export_type_curseforge">CurseForge 整合包</string>
+    <string name="versions_export_type_multimc">MultiMC 整合包</string>
+    <string name="versions_export_type_multimc_summary">可被 %s，MultiMC 等启动器导入</string>
+    <string name="versions_export_alias_options">游戏设置</string>
+    <string name="versions_export_alias_resource_packs">资源包目录</string>
+    <string name="versions_export_alias_mods">模组目录</string>
+    <string name="versions_export_alias_saves">存档目录</string>
+    <string name="versions_export_alias_shaderpacks">光影包目录</string>
+    <string name="versions_export_alias_config">模组配置目录</string>
+    <string name="versions_export_alias_launcher">启动器版本配置目录</string>
+    <string name="versions_export_pack_name">整合包名称</string>
+    <string name="versions_export_pack_version">整合包版本</string>
+    <string name="versions_export_pack_author">整合包作者</string>
+    <string name="versions_export_pack_summary">整合包描述</string>
+    <string name="versions_export_pack_summary_hint">描述您的整合包，或者写写更新日志（支持使用 Markdown）</string>
+    <string name="versions_export_pack_jvm_args">游戏参数</string>
+    <string name="versions_export_pack_java_args">Java 虚拟机参数</string>
+    <string name="versions_export_pack_website">整合包官方网站</string>
+    <string name="versions_export_pack_min_memory">最小分配内存</string>
+    <string name="versions_export_pack_max_memory">最大分配内存</string>
+    <string name="versions_export_pack_pack_remote">从 %s 下载关键资源</string>
+    <string name="versions_export_pack_also_pack_curseforge">一并打包 CurseForge 的远程资源</string>
+    <string name="versions_export_pack_select_files">选择文件</string>
+    <string name="versions_export_pack_select_output">导出为</string>
+    <string name="versions_export_pack_select_folder_title">选择导出目录</string>
+    <string name="versions_export_pack_select_folder_message">请选择一个目录用于启动器生成最终的整合包文件</string>
+    <string name="versions_export_pack_files">要打包的内容</string>
+    <string name="versions_export_pack_dir_empty">这个目录是空的！</string>
+    <string name="versions_export_task_fetch_remote">获取远端数据</string>
+    <string name="versions_export_task_pack_manifest">打包元数据</string>
+    <string name="versions_export_task_generate_pack">生成整合包</string>
+    <string name="versions_export_task_error_title">导出失败</string>
+    <string name="versions_export_task_error_message">导出整合包时遇到问题：</string>
+    <string name="versions_export_task_finished">您的整合包已经成功导出！</string>
+    <string name="versions_export_tip_1">在开始导出整合包前，请确保您的版本可以正常启动，</string>
+    <string name="versions_export_tip_2">保证您的 Minecraft 为正式版（可包括模组加载器），而不是快照版、第三方客户端，</string>
+    <string name="versions_export_tip_3">且不应当包含不允许非官方途径传播的模组、资源包等资源，</string>
+    <string name="versions_export_tip_4">更不应该包含违反 Eula 协议的模组、资源包等资源，</string>
+    <string name="versions_export_tip_5">整合包会导出到您选择的目录中，以您填写的整合包名称作为最终文件。</string>
+    <string name="versions_export_tip_remote_1">导出过程中，启动器会尝试在 %s 平台上匹配远端资源，嵌入链接以代替打包模组、资源包、光影包，这样可以缩减整合包体积。</string>
+    <string name="versions_export_tip_remote_2">同时，启动器会将被禁用的模组作为可选项</string>
     <string name="manage_only_show_valid">可用的</string>
     <string name="manage_delete_all">全部删除</string>
     <string name="manage_delete_all_message">您确定要删除全部选中的资源文件吗？此操作将不可撤销，请谨慎选择。</string>
@@ -659,6 +737,7 @@
     <string name="mods_update_task_show">将要更新如下模组</string>
     <string name="mods_update_task_download">下载新版本模组</string>
     <string name="mods_update_task_replace">替换模组文件</string>
+    <string name="mods_update_task_loading">同步模组数据：%s</string>
     <string name="mods_update_no_mods_update">所有模组都是最新版本，无需更新</string>
     <string name="mods_update_updating">更新所有模组 (%1$d/%2$d, %3$s)</string>
     <string name="mods_update_updating_retry">重试更新所有模组 (%1$d/%2$d, %3$s)</string>
@@ -709,6 +788,19 @@
     <string name="shader_pack_manage_name">光影包名称</string>
     <string name="shader_pack_manage_delete_warning">您确定要删除光影包 %s 吗？该操作不可撤销！</string>
     <string name="shader_pack_manage_no_packs">当前版本还没有光影包</string>
+    <string name="servers_list">服务器</string>
+    <string name="servers_list_no_servers">当前版本还未添加服务器</string>
+    <string name="servers_list_failed_to_connect">无法连接至服务器</string>
+    <string name="servers_list_undefined">未定义</string>
+    <string name="servers_list_players_full">已满员</string>
+    <string name="servers_list_add_server">添加服务器</string>
+    <string name="servers_list_add_server_name">服务器名称</string>
+    <string name="servers_list_add_server_default_name">Minecraft服务器</string>
+    <string name="servers_list_add_server_ip">服务器地址</string>
+    <string name="servers_list_delete_server">删除服务器</string>
+    <string name="servers_list_delete_server_text">你确定要删除服务器 %s 吗？</string>
+    <string name="servers_list_edit_server">编辑服务器</string>
+    <string name="servers_list_copy_server_address">复制服务器地址</string>
     <!--  游戏  -->
     <string name="minecraft_download_stat_download_task">统计下载任务</string>
     <string name="minecraft_download_stat_verify_task">统计验证任务</string>
@@ -749,6 +841,8 @@
     <string name="settings_renderer_vsync_in_zink_summary">通过系统接口为 Zink 渲染器启用垂直同步</string>
     <string name="settings_renderer_force_big_core_title">强制在高性能核心运行</string>
     <string name="settings_renderer_force_big_core_summary">将 Minecraft 的渲染线程绑定到 CPU 的高性能核心（大核）上，启用后可能增加功耗与发热</string>
+    <string name="settings_renderer_surface_title">使用 SurfaceView 渲染</string>
+    <string name="settings_renderer_surface_summary">使用独立于界面之外的图层进行渲染</string>
     <string name="settings_game_version_isolation_title">全局版本隔离</string>
     <string name="settings_game_version_isolation_summary">默认隔离所有的版本，版本之间的数据互不干扰</string>
     <string name="settings_game_skip_game_integrity_check_title">不检查游戏完整性</string>
@@ -763,6 +857,11 @@
     <string name="settings_game_java_memory_summary">控制给 Minecraft 分配多少内存</string>
     <string name="settings_game_java_memory_used_text">已使用：%1$dMB/ %2$dMB</string>
     <string name="settings_game_java_memory_allocation_text">已分配：%dMB</string>
+    <string name="settings_game_native_lib_plugin_title">原生库插件</string>
+    <string name="settings_game_native_lib_plugin_summary">列出所有已加载的原生库插件，您可在列表中启用或禁用它们</string>
+    <string name="settings_game_graphics_api_title">图形 API</string>
+    <string name="settings_game_graphics_api_summary">设置 Minecraft 26.2+ 将使用的图形 API</string>
+    <string name="settings_game_graphics_api_default">跟随游戏设置</string>
     <string name="settings_game_jvm_args_title">JVM 启动参数</string>
     <string name="settings_game_jvm_args_summary">启动 JVM 时，额外添加的 JVM 参数，不建议在没有把握的情况下进行修改，因为这很有可能导致崩溃</string>
     <string name="settings_game_show_log_automatic_title">自动显示日志</string>
@@ -878,9 +977,18 @@
     <string name="settings_gamepad_remapping_finished_title">已完成绑定</string>
     <string name="settings_gamepad_remapping_finished_saving">稍候，启动器正在保存并应用。</string>
     <string name="settings_gamepad_remapping_finished_saved">已成功保存手柄映射，您可以关闭此对话框了！</string>
+    <string name="settings_gamepad_config_title">手柄映射配置</string>
+    <string name="settings_gamepad_config_summary">选择要使用的手柄映射配置</string>
+    <string name="settings_gamepad_config_delete">删除当前配置</string>
+    <string name="settings_gamepad_config_delete_message">您确定要删除这个配置吗？</string>
+    <string name="settings_gamepad_config_create">创建手柄映射配置</string>
+    <string name="settings_gamepad_config_create_name">配置名称</string>
+    <string name="settings_gamepad_config_create_contains">已有同名称的配置</string>
+    <string name="settings_gamepad_config_no_items">未创建配置，无法切换</string>
     <string name="settings_launcher_color_theme_title">颜色主题</string>
     <string name="settings_launcher_color_theme_summary">更改启动器的整体颜色主题</string>
     <string name="settings_launcher_dark_mode_title">深色模式</string>
+    <string name="settings_launcher_language">语言</string>
     <string name="settings_launcher_full_screen_title">页面全屏化</string>
     <string name="settings_launcher_full_screen_summary">使启动器的页面全屏化，忽略刘海屏、挖孔屏等屏幕的安全区</string>
     <string name="settings_launcher_animate_speed_title">动画倍速</string>
@@ -896,6 +1004,8 @@
     <string name="settings_launcher_log_share_packing">打包启动器日志文件</string>
     <string name="settings_launcher_mirror_modloader_title">模组加载器版本获取源</string>
     <string name="settings_launcher_mirror_file_download_title">文件下载源</string>
+    <string name="settings_launcher_mirror_assets_search_title">资源平台搜索源</string>
+    <string name="settings_launcher_mirror_assets_download_title">资源平台文件下载源</string>
     <string name="settings_launcher_mirror_official_first">优先使用官方源</string>
     <string name="settings_launcher_mirror_mirror_first">优先使用镜像源</string>
     <string name="settings_launcher_background_title">启动器背景</string>
@@ -906,6 +1016,8 @@
     <string name="settings_launcher_background_opacity_summary">调整背景元素的不透明度，以获得更好的视觉效果并避免与背景冲突</string>
     <string name="settings_launcher_background_video_volume_title">视频背景音量</string>
     <string name="settings_launcher_background_video_volume_summary">背景内容是视频时，可以通过这个选项调整音量</string>
+    <string name="settings_launcher_festivals_effects_title">持续型节日彩蛋效果</string>
+    <string name="settings_launcher_festivals_effects_summary">在特定时间段显示持续型彩蛋效果</string>
     <!--  控制  -->
     <string name="control_keyboard_bind_title">绑定按键</string>
     <string name="control_keyboard_bind_summary">请在您的键盘上按下想要绑定的按键</string>
@@ -925,6 +1037,7 @@
     <string name="control_manage_info_description">布局描述</string>
     <string name="control_manage_info_description_empty">没有描述</string>
     <string name="control_manage_info_edit">编辑控制布局</string>
+    <string name="control_manage_import">导入控制布局</string>
     <string name="control_manage_import_failed">导入控制布局文件失败</string>
     <string name="control_manage_import_failed_to_parse">控制布局格式错误，启动器无法识别它！</string>
     <string name="control_editor_menu_title">编辑器菜单</string>
@@ -948,16 +1061,19 @@
     <string name="control_editor_menu_save_and_exit">保存并退出</string>
     <string name="control_editor_layers_title">控件层</string>
     <string name="control_editor_layers_create">新建</string>
+    <string name="control_editor_layers_delete">你确定要删除控件层 %s 吗？</string>
     <string name="control_editor_layers_attribute">控件层属性</string>
     <string name="control_editor_layers_attribute_name">控件层名称</string>
     <string name="control_editor_layers_attribute_hide">默认隐藏控件层</string>
-    <string name="control_editor_layers_attribute_hide_when_mouse">在实体鼠标操作时不隐藏</string>
-    <string name="control_editor_layers_attribute_hide_when_gamepad">在手柄操作时不隐藏</string>
+    <string name="control_editor_layers_attribute_hide_when_mouse">在实体鼠标操作时隐藏</string>
+    <string name="control_editor_layers_attribute_hide_when_gamepad">在手柄操作时隐藏</string>
+    <string name="control_editor_layers_attribute_hide_when_joystick">在摇杆组件启用时隐藏</string>
     <string name="control_editor_layers_merge_downward">合并控件至下层</string>
     <string name="control_editor_edit_dialog_open_preview">开启预览</string>
     <string name="control_editor_edit_dialog_close_preview">关闭预览</string>
     <string name="control_editor_edit_dialog_clone_widget">复制控件</string>
     <string name="control_editor_edit_dialog_clone_widget_title">复制到控件层</string>
+    <string name="control_editor_edit_dialog_delete_widget">你确定要删除此控件吗？</string>
     <string name="control_editor_edit_category_info">基本信息</string>
     <string name="control_editor_edit_category_event">点击事件</string>
     <string name="control_editor_edit_category_style">控件样式</string>
@@ -1018,6 +1134,8 @@
     <string name="control_editor_edit_style_config_empty">当前控制布局还没有控件外观</string>
     <string name="control_editor_edit_style_config_name">控件外观名称</string>
     <string name="control_editor_edit_style_config_animate_swap">启用动画过渡</string>
+    <string name="control_editor_edit_style_config_common_style">不区分暗色主题</string>
+    <string name="control_editor_edit_style_config_delete">确定要删除控件外观 %s？</string>
     <string name="control_editor_edit_style_config_light">亮色外观</string>
     <string name="control_editor_edit_style_config_dark">暗色外观</string>
     <string name="control_editor_edit_style_config_normal">正常</string>
@@ -1063,6 +1181,7 @@
     <string name="about_acknowledgements_mcmod">MC 百科（mcmod.cn）</string>
     <string name="about_acknowledgements_mcmod_text">%s 使用了来自 MC 百科 的模组、整合包翻译</string>
     <string name="about_acknowledgements_bangbang93_text">%s 使用了 BMCL API 镜像源</string>
+    <string name="about_acknowledgements_mcim_text">%s 使用了 MCIM 镜像源</string>
     <string name="about_acknowledgements_github_community">GitHub 社区</string>
     <string name="about_acknowledgements_github_community_text">GitHub 社区的所有议题提出者和贡献者</string>
     <string name="about_acknowledgements_weblate_community">Weblate 社区</string>
@@ -1084,4 +1203,14 @@
     <!--  Url  -->
     <string name="url_wiki_minecraft_game_release">https://zh.minecraft.wiki/w/Java%%E7%%89%%88%s?variant=zh-cn</string>
     <string name="url_wiki_minecraft_game_snapshot">https://zh.minecraft.wiki/w/%s?variant=zh-cn</string>
+    <!-- Vibration Kind -->
+    <string name="vibrate_kind_one_shot">持续</string>
+    <string name="vibrate_kind_click">单击</string>
+    <string name="vibrate_kind_double_click">双击</string>
+    <string name="vibrate_kind_heavy_click">重击</string>
+    <string name="vibrate_kind_tick">滴答</string>
+
+    <string name="festivals_new_year">新年快乐！</string>
+    <string name="festivals_april_fools">愚人节快乐！</string>
+    <string name="festivals_christmas">圣诞节快乐！</string>
 </resources>

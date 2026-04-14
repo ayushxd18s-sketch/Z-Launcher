@@ -38,12 +38,13 @@ import com.movtery.zalithlauncher.components.jre.Jre
 import com.movtery.zalithlauncher.components.jre.UnpackJnaTask
 import com.movtery.zalithlauncher.components.jre.UnpackJreTask
 import com.movtery.zalithlauncher.setting.AllSettings
-import com.movtery.zalithlauncher.ui.base.BaseComponentActivity
+import com.movtery.zalithlauncher.ui.base.BaseAppCompatActivity
 import com.movtery.zalithlauncher.ui.screens.splash.SplashScreen
 import com.movtery.zalithlauncher.ui.theme.ZalithLauncherTheme
 import com.movtery.zalithlauncher.utils.logging.Logger.lInfo
 import com.movtery.zalithlauncher.utils.logging.Logger.lWarning
 import com.movtery.zalithlauncher.viewmodel.SplashBackStackViewModel
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
@@ -54,10 +55,12 @@ const val EXTRA_IMPORT_URI    = "EXTRA_IMPORT_URI"
 const val EXTRA_IMPORT_TYPE   = "EXTRA_IMPORT_TYPE"
 
 const val IMPORT_TYPE_MODPACK = "modpack"
+const val IMPORT_TYPE_CONTROLS = "controls"
 const val IMPORT_TYPE_UNKNOWN = "unknown"
 
 @SuppressLint("CustomSplashScreen")
-class SplashActivity : BaseComponentActivity(refreshData = false) {
+@AndroidEntryPoint
+class SplashActivity : BaseAppCompatActivity(refreshData = false) {
     private val unpackItems: MutableList<InstallableItem> = ArrayList()
     private val finishedTaskCount = AtomicInteger(0)
 
@@ -144,10 +147,39 @@ class SplashActivity : BaseComponentActivity(refreshData = false) {
     }
 
     private fun checkAllTask() {
+        //检查应用 assets 目录
+        listAssetsPath("runtimes").forEach { filePath ->
+            lInfo("The launcher contains the runtime environment: $filePath")
+        }
+
         unpackItems.forEach { item ->
             if (!item.task.isNeedUnpack()) {
                 item.isFinished = true
                 finishedTaskCount.incrementAndGet()
+            }
+        }
+    }
+
+    private fun listAssetsPath(root: String): List<String> {
+        return buildList {
+            val rootFiles = runCatching {
+                assets.list(root)?.takeIf { it.isNotEmpty() }
+            }.getOrNull()
+            if (rootFiles != null) {
+                rootFiles.forEach { child ->
+                    val childPath = "$root/$child"
+                    val childFiles = runCatching {
+                        assets.list(childPath)?.takeIf { it.isNotEmpty() }
+                    }.getOrNull()
+
+                    if (childFiles != null) {
+                        addAll(listAssetsPath(childPath))
+                    } else {
+                        add(childPath)
+                    }
+                }
+            } else {
+                add(root)
             }
         }
     }

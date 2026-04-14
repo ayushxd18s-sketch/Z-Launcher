@@ -33,6 +33,7 @@ import com.movtery.zalithlauncher.game.multirt.RuntimesManager
 import com.movtery.zalithlauncher.game.path.GamePathManager
 import com.movtery.zalithlauncher.game.path.getGameHome
 import com.movtery.zalithlauncher.game.plugin.ffmpeg.FFmpegPluginManager
+import com.movtery.zalithlauncher.game.plugin.natives.NativePluginManager
 import com.movtery.zalithlauncher.game.plugin.renderer.RendererPluginManager
 import com.movtery.zalithlauncher.info.InfoDistributor
 import com.movtery.zalithlauncher.path.LibPath
@@ -42,20 +43,19 @@ import com.movtery.zalithlauncher.setting.unit.getOrMin
 import com.movtery.zalithlauncher.utils.device.Architecture
 import com.movtery.zalithlauncher.utils.device.Architecture.ARCH_X86
 import com.movtery.zalithlauncher.utils.device.Architecture.is64BitsDevice
-import com.movtery.zalithlauncher.utils.getDisplayFriendlyRes
 import com.movtery.zalithlauncher.utils.logging.Logger.lError
 import com.movtery.zalithlauncher.utils.logging.Logger.lInfo
 import com.movtery.zalithlauncher.utils.logging.Logger.lWarning
 import com.oracle.dalvik.VMLauncher
 import org.apache.commons.io.FileUtils
-import org.lwjgl.glfw.CallbackBridge
 import java.io.File
 import java.io.IOException
 import java.util.Locale
 import java.util.TimeZone
 
 abstract class Launcher(
-    val onExit: (code: Int, isSignal: Boolean) -> Unit
+    val onExit: (code: Int, isSignal: Boolean) -> Unit,
+    val openPath: (folder: File) -> Unit
 ) {
     lateinit var runtime: Runtime
         protected set
@@ -66,7 +66,7 @@ abstract class Launcher(
 
     private fun getJavaHome() = if (runtime.isJDK8) "$runtimeHome/jre" else runtimeHome
 
-    abstract suspend fun launch(): Int
+    abstract suspend fun launch(screenSize: IntSize): Int
     abstract fun chdir(): String
     abstract fun getLogName(): String
     abstract fun exit()
@@ -76,14 +76,15 @@ abstract class Launcher(
         jvmArgs: List<String>,
         userHome: String? = null,
         userArgs: String,
-        getWindowSize: () -> IntSize
+        screenSize: IntSize,
+        useLocalLanguage: Boolean = true
     ): Int {
         ZLNativeInvoker.staticLauncher = this
 
         ZLBridge.setLdLibraryPath(getRuntimeLibraryPath())
 
         LoggerBridge.appendTitle("Env Map")
-        setEnv()
+        setEnv(screenSize)
 
         LoggerBridge.appendTitle("DLOPEN Java Runtime")
         dlopenJavaRuntime()
@@ -95,7 +96,8 @@ abstract class Launcher(
             jvmArgs = jvmArgs,
             userHome = userHome,
             userArgs = userArgs,
-            getWindowSize = getWindowSize
+            screenSize = screenSize,
+            useLocalLanguage = useLocalLanguage
         )
     }
 
@@ -103,12 +105,17 @@ abstract class Launcher(
     private suspend fun launchJavaVM(
         context: Context,
         jvmArgs: List<String>,
-        userHome: String? = null,
+        userHome: String?,
         userArgs: String,
-        getWindowSize: () -> IntSize
+        screenSize: IntSize,
+        useLocalLanguage: Boolean
     ): Int {
-        val windowSize = getWindowSize()
-        val args = getJavaArgs(userHome, userArgs, windowSize).toMutableList()
+        val args = getJavaArgs(
+            userHome = userHome,
+            userArgumentsString = userArgs,
+            screenSize = screenSize,
+            useLocalLanguage = useLocalLanguage
+        ).toMutableList()
         progressFinalUserArgs(args)
 
         args.addAll(jvmArgs)
@@ -144,7 +151,8 @@ abstract class Launcher(
     private fun getJavaArgs(
         userHome: String? = null,
         userArgumentsString: String,
-        windowSize: IntSize
+        screenSize: IntSize,
+        useLocalLanguage: Boolean
     ): List<String> {
         val userArguments = parseJavaArguments(userArgumentsString).toMutableList()
         val resolvFile = ensureDNSConfig()
@@ -154,17 +162,18 @@ abstract class Launcher(
             put("java.io.tmpdir", PathManager.DIR_CACHE.absolutePath)
             put("jna.boot.library.path", PathManager.DIR_NATIVE_LIB)
             put("user.home", userHome ?: GamePathManager.getUserHome())
-            put("user.language", System.getProperty("user.language"))
-            put("user.country", Locale.getDefault().country)
+            if (useLocalLanguage) {
+                put("user.language", System.getProperty("user.language"))
+                put("user.country", Locale.getDefault().country)
+            }
             put("user.timezone", TimeZone.getDefault().id)
             put("os.name", "Linux")
             put("os.version", "Android-${Build.VERSION.RELEASE}")
             put("pojav.path.minecraft", getGameHome())
             put("pojav.path.private.account", PathManager.DIR_DATA_BASES.absolutePath)
             put("org.lwjgl.vulkan.libname", "libvulkan.so")
-            val scaleFactor = AllSettings.resolutionRatio.getValue() / 100f
-            put("glfwstub.windowWidth", getDisplayFriendlyRes(windowSize.width, scaleFactor).toString())
-            put("glfwstub.windowHeight", getDisplayFriendlyRes(windowSize.height, scaleFactor).toString())
+            put("glfwstub.windowWidth", screenSize.width.toString())
+            put("glfwstub.windowHeight", screenSize.height.toString())
             put("glfwstub.initEgl", "false")
             put("ext.net.resolvPath", resolvFile.absolutePath)
 
@@ -264,6 +273,12 @@ abstract class Launcher(
         // that we ship with Java (since it may be older than what's needed)
         args.add("-Dorg.lwjgl.freetype.libname=${PathManager.DIR_NATIVE_LIB}/libfreetype.so")
 
+        // Our spirv-cross is compiled shared, so it gets named shared.
+        args.add("-Dorg.lwjgl.spvc.libname=spirv-cross-c-shared")
+
+        // We don't have jemalloc for our LWJGL so set the allocator to system to avoid error logs
+        args.add("-Dorg.lwjgl.system.allocator=system")
+
         // Some phones are not using the right number of cores, fix that
         args.add("-XX:ActiveProcessorCount=${java.lang.Runtime.getRuntime().availableProcessors()}")
     }
@@ -276,7 +291,7 @@ abstract class Launcher(
         val architecture = runtime.arch?.let { arch ->
             if (Architecture.archAsInt(arch) == ARCH_X86) "i386/i486/i586"
             else arch
-        } ?: throw IOException("Unsupported architecture!")
+        } ?: throw IOException("Unsupported runtime environment: ${runtime.name}, arch is null!")
 
         var libDir = "/lib"
         architecture.split("/").forEach { arch ->
@@ -301,24 +316,25 @@ abstract class Launcher(
         val jvmLibDir = getJvmLibDir()
 
         val libName = if (is64BitsDevice) "lib64" else "lib"
-        val path = listOfNotNull(
-            FFmpegPluginManager.takeIf { it.isAvailable }?.libraryPath,
-            RendererPluginManager.selectedRendererPlugin?.path,
-            "$runtimeHome$javaLibDir",
-            "$runtimeHome$javaLibDir/jli",
+        val paths = buildList {
+            FFmpegPluginManager.takeIf { it.isAvailable }?.libraryPath?.let { add(it) }
+            RendererPluginManager.selectedRendererPlugin?.path?.let { add(it) }
+            addAll(NativePluginManager.getPaths())
+            add("$runtimeHome$javaLibDir/jli")
             if (runtime.isJDK8) {
-                "$runtimeHome/jre$javaLibDir$jvmLibDir:$runtimeHome/jre$javaLibDir"
+                add("$runtimeHome/jre$javaLibDir$jvmLibDir:$runtimeHome/jre$javaLibDir")
             } else {
-                "$runtimeHome$javaLibDir$jvmLibDir"
-            },
-            "/system/$libName",
-            "/vendor/$libName",
-            "/vendor/$libName/hw",
-            LibPath.JNA.absolutePath,
-            PathManager.DIR_RUNTIME_MOD?.absolutePath,
-            PathManager.DIR_NATIVE_LIB
-        )
-        return path.joinToString(":")
+                add("$runtimeHome$javaLibDir$jvmLibDir")
+            }
+            add("/system/$libName")
+            add("/vendor/$libName")
+            add("/vendor/$libName/hw")
+            add("/system_ext/$libName")
+            add(LibPath.JNA.absolutePath)
+            PathManager.DIR_RUNTIME_MOD?.absolutePath?.let { add(it) }
+            add(PathManager.DIR_NATIVE_LIB)
+        }
+        return paths.joinToString(":")
     }
 
     protected fun getLibraryPath(): String {
@@ -327,6 +343,7 @@ abstract class Launcher(
             "/system/$libDirName",
             "/vendor/$libDirName",
             "/vendor/$libDirName/hw",
+            "/system_ext/$libDirName",
             RendererPluginManager.selectedRendererPlugin?.path,
             PathManager.DIR_RUNTIME_MOD?.absolutePath,
             PathManager.DIR_NATIVE_LIB
@@ -355,8 +372,8 @@ abstract class Launcher(
         }
     }
 
-    private fun setEnv() {
-        val envMap = initEnv()
+    private fun setEnv(screenSize: IntSize) {
+        val envMap = initEnv(screenSize)
         envMap.forEach { (key, value) ->
             LoggerBridge.append("Added env: $key = $value")
             runCatching {
@@ -368,13 +385,19 @@ abstract class Launcher(
     }
 
     @CallSuper
-    protected open fun initEnv(): MutableMap<String, String> {
+    protected open fun initEnv(screenSize: IntSize): MutableMap<String, String> {
         val envMap: MutableMap<String, String> = ArrayMap()
-        setJavaEnv(envMap = { envMap })
+        setJavaEnv(
+            screenSize = screenSize,
+            envMap = { envMap }
+        )
         return envMap
     }
 
-    private fun setJavaEnv(envMap: () -> MutableMap<String, String>) {
+    private fun setJavaEnv(
+        screenSize: IntSize,
+        envMap: () -> MutableMap<String, String>
+    ) {
         val path = listOfNotNull("$runtimeHome/bin", Os.getenv("PATH"))
 
         envMap().let { map ->
@@ -384,8 +407,8 @@ abstract class Launcher(
             map["TMPDIR"] = PathManager.DIR_CACHE.absolutePath
             map["LD_LIBRARY_PATH"] = getLibraryPath()
             map["PATH"] = path.joinToString(":")
-            map["AWTSTUB_WIDTH"] = (CallbackBridge.windowWidth.takeIf { it > 0 } ?: CallbackBridge.physicalWidth).toString()
-            map["AWTSTUB_HEIGHT"] = (CallbackBridge.windowHeight.takeIf { it > 0 } ?: CallbackBridge.physicalHeight).toString()
+            map["AWTSTUB_WIDTH"] = screenSize.width.toString()
+            map["AWTSTUB_HEIGHT"] = screenSize.height.toString()
             map["MOD_ANDROID_RUNTIME"] = PathManager.DIR_RUNTIME_MOD?.absolutePath ?: ""
 
             if (AllSettings.dumpShaders.getValue()) map["LIBGL_VGPU_DUMP"] = "1"
@@ -466,15 +489,14 @@ fun parseJavaArguments(args: String): List<String> {
 }
 
 fun getCacioJavaArgs(
-    screenWidth: Int,
-    screenHeight: Int,
+    screenSize: IntSize,
     isJava8: Boolean
 ): List<String> {
     val argsList: MutableList<String> = ArrayList()
 
     // Caciocavallo config AWT-enabled version
     argsList.add("-Djava.awt.headless=false")
-    argsList.add("-Dcacio.managed.screensize=" + (screenWidth * 0.8).toInt() + "x" + (screenHeight * 0.8).toInt())
+    argsList.add("-Dcacio.managed.screensize=${screenSize.width}x${screenSize.height}")
     argsList.add("-Dcacio.font.fontmanager=sun.awt.X11FontManager")
     argsList.add("-Dcacio.font.fontscaler=sun.font.FreetypeFontScaler")
     argsList.add("-Dswing.defaultlaf=javax.swing.plaf.nimbus.NimbusLookAndFeel")

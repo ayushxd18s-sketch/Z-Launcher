@@ -18,7 +18,11 @@
 
 package com.movtery.zalithlauncher.game.account.wardrobe
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import androidx.core.graphics.alpha
+import com.movtery.zalithlauncher.utils.image.isColorMatch
+import com.movtery.zalithlauncher.utils.image.recycleIfLarge
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -40,11 +44,11 @@ private fun getLocalUuid(name: String): String {
     val hashPart = legacyStrFill(hashHex, '0', 16) //确保最长16位
 
     return buildString(34) {
-        append(lengthPart.substring(0, 12))
+        append(lengthPart.take(12))
         append('3')
         append(lengthPart.substring(13, 16))
         append('9')
-        append(hashPart.substring(0, 15))
+        append(hashPart.take(15))
     }
 }
 
@@ -55,7 +59,7 @@ fun getLocalUUIDWithSkinModel(userName: String, skinModelType: SkinModelType): S
     val baseUuid = getLocalUuid(userName)
     if (skinModelType == SkinModelType.NONE) return baseUuid
 
-    val prefix = baseUuid.substring(0, 27)
+    val prefix = baseUuid.take(27)
     val a = baseUuid[7].digitToInt(16)
     val b = baseUuid[15].digitToInt(16)
     val c = baseUuid[23].digitToInt(16)
@@ -82,11 +86,58 @@ suspend fun validateSkinFile(skinFile: File): Boolean {
         val options = BitmapFactory.Options()
         options.inJustDecodeBounds = true
         BitmapFactory.decodeFile(skinFile.absolutePath, options)
-
-        val width = options.outWidth
-        val height = options.outHeight
-
-        //像素尺寸是否满足 64x64 或 32x32
-        (width == 64 && height == 32) || (width == 64 && height == 64)
+        options.isDualLayerSkin() || options.isClassicSkin()
     }
+}
+
+/**
+ * 是否为双层皮肤：64x64
+ */
+fun BitmapFactory.Options.isDualLayerSkin(): Boolean {
+    return outWidth == 64 && outHeight == 64
+}
+
+/**
+ * 是否为经典皮肤（单层皮肤），早期皮肤类型，双手、双腿的贴图是分别共用的
+ * 64x32
+ */
+fun BitmapFactory.Options.isClassicSkin(): Boolean {
+    return outWidth == 64 && outHeight == 32
+}
+
+/**
+ * 检查皮肤是否为纤细（Alex）模型
+ */
+suspend fun File.isSlimModel(): Boolean = withContext(Dispatchers.IO) {
+    val options = BitmapFactory.Options()
+    val bitmap = BitmapFactory.decodeFile(absolutePath, options) ?: return@withContext false
+    try {
+        if (options.isClassicSkin()) {
+            //旧版单层皮肤不支持细臂
+            false
+        } else {
+            val rightHand = bitmap.isTransparent(50..51, 16..19)
+            val rightArm = bitmap.isTransparent(54..55, 20..31)
+
+            val leftHand = bitmap.isTransparent(42..43, 48..51)
+            val leftArm = bitmap.isTransparent(46..47, 52..63)
+
+            rightHand && rightArm && leftHand && leftArm
+        }
+    } catch (_: Exception) {
+        false
+    } finally {
+        bitmap.recycleIfLarge()
+    }
+}
+
+private fun Bitmap.isTransparent(xRange: IntRange, yRange: IntRange): Boolean {
+    return isColorMatch(
+        xRange = xRange,
+        yRange = yRange,
+        predicate = { color, _, _ ->
+            color.alpha == 0
+        },
+        requireAll = true
+    )
 }

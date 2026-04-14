@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -90,6 +91,21 @@ fun LauncherScreen(
                 modifier = Modifier.weight(7f)
             )
 
+            val toAccountManageScreen: () -> Unit = {
+                backStackViewModel.mainScreen.navigateTo(NormalNavKey.AccountManager)
+            }
+            val toVersionManageScreen: () -> Unit = {
+                backStackViewModel.mainScreen.removeAndNavigateTo(
+                    remove = NestedNavKey.VersionSettings::class,
+                    screenKey = NormalNavKey.VersionsManager
+                )
+            }
+            val toVersionSettingsScreen: () -> Unit = {
+                VersionsManager.currentVersion.value?.let { version ->
+                    navigateToVersions(version)
+                }
+            }
+
             RightMenu(
                 isVisible = isVisible,
                 modifier = Modifier
@@ -97,20 +113,9 @@ fun LauncherScreen(
                     .fillMaxHeight()
                     .padding(top = 12.dp, end = 12.dp, bottom = 12.dp),
                 launchGameViewModel = launchGameViewModel,
-                toAccountManageScreen = {
-                    backStackViewModel.mainScreen.navigateTo(NormalNavKey.AccountManager)
-                },
-                toVersionManageScreen = {
-                    backStackViewModel.mainScreen.removeAndNavigateTo(
-                        remove = NestedNavKey.VersionSettings::class,
-                        screenKey = NormalNavKey.VersionsManager
-                    )
-                },
-                toVersionSettingsScreen = {
-                    VersionsManager.currentVersion.value?.let { version ->
-                        navigateToVersions(version)
-                    }
-                }
+                toAccountManageScreen = toAccountManageScreen,
+                toVersionManageScreen = toVersionManageScreen,
+                toVersionSettingsScreen = toVersionSettingsScreen
             )
         }
     }
@@ -164,6 +169,88 @@ private fun ContentMenu(
 }
 
 @Composable
+private fun RightMenuContent(
+    modifier: Modifier = Modifier,
+    launchGameViewModel: LaunchGameViewModel,
+    toAccountManageScreen: () -> Unit,
+    toVersionManageScreen: () -> Unit,
+    toVersionSettingsScreen: () -> Unit,
+    launchButton: @Composable (
+        innerModifier: Modifier,
+        onClick: () -> Unit,
+        text: @Composable RowScope.() -> Unit
+    ) -> Unit
+) {
+    val account by AccountsManager.currentAccountFlow.collectAsStateWithLifecycle()
+    val version by VersionsManager.currentVersion.collectAsStateWithLifecycle()
+    val isRefreshing by VersionsManager.isRefreshing.collectAsStateWithLifecycle()
+
+    ConstraintLayout(
+        modifier = modifier
+    ) {
+        val (accountAvatar, versionManagerLayout, launchButton) = createRefs()
+
+        AccountAvatar(
+            modifier = Modifier
+                .constrainAs(accountAvatar) {
+                    top.linkTo(parent.top)
+                    bottom.linkTo(launchButton.top, margin = 32.dp)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                },
+            account = account,
+            onClick = toAccountManageScreen
+        )
+
+        Row(
+            modifier = Modifier.constrainAs(versionManagerLayout) {
+                start.linkTo(parent.start)
+                end.linkTo(parent.end)
+                bottom.linkTo(launchButton.top)
+            },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            VersionManagerLayout(
+                isRefreshing = isRefreshing,
+                version = version,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(8.dp),
+                swapToVersionManage = toVersionManageScreen
+            )
+            version?.takeIf { !isRefreshing && it.isValid() }?.let {
+                IconButton(
+                    modifier = Modifier.padding(end = 8.dp),
+                    onClick = toVersionSettingsScreen
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = stringResource(R.string.versions_manage_settings)
+                    )
+                }
+            }
+        }
+
+        launchButton(
+            Modifier
+                .fillMaxWidth()
+                .constrainAs(launchButton) {
+                    bottom.linkTo(parent.bottom, margin = 8.dp)
+                }
+                .padding(PaddingValues(horizontal = 12.dp)),
+            {
+                launchGameViewModel.tryLaunch(
+                    VersionsManager.currentVersion.value
+                )
+            },
+            {
+                MarqueeText(text = stringResource(R.string.main_launch_game))
+            }
+        )
+    }
+}
+
+@Composable
 private fun RightMenu(
     isVisible: Boolean,
     modifier: Modifier = Modifier,
@@ -182,72 +269,19 @@ private fun RightMenu(
         modifier = modifier.offset { IntOffset(x = xOffset.roundToPx(), y = 0) },
         shape = MaterialTheme.shapes.extraLarge
     ) {
-        val account by AccountsManager.currentAccountFlow.collectAsStateWithLifecycle()
-        val version by VersionsManager.currentVersion.collectAsStateWithLifecycle()
-        val isRefreshing by VersionsManager.isRefreshing.collectAsStateWithLifecycle()
-
-        ConstraintLayout(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            val (accountAvatar, versionManagerLayout, launchButton) = createRefs()
-
-            AccountAvatar(
-                modifier = Modifier
-                    .constrainAs(accountAvatar) {
-                        top.linkTo(parent.top)
-                        bottom.linkTo(launchButton.top, margin = 32.dp)
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
-                    },
-                account = account,
-                onClick = toAccountManageScreen
-            )
-
-            Row(
-                modifier = Modifier.constrainAs(versionManagerLayout) {
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                    bottom.linkTo(launchButton.top)
-                },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                VersionManagerLayout(
-                    isRefreshing = isRefreshing,
-                    version = version,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(8.dp),
-                    swapToVersionManage = toVersionManageScreen
-                )
-                version?.takeIf { !isRefreshing && it.isValid() }?.let {
-                    IconButton(
-                        modifier = Modifier.padding(end = 8.dp),
-                        onClick = toVersionSettingsScreen
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Settings,
-                            contentDescription = stringResource(R.string.versions_manage_settings)
-                        )
-                    }
-                }
-            }
-
+        RightMenuContent(
+            modifier = Modifier.fillMaxSize(),
+            launchGameViewModel = launchGameViewModel,
+            toAccountManageScreen = toAccountManageScreen,
+            toVersionManageScreen = toVersionManageScreen,
+            toVersionSettingsScreen = toVersionSettingsScreen
+        ) { innerModifier, onClick, text ->
             ScalingActionButton(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .constrainAs(launchButton) {
-                        bottom.linkTo(parent.bottom, margin = 8.dp)
-                    }
-                    .padding(PaddingValues(horizontal = 12.dp)),
+                modifier = innerModifier,
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp),
-                onClick = {
-                    launchGameViewModel.tryLaunch(
-                        VersionsManager.currentVersion.value
-                    )
-                },
-            ) {
-                MarqueeText(text = stringResource(R.string.main_launch_game))
-            }
+                onClick = onClick,
+                content = text
+            )
         }
     }
 }

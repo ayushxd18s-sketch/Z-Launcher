@@ -18,9 +18,8 @@
 
 package com.movtery.zalithlauncher.game.version.installed
 
-import com.movtery.zalithlauncher.game.versioninfo.parseNewVersionFormat
-import com.movtery.zalithlauncher.utils.string.compareChar
-import com.movtery.zalithlauncher.utils.string.compareVersion
+import com.movtery.zalithlauncher.utils.string.naturalCompare
+import org.jackhuang.hmcl.util.versioning.GameVersionNumber
 
 object VersionComparator: Comparator<Version> {
     override fun compare(o1: Version, o2: Version): Int {
@@ -34,37 +33,21 @@ object VersionComparator: Comparator<Version> {
         val ver1 = o1.getVersionInfo()?.minecraftVersion
         val ver2 = o2.getVersionInfo()?.minecraftVersion
 
-        var sort = if (ver1 != null && ver2 != null) {
-            val newVer1 = parseNewVersionFormat(ver1)
-            val newVer2 = parseNewVersionFormat(ver2)
-            when {
-                newVer1 != null && newVer2 != null -> {
-                    //两个版本都是新版本命名规则
-                    -newVer1.compareTo(newVer2)
-                }
-                newVer1 != null && newVer2 == null -> {
-                    //新命名规则优先
-                    -1
-                }
-                newVer1 == null && newVer2 != null -> {
-                    //newVer2是新命名规则，应该排在前面
-                    1
-                }
-                else -> null
+        if (ver1 != null && ver2 != null) {
+            val versionCompare = GameVersionNumber.compare(ver1, ver2)
+            if (versionCompare != 0) {
+                return -versionCompare
             }
-        } else {
-            null
         }
 
-        if (sort == null) {
-            val thisVer = ver1 ?: o1.getVersionName()
-            sort = -thisVer.compareVersion(ver2 ?: o2.getVersionName())
+        val name1 = ver1 ?: o1.getVersionName()
+        val name2 = ver2 ?: o2.getVersionName()
+
+        val nameCompare = naturalCompare(name1, name2)
+        if (nameCompare != 0) {
+            return nameCompare
         }
 
-        if (sort == 0) {
-            sort = compareChar(o1.getVersionName(), o2.getVersionName())
-        }
-
-        return sort
+        return naturalCompare(o1.getVersionName(), o2.getVersionName())
     }
 }

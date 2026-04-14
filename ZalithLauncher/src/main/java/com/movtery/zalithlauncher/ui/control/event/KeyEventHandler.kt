@@ -18,65 +18,63 @@
 
 package com.movtery.zalithlauncher.ui.control.event
 
+import java.util.concurrent.ConcurrentHashMap
+
 /**
  * 处理启动器按键事件标识
  */
+@Deprecated("怀疑 KeyEventHandler 会导致按键事件混乱，导致游戏乱操作，暂时移除 #894")
 class KeyEventHandler(
     private val handle: (key: String, pressed: Boolean) -> Unit
 ) {
     /**
      * 当前按键总共按住的数量（也许有同一个按键同时按下的情况）
      */
-    private val keyEvents = mutableMapOf<String, Int>()
+    private val keyEvents = ConcurrentHashMap<String, Int>()
 
     /**
      * 按下按键
      */
     fun pressKey(key: String) {
-        val count = keyEvents[key] ?: 0
-        keyEvents[key] = count + 1
-        handle(key)
+        var shouldPress = false
+        keyEvents.compute(key) { _, old ->
+            val oldCount = old ?: 0
+            shouldPress = oldCount == 0
+            oldCount + 1
+        }
+        if (shouldPress) {
+            handle(key, true)
+        }
     }
 
     fun releaseKey(key: String) {
-        val count = keyEvents[key] ?: 0
-        keyEvents[key] = count - 1
-        handle(key)
-    }
-
-    /**
-     * 清除所有按键事件
-     */
-    fun clearEvent() {
-        keyEvents.replaceAll { _, _ -> 0 }
-        handle()
-    }
-
-    private fun handle(primaryKey: String? = null) {
-        val entries = keyEvents.entries.toList()
-        entries.forEach { (key, count) ->
-            val pressed = when (count) {
-                1 -> true
-                0 -> {
-                    keyEvents.remove(key)
-                    false
+        var shouldRelease = false
+        keyEvents.compute(key) { _, old ->
+            when {
+                old == null || old <= 0 -> {
+                    shouldRelease = false
+                    null
+                }
+                old == 1 -> {
+                    shouldRelease = true
+                    null
                 }
                 else -> {
-                    if (count < 0) {
-                        keyEvents.remove(key)
-                        false
-                    } else {
-                        return@forEach
-                    }
+                    shouldRelease = false
+                    old - 1
                 }
             }
-            if (pressed) {
-                if (key == primaryKey) {
-                    handle(key, true)
-                }
-            } else {
-                handle(key, false)
-            }
+        }
+        if (shouldRelease) {
+            handle(key, false)
+        }
+    }
+
+    fun clearEvent() {
+        val allKeys = keyEvents.keys.toSet()
+        keyEvents.clear()
+        allKeys.forEach {
+            handle(it, false)
         }
     }
 }

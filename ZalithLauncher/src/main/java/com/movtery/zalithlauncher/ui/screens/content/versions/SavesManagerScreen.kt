@@ -75,6 +75,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -87,14 +88,17 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation3.runtime.NavKey
 import coil3.compose.AsyncImage
 import com.movtery.zalithlauncher.R
+import com.movtery.zalithlauncher.context.COPY_LABEL_SAVE_SEED
 import com.movtery.zalithlauncher.coroutine.TaskSystem
 import com.movtery.zalithlauncher.game.download.assets.install.unpackSaveZip
 import com.movtery.zalithlauncher.game.version.installed.Version
 import com.movtery.zalithlauncher.game.version.installed.VersionFolders
 import com.movtery.zalithlauncher.game.version.installed.VersionInfo
+import com.movtery.zalithlauncher.game.version.saves.SaveData
+import com.movtery.zalithlauncher.game.version.saves.isCompatible
+import com.movtery.zalithlauncher.game.version.saves.parseLevelDatFile
 import com.movtery.zalithlauncher.ui.base.BaseScreen
 import com.movtery.zalithlauncher.ui.components.CardTitleLayout
 import com.movtery.zalithlauncher.ui.components.ContentCheckBox
@@ -111,6 +115,7 @@ import com.movtery.zalithlauncher.ui.components.itemLayoutColor
 import com.movtery.zalithlauncher.ui.components.itemLayoutShadowElevation
 import com.movtery.zalithlauncher.ui.screens.NestedNavKey
 import com.movtery.zalithlauncher.ui.screens.NormalNavKey
+import com.movtery.zalithlauncher.ui.screens.TitledNavKey
 import com.movtery.zalithlauncher.ui.screens.content.elements.ImportMultipleFileButton
 import com.movtery.zalithlauncher.ui.screens.content.elements.SortByDropdownMenu
 import com.movtery.zalithlauncher.ui.screens.content.elements.SortByEnum
@@ -118,12 +123,9 @@ import com.movtery.zalithlauncher.ui.screens.content.elements.rememberMultipleUr
 import com.movtery.zalithlauncher.ui.screens.content.versions.elements.FileNameInputDialog
 import com.movtery.zalithlauncher.ui.screens.content.versions.elements.LoadingState
 import com.movtery.zalithlauncher.ui.screens.content.versions.elements.MinecraftColorTextNormal
-import com.movtery.zalithlauncher.ui.screens.content.versions.elements.SaveData
 import com.movtery.zalithlauncher.ui.screens.content.versions.elements.SavesFilter
 import com.movtery.zalithlauncher.ui.screens.content.versions.elements.SavesOperation
 import com.movtery.zalithlauncher.ui.screens.content.versions.elements.filterSaves
-import com.movtery.zalithlauncher.ui.screens.content.versions.elements.isCompatible
-import com.movtery.zalithlauncher.ui.screens.content.versions.elements.parseLevelDatFile
 import com.movtery.zalithlauncher.ui.screens.content.versions.layouts.VersionChunkBackground
 import com.movtery.zalithlauncher.utils.animation.getAnimateTween
 import com.movtery.zalithlauncher.utils.animation.swapAnimateDpAsState
@@ -176,7 +178,9 @@ private class SavesManageViewModel(
                             //解析存档 level.dat，读取必要数据
                             val data = parseLevelDatFile(
                                 saveFile = dir,
-                                levelDatFile = File(dir, "level.dat")
+                                levelDatFile = File(dir, "level.dat"),
+                                worldGenDatFile = File(dir, "data/minecraft/world_gen_settings.dat")
+                                    .takeIf { it.isFile && it.exists() }
                             )
                             tempList.add(data)
                         }
@@ -255,8 +259,8 @@ private fun rememberSavesManageViewModel(
 
 @Composable
 fun SavesManagerScreen(
-    mainScreenKey: NavKey?,
-    versionsScreenKey: NavKey?,
+    mainScreenKey: TitledNavKey?,
+    versionsScreenKey: TitledNavKey?,
     launchGameViewModel: LaunchGameViewModel,
     version: Version,
     backToMainScreen: () -> Unit,
@@ -268,17 +272,25 @@ fun SavesManagerScreen(
         return
     }
 
+    val savesDir = remember(version) {
+        VersionFolders.SAVES.getDir(version.getGameDir())
+    }
+    val versionInfo = remember(version) {
+        version.getVersionInfo()!!
+    }
+    val minecraftVersion = remember(versionInfo) {
+        versionInfo.minecraftVersion
+    }
+    val quickPlay = remember(versionInfo) {
+        versionInfo.quickPlay
+    }
+
     BaseScreen(
         levels1 = listOf(
             Pair(NestedNavKey.VersionSettings::class.java, mainScreenKey)
         ),
         Triple(NormalNavKey.Versions.SavesManager, versionsScreenKey, false),
     ) { isVisible ->
-        val versionInfo = version.getVersionInfo()!!
-        val minecraftVersion = versionInfo.minecraftVersion
-        val quickPlay = versionInfo.quickPlay
-        val savesDir = File(version.getGameDir(), VersionFolders.SAVES.folderName)
-
         val viewModel = rememberSavesManageViewModel(minecraftVersion, savesDir, version)
 
         val yOffset by swapAnimateDpAsState(
@@ -311,7 +323,7 @@ fun SavesManagerScreen(
                         savesDir = savesDir,
                         updateOperation = { savesOperation = it },
                         quickPlay = { saveName ->
-                            launchGameViewModel.quickLaunch(
+                            launchGameViewModel.quickPlaySave(
                                 version = version,
                                 saveName = saveName
                             )
@@ -463,6 +475,7 @@ private fun SavesActionsHeader(
                     val taskBuilder = rememberMultipleUriImportTaskBuilder(
                         id = "ContentManager.Saves.Import",
                         targetDir = savesDir,
+                        checkExtension = listOf("zip"),
                         errorMessage = stringResource(R.string.saves_manage_import_failed),
                         submitError = submitError,
                         onImported = refreshSaves,
@@ -515,13 +528,12 @@ private fun SavesList(
         if (list.isNotEmpty()) {
             LazyColumn(
                 modifier = modifier,
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                contentPadding = PaddingValues(all = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(list) { saveData ->
                     SaveItemLayout(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         saveData = saveData,
                         quickPlay = quickPlay,
                         minecraftVersion = minecraftVersion,
@@ -563,6 +575,7 @@ private fun SaveItemLayout(
     minecraftVersion: String,
     onClick: () -> Unit = {},
     updateOperation: (SavesOperation) -> Unit = {},
+    shape: Shape = MaterialTheme.shapes.large,
     itemColor: Color = itemLayoutColor(),
     itemContentColor: Color = MaterialTheme.colorScheme.onSurface,
     shadowElevation: Dp = itemLayoutShadowElevation()
@@ -580,7 +593,7 @@ private fun SaveItemLayout(
     Surface(
         modifier = modifier.graphicsLayer(scaleY = scale.value, scaleX = scale.value),
         onClick = onClick,
-        shape = MaterialTheme.shapes.large,
+        shape = shape,
         color = itemColor,
         contentColor = itemContentColor,
         shadowElevation = shadowElevation
@@ -674,7 +687,7 @@ private fun SaveItemLayout(
                                 shadowElevation = 3.dp
                             ) {
                                 SaveInfoTooltip(saveData) { seed ->
-                                    copyText(null, seed, context)
+                                    copyText(COPY_LABEL_SAVE_SEED, seed, context)
                                 }
                             }
                         }

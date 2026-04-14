@@ -22,14 +22,13 @@ import android.os.Parcel
 import android.os.Parcelable
 import com.google.gson.annotations.SerializedName
 import com.movtery.zalithlauncher.R
+import com.movtery.zalithlauncher.game.support.touch_controller.VibrationHandler
 import com.movtery.zalithlauncher.game.version.installed.VersionsManager.getZalithVersionPath
 import com.movtery.zalithlauncher.setting.AllSettings
 import com.movtery.zalithlauncher.utils.GSON
-import com.movtery.zalithlauncher.utils.getInt
 import com.movtery.zalithlauncher.utils.logging.Logger.lError
 import com.movtery.zalithlauncher.utils.logging.Logger.lInfo
 import com.movtery.zalithlauncher.utils.string.getStringNotNull
-import com.movtery.zalithlauncher.utils.toBoolean
 import java.io.File
 import java.io.FileWriter
 
@@ -76,6 +75,8 @@ class VersionConfig(
     @SerializedName("driver")
     var driver: String = ""
         get() = getStringNotNull(field)
+    @SerializedName("graphicsApi")
+    var graphicsApi: GraphicsApi? = null
     @SerializedName("control")
     var control: String = ""
         get() = getStringNotNull(field)
@@ -93,10 +94,10 @@ class VersionConfig(
         get() = getStringNotNull(field)
     @SerializedName("ramAllocation")
     var ramAllocation: Int = -1
-    @SerializedName("enableTouchProxy")
-    var enableTouchProxy: Boolean = false
     @SerializedName("touchVibrateDuration")
     var touchVibrateDuration: Int = 100
+    @SerializedName("touchVibrateKind")
+    var touchVibrateKind: VibrationHandler.VibrateKind? = null
 
     constructor(
         filePath: File,
@@ -106,14 +107,15 @@ class VersionConfig(
         jvmArgs: String = "",
         renderer: String = "",
         driver: String = "",
+        graphicsApi: GraphicsApi? = null,
         control: String = "",
         customPath: String = "",
         customInfo: String = "",
         versionSummary: String = "",
         serverIp: String = "",
         ramAllocation: Int = -1,
-        enableTouchProxy: Boolean = false,
-        touchVibrateDuration: Int = 100
+        touchVibrateDuration: Int = 100,
+        touchVibrateKind: VibrationHandler.VibrateKind? = null,
     ) : this(filePath) {
         this.isolationType = isolationType
         this.skipGameIntegrityCheck = skipGameIntegrityCheck
@@ -121,14 +123,15 @@ class VersionConfig(
         this.jvmArgs = jvmArgs
         this.renderer = renderer
         this.driver = driver
+        this.graphicsApi = graphicsApi
         this.control = control
         this.customPath = customPath
         this.customInfo = customInfo
         this.versionSummary = versionSummary
         this.serverIp = serverIp
         this.ramAllocation = ramAllocation
-        this.enableTouchProxy = enableTouchProxy
         this.touchVibrateDuration = touchVibrateDuration
+        this.touchVibrateKind = touchVibrateKind
     }
 
     fun copy(): VersionConfig = VersionConfig(
@@ -139,14 +142,15 @@ class VersionConfig(
         getStringNotNull(jvmArgs),
         getStringNotNull(renderer),
         getStringNotNull(driver),
+        graphicsApi,
         getStringNotNull(control),
         getStringNotNull(customPath),
         getStringNotNull(customInfo),
         getStringNotNull(versionSummary),
         getStringNotNull(serverIp),
         ramAllocation,
-        enableTouchProxy,
-        touchVibrateDuration
+        touchVibrateDuration,
+        touchVibrateKind,
     )
 
     fun save() {
@@ -197,14 +201,15 @@ class VersionConfig(
             writeString(getStringNotNull(jvmArgs))
             writeString(getStringNotNull(renderer))
             writeString(getStringNotNull(driver))
+            writeInt(graphicsApi?.ordinal ?: -1)
             writeString(getStringNotNull(control))
             writeString(getStringNotNull(customPath))
             writeString(getStringNotNull(customInfo))
             writeString(getStringNotNull(versionSummary))
             writeString(getStringNotNull(serverIp))
             writeInt(ramAllocation)
-            writeInt(enableTouchProxy.getInt())
             writeInt(touchVibrateDuration)
+            writeInt(touchVibrateKind?.ordinal ?: -1)
         }
     }
 
@@ -217,14 +222,15 @@ class VersionConfig(
             val jvmArgs = parcel.readString().orEmpty()
             val renderer = parcel.readString().orEmpty()
             val driver = parcel.readString().orEmpty()
+            val graphicsApi = GraphicsApi.entries.getOrNull(parcel.readInt())
             val control = parcel.readString().orEmpty()
             val customPath = parcel.readString().orEmpty()
             val customInfo = parcel.readString().orEmpty()
             val versionSummary = parcel.readString().orEmpty()
             val serverIp = parcel.readString().orEmpty()
             val ramAllocation = parcel.readInt()
-            val enableTouchProxy = parcel.readInt().toBoolean()
             val touchVibrateDuration = parcel.readInt()
+            val touchVibrateKind = VibrationHandler.VibrateKind.entries.getOrNull(parcel.readInt())
 
             return VersionConfig(
                 versionPath,
@@ -234,14 +240,15 @@ class VersionConfig(
                 jvmArgs,
                 renderer,
                 driver,
+                graphicsApi,
                 control,
                 customPath,
                 customInfo,
                 versionSummary,
                 serverIp,
                 ramAllocation,
-                enableTouchProxy,
-                touchVibrateDuration
+                touchVibrateDuration,
+                touchVibrateKind,
             )
         }
 
@@ -286,6 +293,15 @@ enum class SettingState(val textRes: Int) {
     FOLLOW_GLOBAL(R.string.generic_follow_global),
     ENABLE(R.string.generic_enable),
     DISABLE(R.string.generic_disable)
+}
+
+enum class GraphicsApi(
+    val displayName: String,
+    val option: String
+) {
+    DEFAULT("", "\"default\""),
+    OPENGL("OpenGL", "\"opengl\""),
+    VULKAN("Vulkan", "\"vulkan\"")
 }
 
 private fun getSettingStateNotNull(type: SettingState?) = type ?: SettingState.FOLLOW_GLOBAL

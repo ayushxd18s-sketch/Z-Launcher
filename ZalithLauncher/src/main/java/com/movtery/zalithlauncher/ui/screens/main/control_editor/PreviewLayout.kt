@@ -41,6 +41,7 @@ import com.movtery.layer_controller.observable.ObservableSpecial
 import com.movtery.layer_controller.utils.widgetPosition
 import com.movtery.zalithlauncher.setting.AllSettings
 import com.movtery.zalithlauncher.setting.enums.isLauncherInDarkTheme
+import com.movtery.zalithlauncher.ui.components.rememberBoxSize
 import com.movtery.zalithlauncher.ui.control.joystick.StyleableJoystick
 import com.movtery.zalithlauncher.ui.control.mouse.SwitchableMouseLayout
 
@@ -62,21 +63,14 @@ fun BoxWithConstraintsScope.PreviewControlBox(
     val occupiedPointers = remember(observableLayout) { mutableStateSetOf<PointerId>() }
     val moveOnlyPointers = remember(observableLayout) { mutableStateSetOf<PointerId>() }
 
-    val density = LocalDensity.current
-    val screenSize = remember(maxWidth, maxHeight) {
-        with(density) {
-            IntSize(
-                width = maxWidth.roundToPx(),
-                height = maxHeight.roundToPx()
-            )
-        }
-    }
+    val screenSize = rememberBoxSize()
 
     ControlBoxLayout(
         modifier = modifier.fillMaxSize(),
         observedLayout = observableLayout,
         checkOccupiedPointers = { occupiedPointers.contains(it) },
         markPointerAsMoveOnly = { moveOnlyPointers.add(it) },
+        isUsingJoystick = previewScenario.isCursorGrabbing && enableJoystick,
         isCursorGrabbing = previewScenario.isCursorGrabbing,
         hideLayerWhen = previewHideLayerWhen,
         isDark = isLauncherInDarkTheme()

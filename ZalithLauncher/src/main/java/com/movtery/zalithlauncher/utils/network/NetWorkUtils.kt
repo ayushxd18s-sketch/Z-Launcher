@@ -26,10 +26,12 @@ import android.net.NetworkCapabilities
 import androidx.core.net.toUri
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.movtery.zalithlauncher.R
+import com.movtery.zalithlauncher.context.COPY_LABEL_LINK
 import com.movtery.zalithlauncher.path.TIME_OUT
 import com.movtery.zalithlauncher.path.URL_USER_AGENT
 import com.movtery.zalithlauncher.path.createOkHttpClient
 import com.movtery.zalithlauncher.path.createRequestBuilder
+import com.movtery.zalithlauncher.utils.copyText
 import com.movtery.zalithlauncher.utils.file.compareSHA1
 import com.movtery.zalithlauncher.utils.file.ensureParentDirectory
 import com.movtery.zalithlauncher.utils.logging.Logger.lDebug
@@ -55,14 +57,22 @@ import java.net.URL
  * @return 当前网络是否可用
  */
 fun isNetworkAvailable(context: Context): Boolean {
-    val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-    val activeNetwork = connectivityManager.activeNetwork
-    val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
-    return activeNetwork != null && (
-            capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ?: false ||
-                    capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ?: false ||
-                    capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ?: false
-            )
+    val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+    val activeNetwork = connectivityManager.activeNetwork ?: return false
+    val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
+    return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+}
+
+/**
+ * @return 当前是否正在使用移动网络
+ */
+fun isUsingMobileData(context: Context): Boolean {
+    val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+    val activeNetwork = connectivityManager.activeNetwork ?: return false
+    val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
+    return networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
 }
 
 /**
@@ -95,8 +105,8 @@ fun downloadFileWithHttp(
             val conn = URL(url).openConnection() as HttpURLConnection
 
             conn.apply {
-                readTimeout = TIME_OUT.first
-                connectTimeout = TIME_OUT.first
+                readTimeout = TIME_OUT.toInt()
+                connectTimeout = TIME_OUT.toInt()
                 useCaches = true
                 setRequestProperty("User-Agent", "Mozilla/5.0/$URL_USER_AGENT")
             }
@@ -384,6 +394,10 @@ fun Activity.openLink(link: String, dataType: String?) {
             }
         }
         .setNegativeButton(R.string.generic_cancel) { dialog, _ ->
+            dialog.dismiss()
+        }
+        .setNeutralButton(R.string.generic_copy) { dialog, _ ->
+            copyText(COPY_LABEL_LINK, link, this)
             dialog.dismiss()
         }
         .show()

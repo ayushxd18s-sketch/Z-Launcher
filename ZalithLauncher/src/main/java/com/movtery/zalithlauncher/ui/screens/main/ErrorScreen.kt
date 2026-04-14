@@ -23,6 +23,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -61,17 +62,20 @@ import com.movtery.zalithlauncher.ui.activities.CrashType
 import com.movtery.zalithlauncher.ui.components.BackgroundCard
 import com.movtery.zalithlauncher.ui.components.MarqueeText
 import com.movtery.zalithlauncher.ui.components.ScalingActionButton
+import com.movtery.zalithlauncher.viewmodel.CrashLogsUploadViewModel
 
 @Composable
 fun ErrorScreen(
+    viewModel: CrashLogsUploadViewModel,
     crashType: CrashType,
-    message: String,
-    messageBody: String,
     shareLogs: Boolean = true,
+    canUpload: Boolean = false,
     canRestart: Boolean = true,
     onShareLogsClick: () -> Unit = {},
+    onUploadClick: () -> Unit = {},
     onRestartClick: () -> Unit = {},
-    onExitClick: () -> Unit = {}
+    onExitClick: () -> Unit = {},
+    body: @Composable ColumnScope.() -> Unit
 ) {
     //获取方向信息，展示两套不同的UI
     val configuration = LocalConfiguration.current
@@ -80,24 +84,26 @@ fun ErrorScreen(
     if (isLandscape) {
         ErrorScreenLandscape(
             crashType = crashType,
-            message = message,
-            messageBody = messageBody,
             shareLogs = shareLogs,
+            canUpload = canUpload,
             canRestart = canRestart,
             onShareLogsClick = onShareLogsClick,
+            onUploadClick = onUploadClick,
             onRestartClick = onRestartClick,
-            onExitClick = onExitClick
+            onExitClick = onExitClick,
+            body = body
         )
     } else {
         ErrorScreenPortrait(
             crashType = crashType,
-            message = message,
-            messageBody = messageBody,
             shareLogs = shareLogs,
+            canUpload = canUpload,
             canRestart = canRestart,
             onShareLogsClick = onShareLogsClick,
+            onUploadClick = onUploadClick,
             onRestartClick = onRestartClick,
-            onExitClick = onExitClick
+            onExitClick = onExitClick,
+            body = body
         )
     }
 }
@@ -108,13 +114,14 @@ fun ErrorScreen(
 @Composable
 private fun ErrorScreenLandscape(
     crashType: CrashType,
-    message: String,
-    messageBody: String,
     shareLogs: Boolean,
+    canUpload: Boolean,
     canRestart: Boolean,
     onShareLogsClick: () -> Unit,
+    onUploadClick: () -> Unit,
     onRestartClick: () -> Unit,
-    onExitClick: () -> Unit
+    onExitClick: () -> Unit,
+    body: @Composable ColumnScope.() -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize()
@@ -143,8 +150,7 @@ private fun ErrorScreenLandscape(
                     modifier = Modifier
                         .weight(7f)
                         .padding(start = 12.dp, top = 12.dp, bottom = 12.dp),
-                    message = message,
-                    messageBody = messageBody
+                    body = body
                 )
 
                 ActionContext(
@@ -153,8 +159,10 @@ private fun ErrorScreenLandscape(
                         .padding(all = 12.dp),
                     crashType = crashType,
                     shareLogs = shareLogs,
+                    canUpload = canUpload,
                     canRestart = canRestart,
                     onShareLogsClick = onShareLogsClick,
+                    onUploadClick = onUploadClick,
                     onRestartClick = onRestartClick,
                     onExitClick = onExitClick
                 )
@@ -170,13 +178,14 @@ private fun ErrorScreenLandscape(
 @Composable
 private fun ErrorScreenPortrait(
     crashType: CrashType,
-    message: String,
-    messageBody: String,
     shareLogs: Boolean,
+    canUpload: Boolean,
     canRestart: Boolean,
     onShareLogsClick: () -> Unit,
+    onUploadClick: () -> Unit,
     onRestartClick: () -> Unit,
-    onExitClick: () -> Unit
+    onExitClick: () -> Unit,
+    body: @Composable ColumnScope.() -> Unit
 ) {
     //控制下拉菜单的显示状态
     var showMenu by remember { mutableStateOf(false) }
@@ -206,6 +215,17 @@ private fun ErrorScreenPortrait(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
                     ) {
+                        if (canUpload) {
+                            DropdownMenuItem(
+                                text = {
+                                    MarqueeText(text = stringResource(R.string.crash_link_share_button))
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onUploadClick()
+                                }
+                            )
+                        }
                         DropdownMenuItem(
                             text = {
                                 MarqueeText(text = stringResource(R.string.crash_share_logs))
@@ -249,26 +269,23 @@ private fun ErrorScreenPortrait(
                 .padding(all = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            if (crashType == CrashType.LAUNCHER_CRASH) {
                 //仅在启动器崩溃时，才显示这行略显严重的文本
-                if (crashType == CrashType.LAUNCHER_CRASH) {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text(
                         text = stringResource(R.string.crash_launcher_title, InfoDistributor.LAUNCHER_NAME)
                     )
                 }
-                //提示信息
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
 
-            Text(
-                text = messageBody,
-                style = MaterialTheme.typography.bodyMedium
-            )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    content = body
+                )
+            } else {
+                body()
+            }
         }
     }
 }
@@ -307,8 +324,7 @@ private fun TopBar(
 @Composable
 private fun ErrorContent(
     modifier: Modifier = Modifier,
-    message: String,
-    messageBody: String
+    body: @Composable ColumnScope.() -> Unit
 ) {
     BackgroundCard(
         modifier = modifier,
@@ -320,17 +336,9 @@ private fun ErrorContent(
                 .fillMaxSize()
                 .verticalScroll(state = rememberScrollState())
                 .padding(all = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                text = messageBody,
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = body
+        )
     }
 }
 
@@ -339,8 +347,10 @@ private fun ActionContext(
     modifier: Modifier = Modifier,
     crashType: CrashType,
     shareLogs: Boolean,
+    canUpload: Boolean,
     canRestart: Boolean,
     onShareLogsClick: () -> Unit = {},
+    onUploadClick: () -> Unit = {},
     onRestartClick: () -> Unit = {},
     onExitClick: () -> Unit = {}
 ) {
@@ -368,6 +378,15 @@ private fun ActionContext(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.Bottom
         ) {
+            if (canUpload) {
+                ScalingActionButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onUploadClick
+                ) {
+                    MarqueeText(text = stringResource(R.string.crash_link_share_button))
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+            }
             if (shareLogs) {
                 ScalingActionButton(
                     modifier = Modifier.fillMaxWidth(),

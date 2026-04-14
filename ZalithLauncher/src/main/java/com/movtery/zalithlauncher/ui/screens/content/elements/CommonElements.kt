@@ -28,6 +28,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -36,9 +37,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -78,7 +81,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.navigation3.runtime.NavKey
 import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.context.copyLocalFile
 import com.movtery.zalithlauncher.context.getFileName
@@ -89,7 +91,9 @@ import com.movtery.zalithlauncher.coroutine.TitledTask
 import com.movtery.zalithlauncher.ui.components.IconTextButton
 import com.movtery.zalithlauncher.ui.components.MarqueeText
 import com.movtery.zalithlauncher.ui.components.fadeEdge
+import com.movtery.zalithlauncher.ui.screens.TitledNavKey
 import com.movtery.zalithlauncher.utils.animation.getAnimateTween
+import com.movtery.zalithlauncher.utils.file.checkExtensionOrThrow
 import com.movtery.zalithlauncher.utils.platform.bytesToMB
 import com.movtery.zalithlauncher.utils.platform.getTotalMemory
 import com.movtery.zalithlauncher.utils.platform.getUsedMemory
@@ -129,7 +133,7 @@ fun CategoryIcon(image: ImageVector, textRes: Int) {
 }
 
 data class CategoryItem(
-    val key: NavKey,
+    val key: TitledNavKey,
     val icon: @Composable () -> Unit,
     val textRes: Int,
     val division: Boolean = false
@@ -201,6 +205,7 @@ fun SortByDropdownMenu(
 
 /**
  * 多 Uri 导入文件任务构建器
+ * @param checkExtension 检查被选中的文件后缀是否符合要求
  */
 @Composable
 fun rememberMultipleUriImportTaskBuilder(
@@ -208,6 +213,7 @@ fun rememberMultipleUriImportTaskBuilder(
     targetDir: File,
     errorTitle: String = stringResource(R.string.generic_error),
     errorMessage: String? = stringResource(R.string.error_import_file),
+    checkExtension: List<String>? = null,
     submitError: (ErrorViewModel.ThrowableMessage) -> Unit = {},
     onFileCopied: suspend (Task, File) -> Unit = { _, _ -> },
     onImported: () -> Unit = {}
@@ -232,6 +238,9 @@ fun rememberMultipleUriImportTaskBuilder(
                                 val fileName = context.getFileName(uri) ?: throw IOException("Failed to get file name")
                                 task.updateProgress(-1f, R.string.empty_holder, fileName)
                                 val outputFile = File(targetDir, fileName)
+                                if (checkExtension != null) {
+                                    outputFile.checkExtensionOrThrow(checkExtension)
+                                }
                                 context.copyLocalFile(uri, outputFile)
                                 //成功复制，如调用者有额外操作，可使用回调运行
                                 cOnFileCopied(task, outputFile)
@@ -347,12 +356,15 @@ fun TitleTaskFlowDialog(
             dismissOnClickOutside = false
         )
     ) {
-        Box(
+        BoxWithConstraints(
             modifier = Modifier.fillMaxHeight(),
             contentAlignment = Alignment.Center
         ) {
             Surface(
-                modifier = Modifier.padding(all = 6.dp),
+                modifier = Modifier
+                    .padding(all = 6.dp)
+                    .heightIn(max = maxHeight - 12.dp)
+                    .wrapContentHeight(),
                 shape = MaterialTheme.shapes.extraLarge,
                 shadowElevation = 6.dp
             ) {
@@ -481,7 +493,8 @@ fun MemoryPreview(
     mainColor: Color = MaterialTheme.colorScheme.primary,
     backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
     textStyle: TextStyle = MaterialTheme.typography.labelMedium,
-    textColor: Color = MaterialTheme.colorScheme.onPrimary,
+    textColorOnMemory: Color = MaterialTheme.colorScheme.onPrimary,
+    textColorOnBackground: Color = MaterialTheme.colorScheme.onSurface,
     usedText: @Composable (usedMemory: Double, totalMemory: Double) -> String,
     previewText: (@Composable (preview: Double) -> String)? = null
 ) {
@@ -520,6 +533,41 @@ fun MemoryPreview(
             .clip(RoundedCornerShape(12.dp))
             .background(backgroundColor)
     ) {
+        val usedText = usedText(usedMemory, totalMemory)
+
+        @Composable
+        fun UsedMemoryText(
+            modifier: Modifier = Modifier,
+            textColor: Color = textColorOnMemory,
+            marquee: Boolean = true
+        ) {
+            if (marquee) {
+                MarqueeText(
+                    modifier = modifier,
+                    text = usedText,
+                    style = textStyle,
+                    color = textColor
+                )
+            } else {
+                Text(
+                    modifier = modifier,
+                    text = usedText,
+                    style = textStyle,
+                    color = textColor,
+                    softWrap = false,
+                    maxLines = 1
+                )
+            }
+        }
+
+        if (preview == null) {
+            UsedMemoryText(
+                modifier = Modifier.padding(horizontal = 8.dp),
+                textColor = textColorOnBackground,
+                marquee = false,
+            )
+        }
+
         Row(modifier = Modifier.fillMaxWidth()) {
             //已使用内存部分
             if (usedRatio > 0) {
@@ -538,13 +586,19 @@ fun MemoryPreview(
                         .background(mainColor),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    val text = usedText(usedMemory, totalMemory)
-                    MarqueeText(
-                        modifier = Modifier.padding(horizontal = 8.dp),
-                        text = text,
-                        style = textStyle,
-                        color = textColor
-                    )
+                    if (preview != null) {
+                        UsedMemoryText(
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+                    } else {
+                        UsedMemoryText(
+                            modifier = Modifier
+                                .width(IntrinsicSize.Max)
+                                .padding(start = 8.dp),
+                            textColor = textColorOnMemory,
+                            marquee = false,
+                        )
+                    }
                 }
             }
 
@@ -571,7 +625,7 @@ fun MemoryPreview(
                                 modifier = Modifier.padding(horizontal = 8.dp),
                                 text = text,
                                 style = textStyle,
-                                color = textColor
+                                color = textColorOnMemory
                             )
                         }
                     }

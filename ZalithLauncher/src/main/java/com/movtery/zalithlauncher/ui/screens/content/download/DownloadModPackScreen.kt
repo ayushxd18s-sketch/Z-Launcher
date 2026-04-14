@@ -46,7 +46,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
-import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
@@ -67,6 +66,7 @@ import com.movtery.zalithlauncher.ui.components.SimpleEditDialog
 import com.movtery.zalithlauncher.ui.components.fadeEdge
 import com.movtery.zalithlauncher.ui.screens.NestedNavKey
 import com.movtery.zalithlauncher.ui.screens.NormalNavKey
+import com.movtery.zalithlauncher.ui.screens.TitledNavKey
 import com.movtery.zalithlauncher.ui.screens.content.download.assets.download.DownloadAssetsScreen
 import com.movtery.zalithlauncher.ui.screens.content.download.assets.search.SearchModPackScreen
 import com.movtery.zalithlauncher.ui.screens.content.elements.TitleTaskFlowDialog
@@ -75,8 +75,11 @@ import com.movtery.zalithlauncher.ui.screens.navigateTo
 import com.movtery.zalithlauncher.ui.screens.onBack
 import com.movtery.zalithlauncher.ui.screens.rememberTransitionSpec
 import com.movtery.zalithlauncher.utils.logging.Logger.lError
+import com.movtery.zalithlauncher.viewmodel.ConfirmMobileDataOperation
 import com.movtery.zalithlauncher.viewmodel.EventViewModel
+import com.movtery.zalithlauncher.viewmodel.ModpackConfirmUseMobileDataOperation
 import com.movtery.zalithlauncher.viewmodel.ModpackImportViewModel
+import com.movtery.zalithlauncher.viewmodel.sendKeepScreen
 import io.ktor.client.plugins.HttpRequestTimeoutException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.SerializationException
@@ -112,6 +115,7 @@ private sealed interface VersionNameOperation {
 private class ModPackViewModel: ViewModel() {
     var installOperation by mutableStateOf<ModPackInstallOperation>(ModPackInstallOperation.None)
     var versionNameOperation by mutableStateOf<VersionNameOperation>(VersionNameOperation.None)
+    var confirmMobileDataOperation by mutableStateOf<ConfirmMobileDataOperation>(ConfirmMobileDataOperation.None)
 
     //等待用户输入版本名称相关
     private var versionNameContinuation: (Continuation<String>)? = null
@@ -132,6 +136,26 @@ private class ModPackViewModel: ViewModel() {
         versionNameOperation = VersionNameOperation.None
     }
 
+
+    //警告使用移动网络相关
+    private var confirmMobileData : (Continuation<Boolean>)? = null
+    suspend fun waitForConfirmMobileData(): Boolean {
+        return suspendCancellableCoroutine { cont ->
+            confirmMobileData = cont
+            confirmMobileDataOperation = ConfirmMobileDataOperation.Waiting
+        }
+    }
+
+    /**
+     * 用户是否确认使用移动网络
+     */
+    fun confirmUseMobileData(use: Boolean) {
+        //恢复continuation
+        confirmMobileData?.resume(use)
+        confirmMobileData = null
+        confirmMobileDataOperation = ConfirmMobileDataOperation.None
+    }
+
     /**
      * 整合包安装器
      */
@@ -140,7 +164,9 @@ private class ModPackViewModel: ViewModel() {
     fun install(
         context: Context,
         version: PlatformVersion,
-        iconUrl: String?
+        iconUrl: String?,
+        onStart: () -> Unit = {},
+        onStop: () -> Unit = {},
     ) {
         installOperation = ModPackInstallOperation.Install
         installer = ModPackInstaller(
@@ -148,26 +174,37 @@ private class ModPackViewModel: ViewModel() {
             version = version,
             iconUrl = iconUrl,
             scope = viewModelScope,
-            waitForVersionName = ::waitForVersionName
+            waitForVersionName = ::waitForVersionName,
+            waitForConfirmMobileData = ::waitForConfirmMobileData
         ).also {
             it.installModPack(
                 onInstalled = { version ->
                     installer = null
                     VersionsManager.refresh("[Modpack] ModPackInstaller.onInstalled", version)
                     installOperation = ModPackInstallOperation.Success
+                    onStop()
+                },
+                onCancelled = {
+                    installer = null
+                    installOperation = ModPackInstallOperation.None
+                    onStop()
                 },
                 onError = { th ->
                     installer = null
                     installOperation = ModPackInstallOperation.Error(th)
+                    onStop()
                 }
             )
         }
+        onStart()
     }
 
     fun cancel() {
         installer?.cancelInstall()
         installer = null
         installOperation = ModPackInstallOperation.None
+        versionNameOperation = VersionNameOperation.None
+        confirmMobileDataOperation = ConfirmMobileDataOperation.None
     }
 
     override fun onCleared() {
@@ -189,10 +226,10 @@ private fun rememberModPackViewModel(
 @Composable
 fun DownloadModPackScreen(
     key: NestedNavKey.DownloadModPack,
-    mainScreenKey: NavKey?,
-    downloadScreenKey: NavKey?,
-    downloadModPackScreenKey: NavKey?,
-    onCurrentKeyChange: (NavKey?) -> Unit,
+    mainScreenKey: TitledNavKey?,
+    downloadScreenKey: TitledNavKey?,
+    downloadModPackScreenKey: TitledNavKey?,
+    onCurrentKeyChange: (TitledNavKey?) -> Unit,
     importerViewModel: ModpackImportViewModel,
     eventViewModel: EventViewModel
 ) {
@@ -210,10 +247,21 @@ fun DownloadModPackScreen(
         updateOperation = { viewModel.installOperation = it },
         installer = viewModel.installer,
         onInstall = { version, iconUrl ->
-            viewModel.install(context, version, iconUrl)
+            viewModel.install(
+                context = context,
+                version = version,
+                iconUrl = iconUrl,
+                onStart = {
+                    eventViewModel.sendKeepScreen(true)
+                },
+                onStop = {
+                    eventViewModel.sendKeepScreen(false)
+                }
+            )
         },
         onCancel = {
             viewModel.cancel()
+            eventViewModel.sendKeepScreen(false)
         }
     )
 
@@ -222,6 +270,17 @@ fun DownloadModPackScreen(
         operation = viewModel.versionNameOperation,
         onConfirmVersionName = { name ->
             viewModel.confirmVersionName(name)
+        },
+        onCancel = {
+            viewModel.cancel()
+        }
+    )
+
+    //用户确认使用移动网络 操作流程
+    ModpackConfirmUseMobileDataOperation(
+        operation = viewModel.confirmMobileDataOperation,
+        onConfirmUse = { use ->
+            viewModel.confirmUseMobileData(use)
         }
     )
 
@@ -245,7 +304,8 @@ fun DownloadModPackScreen(
                         downloadScreenKey = downloadScreenKey,
                         downloadModPackScreenKey = key,
                         downloadModPackScreenCurrentKey = downloadModPackScreenKey,
-                        viewModel = importerViewModel
+                        viewModel = importerViewModel,
+                        eventViewModel = eventViewModel
                     ) { platform, projectId, iconUrl ->
                         backStack.navigateTo(
                             NormalNavKey.DownloadAssets(platform, projectId, PlatformClasses.MOD_PACK, iconUrl)
@@ -402,7 +462,8 @@ private fun ModPackInstallOperation(
 @Composable
 private fun VersionNameOperation(
     operation: VersionNameOperation,
-    onConfirmVersionName: (String) -> Unit
+    onConfirmVersionName: (String) -> Unit,
+    onCancel: () -> Unit
 ) {
     when (operation) {
         is VersionNameOperation.None -> {}
@@ -410,7 +471,8 @@ private fun VersionNameOperation(
             val modpackInfo = operation.info
             ModpackVersionNameDialog(
                 name = modpackInfo.name,
-                onConfirmVersionName = onConfirmVersionName
+                onConfirmVersionName = onConfirmVersionName,
+                onCancel = onCancel
             )
         }
     }
@@ -420,11 +482,13 @@ private fun VersionNameOperation(
  * 将要安装的整合包版本名称
  * @param name 预填写的整合包版本名称
  * @param onConfirmVersionName 用户输入并确认了版本名称
+ * @param onCancel 用户取消了导入
  */
 @Composable
 fun ModpackVersionNameDialog(
     name: String,
-    onConfirmVersionName: (String) -> Unit
+    onConfirmVersionName: (String) -> Unit,
+    onCancel: () -> Unit,
 ) {
     var name by remember { mutableStateOf(name) }
     var errorMessage by remember { mutableStateOf("") }
@@ -447,6 +511,8 @@ fun ModpackVersionNameDialog(
             }
         },
         singleLine = true,
+        onDismissRequest = {},
+        onCancel = onCancel,
         onConfirm = {
             if (!isError) {
                 onConfirmVersionName(name)

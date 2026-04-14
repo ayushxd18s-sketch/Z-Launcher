@@ -75,10 +75,34 @@ fun SimpleGamepadCapture(
     )
 
     //是否正在绑定键值
-    val isBinding = remember(remapperViewModel.uiOperation) { remapperViewModel.uiOperation != GamepadRemapOperation.None }
-    fun isBinding() = remapperViewModel.uiOperation != GamepadRemapOperation.None
+    val uiOperation by rememberUpdatedState(remapperViewModel.uiOperation)
+    fun isBinding() = uiOperation != GamepadRemapOperation.None
 
-    DisposableEffect(view, gamepadViewModel, isBinding) {
+    //以事件接收的方式，单独处理按键事件
+    //事件源：GameHandler 处理来自 VMActivity 的 dispatchKeyEvent
+    DisposableEffect(view, gamepadViewModel) {
+        val listener: (KeyEvent) -> Unit = { event ->
+            if (isBinding()) {
+                remapperViewModel.sendEvent(
+                    GamepadRemapperViewModel.Event.Button(event.keyCode, event)
+                )
+            } else {
+                val deviceName = event.getDeviceName()
+                val remapper = remapperViewModel.findMapping(deviceName)
+                if (remapper == null) {
+                    remapperViewModel.startRemapperUI(deviceName)
+                } else {
+                    remapper.handleKeyEventInput(event, gamepadViewModel)
+                }
+            }
+        }
+        gamepadViewModel.registerKeyListener(listener)
+        onDispose {
+            gamepadViewModel.unregisterKeyListener(listener)
+        }
+    }
+
+    DisposableEffect(view, gamepadViewModel) {
         val motionListener = View.OnGenericMotionListener { _, event ->
             if (isBinding()) {
                 remapperViewModel.sendEvent(
@@ -97,41 +121,19 @@ fun SimpleGamepadCapture(
             } else false
         }
 
-        val keyListener = View.OnKeyListener { _, keyCode, keyEvent ->
-            if (keyEvent.isGamepadKeyEvent()) {
-                if (isBinding()) {
-                    remapperViewModel.sendEvent(
-                        GamepadRemapperViewModel.Event.Button(keyCode, keyEvent)
-                    )
-                } else {
-                    val deviceName = keyEvent.getDeviceName()
-                    val remapper = remapperViewModel.findMapping(deviceName)
-                    if (remapper == null) {
-                        remapperViewModel.startRemapperUI(deviceName)
-                    } else {
-                        remapper.handleKeyEventInput(keyEvent, gamepadViewModel)
-                    }
-                }
-                true
-            } else false
-        }
-
         view.setOnGenericMotionListener(motionListener)
-        view.setOnKeyListener(keyListener)
 
         onDispose {
             view.setOnGenericMotionListener(null)
-            view.setOnKeyListener(null)
         }
     }
 
-    LaunchedEffect(gamepadViewModel.gamepadEngaged, isBinding) {
+    LaunchedEffect(gamepadViewModel.gamepadEngaged) {
         withContext(Dispatchers.Default) {
             while (true) {
                 try {
                     ensureActive()
-                    val binding = withContext(Dispatchers.Main) { isBinding() }
-                    if (binding) break
+                    if (isBinding()) break
 
                     //检查手柄活动状态
                     val pollLevel = gamepadViewModel.checkGamepadActive()
@@ -158,10 +160,10 @@ private fun GamepadEventListener(
     onDisposeCallback: (() -> Unit)? = null
 ) {
     DisposableEffect(gamepadViewModel) {
-        gamepadViewModel.addListener(listener)
+        gamepadViewModel.addEventListener(listener)
         onDispose {
             onDisposeCallback?.invoke()
-            gamepadViewModel.removeListener(listener)
+            gamepadViewModel.removeEventListener(listener)
         }
     }
 }
@@ -214,7 +216,7 @@ fun GamepadKeyListener(
                             lastPressKey.remove(event.code)
                         }
                     } else {
-                        gamepadViewModel.findByCode(event.code, inGame)?.let { targets ->
+                        gamepadViewModel.currentMapping?.findByCode(event.code, inGame)?.let { targets ->
                             val currentEvents = targets.map { guessEvent(it) }
                             lastPressKey[event.code] = currentEvents
                             currentOnKeyEvent(currentEvents, true)
@@ -228,7 +230,7 @@ fun GamepadKeyListener(
                             lastPressDpad.remove(event.direction)
                         }
                     } else {
-                        gamepadViewModel.findByDpad(event.direction, inGame)?.let { targets ->
+                        gamepadViewModel.currentMapping?.findByDpad(event.direction, inGame)?.let { targets ->
                             val currentEvents = targets.map { guessEvent(it) }
                             lastPressDpad[event.direction] = currentEvents
                             currentOnKeyEvent(currentEvents, true)

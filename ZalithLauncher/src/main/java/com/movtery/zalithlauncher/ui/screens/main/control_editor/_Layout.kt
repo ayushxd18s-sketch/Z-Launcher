@@ -24,13 +24,16 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -57,6 +60,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
@@ -64,6 +68,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.movtery.colorpicker.components.TransparentChecker
 import com.movtery.colorpicker.rememberColorPickerController
 import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.ui.components.ColorPickerDialog
@@ -73,6 +78,7 @@ import com.movtery.zalithlauncher.ui.components.MarqueeText
 import com.movtery.zalithlauncher.ui.components.SimpleTextSlider
 import com.movtery.zalithlauncher.ui.components.SliderValueEditDialog
 import com.movtery.zalithlauncher.ui.components.itemLayoutColorOnSurface
+import com.movtery.zalithlauncher.ui.screens.content.elements.DisabledAlpha
 import com.movtery.zalithlauncher.utils.animation.getAnimateTween
 
 
@@ -299,7 +305,9 @@ fun InfoLayoutSwitchItem(
         contentColor = contentColor
     ) {
         MarqueeText(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .alpha(if (enabled) 1f else DisabledAlpha)
+                .weight(1f),
             text = title,
             style = MaterialTheme.typography.bodyMedium
         )
@@ -361,14 +369,48 @@ fun InfoLayoutTextItem(
     showArrow: Boolean = true,
     selected: Boolean = false,
     color: Color = itemLayoutColorOnSurface(),
-    contentColor: Color = MaterialTheme.colorScheme.onSurface
+    contentColor: Color = MaterialTheme.colorScheme.onSurface,
+    enabled: Boolean = true,
+) {
+    InfoLayoutTextItem(
+        modifier = modifier,
+        title = title,
+        icon = {
+            if (showArrow) {
+                Icon(
+                    modifier = Modifier
+                        .size(28.dp),
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowRight,
+                    contentDescription = null
+                )
+            }
+        },
+        onClick = onClick,
+        selected = selected,
+        color = color,
+        contentColor = contentColor,
+        enabled = enabled,
+    )
+}
+
+@Composable
+fun InfoLayoutTextItem(
+    modifier: Modifier = Modifier,
+    title: String,
+    icon: @Composable () -> Unit,
+    onClick: () -> Unit,
+    selected: Boolean = false,
+    color: Color = itemLayoutColorOnSurface(),
+    contentColor: Color = MaterialTheme.colorScheme.onSurface,
+    enabled: Boolean = true,
 ) {
     InfoLayoutItem(
         modifier = modifier,
         onClick = onClick,
         selected = selected,
         color = color,
-        contentColor = contentColor
+        contentColor = contentColor,
+        enabled = enabled,
     ) {
         MarqueeText(
             modifier = Modifier
@@ -377,14 +419,7 @@ fun InfoLayoutTextItem(
             text = title,
             style = MaterialTheme.typography.bodyMedium
         )
-        if (showArrow) {
-            Icon(
-                modifier = Modifier
-                    .size(28.dp),
-                imageVector = Icons.AutoMirrored.Rounded.ArrowRight,
-                contentDescription = null
-            )
-        }
+        icon()
     }
 }
 
@@ -400,6 +435,31 @@ fun InfoLayoutColorItem(
     InfoLayoutTextItem(
         modifier = modifier,
         title = title,
+        icon = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(modifier = Modifier.size(28.dp)) {
+                    TransparentChecker(
+                        modifier = Modifier.fillMaxSize(),
+                        gridSize = 18f
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(color = color)
+                    )
+                }
+
+                Icon(
+                    modifier = Modifier
+                        .size(28.dp),
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowRight,
+                    contentDescription = null
+                )
+            }
+        },
         onClick = {
             showColorDialog = true
         }

@@ -39,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerId
-import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
@@ -67,12 +66,14 @@ import com.movtery.layer_controller.utils.getWidgetPosition
  * @param opacity 控制布局画布整体不透明度 0f~1f
  * @param markPointerAsMoveOnly 标记指针为仅接受滑动处理
  * @param hideLayerWhen 根据情况决定是否隐藏指定控件层
+ * @param isUsingJoystick 是否正在使用摇杆组件
  */
 @Composable
 fun ControlBoxLayout(
     modifier: Modifier = Modifier,
     observedLayout: ObservableControlLayout? = null,
     eventHandler: EventHandler = EventHandler(),
+    isUsingJoystick: Boolean,
     isCursorGrabbing: Boolean,
     checkOccupiedPointers: (PointerId) -> Boolean,
     @FloatRange(0.0, 1.0) opacity: Float = 1f,
@@ -106,6 +107,7 @@ fun ControlBoxLayout(
                             checkOccupiedPointers = checkOccupiedPointers,
                             opacity = opacity,
                             markPointerAsMoveOnly = markPointerAsMoveOnly,
+                            isUsingJoystick = isUsingJoystick,
                             isCursorGrabbing = isCursorGrabbing,
                             hideLayerWhen = hideLayerWhen,
                             isDark = isDark,
@@ -129,6 +131,7 @@ private fun BoxWithConstraintsScope.BaseControlBoxLayout(
     checkOccupiedPointers: (PointerId) -> Boolean,
     @FloatRange(0.0, 1.0) opacity: Float,
     markPointerAsMoveOnly: (PointerId) -> Unit,
+    isUsingJoystick: Boolean,
     isCursorGrabbing: Boolean,
     hideLayerWhen: HideLayerWhen,
     isDark: Boolean,
@@ -168,8 +171,6 @@ private fun BoxWithConstraintsScope.BaseControlBoxLayout(
                             val isPressed = change.pressed
 
                             if (
-                                //不处理非触摸指针
-                                change.type != PointerType.Touch ||
                                 change.isConsumed ||
                                 //不处理被子级占用的指针
                                 currentCheckOccupiedPointers(pointerId)
@@ -183,6 +184,7 @@ private fun BoxWithConstraintsScope.BaseControlBoxLayout(
                                     checkLayerVisibility(
                                         layer = layer,
                                         hideLayerWhen = currentHideLayerWhen,
+                                        isUsingJoystick = isUsingJoystick,
                                         isCursorGrabbing = currentIsCursorGrabbing,
                                         visibilityType = layer.visibilityType
                                     )
@@ -228,6 +230,32 @@ private fun BoxWithConstraintsScope.BaseControlBoxLayout(
                             val activeWidgets = allActiveWidgets[pointerId] ?: emptyList()
 
                             if (isPressed) {
+                                //检查是否移出边界
+                                if (activeWidgets.isNotEmpty()) {
+                                    val backInBounds = mutableListOf<ObservableWidget>()
+                                    for (widget in activeWidgets) {
+                                        //检查组件是否可以响应移除边界即松开
+                                        if (!widget.isReleaseOnOutOfBounds()) continue
+
+                                        val size = widget.internalRenderSize
+                                        val offset = getWidgetPosition(widget, size, screenSize)
+                                        val isOutOfBounds = position.x !in offset.x..(offset.x + size.width) ||
+                                                position.y !in offset.y..(offset.y + size.height)
+
+                                        if (isOutOfBounds) {
+                                            widget.onReleaseEvent(eventHandler, reversedLayers)
+                                        } else {
+                                            backInBounds.add(widget)
+                                        }
+                                    }
+                                    //fix: 应该在抬起事件全部处理完成后再处理 #941
+                                    if (backInBounds.isNotEmpty()) {
+                                        for (widget in backInBounds) {
+                                            widget.onPointerBackInBounds(eventHandler, reversedLayers)
+                                        }
+                                    }
+                                }
+
                                 when {
                                     targetWidgets.isEmpty() -> {}
                                     else -> {
@@ -241,7 +269,9 @@ private fun BoxWithConstraintsScope.BaseControlBoxLayout(
                                                 allLayers = reversedLayers,
                                                 change = change,
                                                 activeWidgets = activeWidgets,
-                                                setActiveWidgets = { allActiveWidgets[pointerId] = it },
+                                                addThis = {
+                                                    allActiveWidgets[pointerId] = activeWidgets + listOf(targetWidget)
+                                                },
                                                 consumeEvent = { value ->
                                                     if (value) {
                                                         change.consume()
@@ -255,23 +285,6 @@ private fun BoxWithConstraintsScope.BaseControlBoxLayout(
                                         }
                                     }
                                 }
-
-                                //检查是否移出边界
-                                for (widget in activeWidgets) {
-                                    //检查组件是否可以响应移除边界即松开
-                                    if (!widget.isReleaseOnOutOfBounds()) continue
-
-                                    val size = widget.internalRenderSize
-                                    val offset = getWidgetPosition(widget, size, screenSize)
-                                    val isOutOfBounds = position.x !in offset.x..(offset.x + size.width) ||
-                                            position.y !in offset.y..(offset.y + size.height)
-
-                                    if (isOutOfBounds) {
-                                        widget.onReleaseEvent(eventHandler, reversedLayers)
-                                    } else {
-                                        widget.onPointerBackInBounds(eventHandler, reversedLayers)
-                                    }
-                                }
                             } else {
                                 allActiveWidgets.remove(pointerId)?.forEach { widget ->
                                     widget.onReleaseEvent(eventHandler, reversedLayers)
@@ -280,7 +293,7 @@ private fun BoxWithConstraintsScope.BaseControlBoxLayout(
                         }
 
                         //未触摸时清除所有状态
-                        if (!event.changes.any { it.pressed && it.type == PointerType.Touch }) {
+                        if (!event.changes.any { it.pressed }) {
                             allActiveWidgets.forEach { (_, widgets) ->
                                 widgets.forEach { widget ->
                                     widget.onReleaseEvent(eventHandler, reversedLayers)
@@ -300,6 +313,8 @@ private fun BoxWithConstraintsScope.BaseControlBoxLayout(
             layers = reversedLayers,
             styles = styles,
             screenSize = screenSize,
+            eventHandler = eventHandler,
+            isUsingJoystick = isUsingJoystick,
             isCursorGrabbing = currentIsCursorGrabbing,
             hideLayerWhen = currentHideLayerWhen
         )
@@ -313,6 +328,8 @@ private fun ControlsRendererLayer(
     layers: List<ObservableControlLayer>,
     styles: List<ObservableButtonStyle>,
     screenSize: IntSize,
+    eventHandler: EventHandler,
+    isUsingJoystick: Boolean,
     isCursorGrabbing: Boolean,
     hideLayerWhen: HideLayerWhen
 ) {
@@ -324,6 +341,7 @@ private fun ControlsRendererLayer(
                 val layerVisibility = checkLayerVisibility(
                     layer = layer,
                     hideLayerWhen = hideLayerWhen,
+                    isUsingJoystick = isUsingJoystick,
                     isCursorGrabbing = isCursorGrabbing,
                     visibilityType = layer.visibilityType
                 )
@@ -340,6 +358,7 @@ private fun ControlsRendererLayer(
                         visible = layerVisibility && checkVisibility(isCursorGrabbing, data.visibilityType),
                         getOtherWidgets = { emptyList() }, //不需要计算吸附
                         snapThresholdValue = 4.dp,
+                        eventHandler = eventHandler,
                         isPressed = false //文本框不需要按压状态
                     )
                 }
@@ -354,6 +373,7 @@ private fun ControlsRendererLayer(
                         visible = layerVisibility && checkVisibility(isCursorGrabbing, data.visibilityType),
                         getOtherWidgets = { emptyList() }, //不需要计算吸附
                         snapThresholdValue = 4.dp,
+                        eventHandler = eventHandler,
                         isPressed = data.isPressed
                     )
                 }
@@ -404,16 +424,21 @@ private fun ControlsRendererLayer(
 private fun checkLayerVisibility(
     layer: ObservableControlLayer,
     hideLayerWhen: HideLayerWhen,
+    isUsingJoystick: Boolean,
     isCursorGrabbing: Boolean,
     visibilityType: VisibilityType
 ): Boolean {
-    val baseVisibility = !layer.hide && checkVisibility(isCursorGrabbing, visibilityType)
-    val visible = when (hideLayerWhen) {
-        HideLayerWhen.WhenMouse -> !layer.hideWhenMouse
-        HideLayerWhen.WhenGamepad -> !layer.hideWhenGamepad
-        HideLayerWhen.None -> true
+    if (layer.hide || !checkVisibility(isCursorGrabbing, visibilityType)) {
+        return false
     }
-    return baseVisibility && visible
+
+    val hideConditionMet = when (hideLayerWhen) {
+        HideLayerWhen.WhenMouse -> layer.hideWhenMouse
+        HideLayerWhen.WhenGamepad -> layer.hideWhenGamepad
+        HideLayerWhen.None -> false
+    }
+
+    return !(hideConditionMet || (isUsingJoystick && layer.hideWhenJoystick))
 }
 
 /**

@@ -27,9 +27,11 @@ import com.movtery.zalithlauncher.BuildConfig
 import com.movtery.zalithlauncher.context.GlobalContext
 import com.movtery.zalithlauncher.game.path.getGameHome
 import com.movtery.zalithlauncher.game.path.getVersionsHome
+import com.movtery.zalithlauncher.game.support.touch_controller.VibrationHandler
 import com.movtery.zalithlauncher.path.PathManager
 import com.movtery.zalithlauncher.setting.AllSettings
 import com.movtery.zalithlauncher.setting.unit.getOrMin
+import com.movtery.zalithlauncher.ui.screens.content.elements.QuickPlay
 import com.movtery.zalithlauncher.utils.platform.getMaxMemoryForSettings
 import com.movtery.zalithlauncher.utils.string.isNotEmptyOrBlank
 import kotlinx.parcelize.IgnoredOnParcel
@@ -57,9 +59,13 @@ class Version(
      */
     var offlineAccountLogin: Boolean = false,
     /**
-     * 快速启动单人游戏（存档名），仅支持  1.20+  23w14a+
+     * 快速启动
      */
-    var quickPlaySingle: String? = null
+    var quickPlaySingle: QuickPlay? = null,
+    /**
+     * 启用控制代理
+     */
+    var enableTouchProxy: Boolean = false
 ): Parcelable {
     /**
      * 当前版本是否被置顶
@@ -154,6 +160,8 @@ class Version(
 
     fun getDriver(): String = versionConfig.driver.getValueOrDefault(AllSettings.vulkanDriver.getValue())
 
+    fun getGraphicsApi(): GraphicsApi = versionConfig.graphicsApi ?: AllSettings.graphicsApi.getValue()
+
     fun getControlPath(): File? = versionConfig.control
         .getValueOrDefault(AllSettings.controlLayout.getValue())
         .takeIf { it.isNotEmpty() }
@@ -172,7 +180,7 @@ class Version(
         min(it, getMaxMemoryForSettings(context))
     } ?: AllSettings.ramAllocation.getOrMin()
 
-    fun isTouchProxyEnabled(): Boolean = versionConfig.enableTouchProxy
-
     fun getTouchVibrateDuration(): Int? = versionConfig.touchVibrateDuration.takeIf { it >= 80 }
+
+    fun getTouchVibrateKind(): VibrationHandler.VibrateKind = versionConfig.touchVibrateKind ?: VibrationHandler.VibrateKind.default
 }

@@ -18,38 +18,21 @@
 
 package com.movtery.zalithlauncher.game.account.wardrobe
 
-import com.google.gson.JsonObject
-import com.movtery.zalithlauncher.path.createOkHttpClient
-import com.movtery.zalithlauncher.utils.GSON
-import com.movtery.zalithlauncher.utils.logging.Logger
 import com.movtery.zalithlauncher.utils.logging.Logger.lWarning
-import com.movtery.zalithlauncher.utils.network.fetchStringFromUrl
-import com.movtery.zalithlauncher.utils.string.decodeBase64
-import okhttp3.Request
 import java.io.File
-import java.io.FileOutputStream
 
-class SkinFileDownloader {
-    private val mClient = createOkHttpClient()
-
+class SkinFileDownloader: WardrobeDownloader() {
     /**
      * 尝试下载yggdrasil皮肤
      */
     @Throws(Exception::class)
-    suspend fun yggdrasil(
+    suspend fun download(
         url: String,
         skinFile: File,
         uuid: String,
         changeSkinModel: (SkinModelType) -> Unit
     ) {
-        val profileJson = fetchStringFromUrl("${url.removeSuffix("/")}/session/minecraft/profile/$uuid")
-        val profileObject = GSON.fromJson(profileJson, JsonObject::class.java)
-        val properties = profileObject.get("properties").asJsonArray
-        val rawValue = properties.get(0).asJsonObject.get("value").asString
-
-        val value = decodeBase64(rawValue)
-
-        val valueObject = GSON.fromJson(value, JsonObject::class.java)
+        val valueObject = yggdrasil(url, uuid)
         val skinObject = valueObject.get("textures").asJsonObject.get("SKIN").asJsonObject
         val skinUrl = skinObject.get("url").asString
 
@@ -66,37 +49,7 @@ class SkinFileDownloader {
             SkinModelType.NONE
         }
 
-        downloadSkin(skinUrl, skinFile)
+        download(skinUrl, skinFile)
         changeSkinModel(skinModelType)
-    }
-
-    private fun downloadSkin(url: String, skinFile: File) {
-        skinFile.parentFile?.apply {
-            if (!exists()) mkdirs()
-        }
-
-        val request = Request.Builder()
-            .url(url)
-            .build()
-
-        mClient.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw RuntimeException("Unexpected code $response")
-            }
-
-            try {
-                response.body.byteStream().use { inputStream ->
-                    FileOutputStream(skinFile).use { outputStream ->
-                        val buffer = ByteArray(4096)
-                        var bytesRead: Int
-                        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                            outputStream.write(buffer, 0, bytesRead)
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Logger.lError("Failed to download skin file", e)
-            }
-        }
     }
 }

@@ -18,6 +18,7 @@
 
 package com.movtery.zalithlauncher.viewmodel
 
+import android.net.Uri
 import android.view.KeyEvent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -74,5 +75,15 @@ class EventViewModel : ViewModel() {
         data class OpenLink(val url: String) : Event
         /** 刷新全屏 */
         data object RefreshFullScreen : Event
+        /** 让 MainActivity 防止熄屏 */
+        data class KeepScreen(val on: Boolean) : Event
+        /** 导入控制布局 */
+        data class ImportControls(val uris: List<Uri>) : Event
     }
+}
+
+fun EventViewModel.sendKeepScreen(
+    on: Boolean
+) {
+    sendEvent(EventViewModel.Event.KeepScreen(on))
 }

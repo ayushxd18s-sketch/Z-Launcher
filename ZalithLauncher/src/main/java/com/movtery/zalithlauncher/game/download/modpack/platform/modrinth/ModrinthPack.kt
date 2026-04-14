@@ -21,6 +21,7 @@ package com.movtery.zalithlauncher.game.download.modpack.platform.modrinth
 import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.coroutine.Task
 import com.movtery.zalithlauncher.game.addons.modloader.ModLoader
+import com.movtery.zalithlauncher.game.download.assets.platform.mcim.mapMCIMMirrorUrls
 import com.movtery.zalithlauncher.game.download.modpack.install.ModFile
 import com.movtery.zalithlauncher.game.download.modpack.install.ModPackInfo
 import com.movtery.zalithlauncher.game.download.modpack.install.ModPackInfoTask
@@ -53,7 +54,7 @@ class ModrinthPack(
             if (manifestFile.env?.client == "unsupported") return@mapNotNull null
             ModFile(
                 outputFile = File(targetFolder, manifestFile.path),
-                downloadUrls = manifestFile.downloads.toList(),
+                downloadUrls = manifestFile.downloads.mapMCIMMirrorUrls(),
                 sha1 = manifestFile.hashes.sha1
             )
         }
@@ -72,6 +73,7 @@ class ModrinthPack(
         //提取覆盖包到目标目录
         task.updateProgress(-1f, R.string.download_modpack_install_overrides)
         extractFiles("overrides", targetFolder)
+        extractFiles("client-overrides", targetFolder)
 
         return ModPackInfo(
             name = manifest.name,
@@ -94,14 +96,16 @@ class ModrinthPack(
                 val sourceDir = internalPath.takeIf { it.isNotBlank() }
                     ?.let { File(root, it) }
                     ?: root
-                //提取文件
-                copyDirectoryContents(
-                    from = sourceDir,
-                    to = outputDir,
-                    onProgress = { progress ->
-                        task.updateProgress(progress)
-                    }
-                )
+                if (sourceDir.exists()) {
+                    //提取文件
+                    copyDirectoryContents(
+                        from = sourceDir,
+                        to = outputDir,
+                        onProgress = { progress ->
+                            task.updateProgress(progress)
+                        }
+                    )
+                }
             }
         )
     }

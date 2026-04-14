@@ -110,13 +110,13 @@ class CurseForgeData(
      * 项目的 Logo
      */
     @SerialName("logo")
-    val logo: Asset,
+    val logo: Asset? = null,
 
     /**
      * 项目的截图
      */
     @SerialName("screenshots")
-    val screenshots: Array<Asset>,
+    val screenshots: Array<Asset> = emptyArray(),
 
     /**
      * 项目的主文件 ID
@@ -140,7 +140,7 @@ class CurseForgeData(
      * 该项目的最新抢先体验文件的文件相关详细信息列表
      */
     @SerialName("latestEarlyAccessFilesIndexes")
-    val latestEarlyAccessFilesIndexes: Array<CurseForgeFileIndex>,
+    val latestEarlyAccessFilesIndexes: Array<CurseForgeFileIndex>? = null,
 
     /**
      * 项目的创建日期
@@ -299,7 +299,7 @@ class CurseForgeData(
         val url: String,
 
         @SerialName("avatarUrl")
-        val avatarUrl: String?
+        val avatarUrl: String? = null
     )
 
     @Serializable
@@ -333,7 +333,7 @@ class CurseForgeData(
 
     override fun platformAuthor(): String = authors[0].name
 
-    override fun platformIconUrl(): String? = logo.url
+    override fun platformIconUrl(): String? = logo?.url
 
     override fun platformDownloadCount(): Long = downloadCount
 

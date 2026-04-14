@@ -190,7 +190,7 @@ public abstract class MappedObject {
 
 	/**
 	 * Creates an identical new MappedObject instance, comparable to the
-	 * contract of {@link java.nio.ByteBuffer#duplicate}. This is useful when more than one
+	 * contract of {@link ByteBuffer#duplicate}. This is useful when more than one
 	 * views of the mapped object are required at the same time, e.g. in
 	 * multithreaded access.
 	 */
@@ -201,7 +201,7 @@ public abstract class MappedObject {
 
 	/**
 	 * Creates a new MappedObject instance, with a base offset equal to
-	 * the offset of the current view, comparable to the contract of  {@link java.nio.ByteBuffer#slice}.
+	 * the offset of the current view, comparable to the contract of  {@link ByteBuffer#slice}.
 	 */
 	public final <T extends MappedObject> T slice() {
 		// any method that calls this method will have its call-site modified
@@ -276,7 +276,7 @@ public abstract class MappedObject {
 	}
 
 	/**
-	 * Returns the {@link java.nio.ByteBuffer} that backs this mapped object.
+	 * Returns the {@link ByteBuffer} that backs this mapped object.
 	 *
 	 * @return the backing buffer
 	 */

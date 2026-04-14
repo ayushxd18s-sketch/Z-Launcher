@@ -41,12 +41,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.navigation3.runtime.NavKey
 import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.game.plugin.driver.Driver
 import com.movtery.zalithlauncher.game.plugin.driver.DriverPluginManager
 import com.movtery.zalithlauncher.game.renderer.RendererInterface
 import com.movtery.zalithlauncher.game.renderer.Renderers
+import com.movtery.zalithlauncher.game.version.installed.GraphicsApi
 import com.movtery.zalithlauncher.setting.AllSettings
 import com.movtery.zalithlauncher.setting.unit.floatRange
 import com.movtery.zalithlauncher.ui.base.BaseScreen
@@ -54,6 +54,7 @@ import com.movtery.zalithlauncher.ui.components.AnimatedColumn
 import com.movtery.zalithlauncher.ui.components.SimpleAlertDialog
 import com.movtery.zalithlauncher.ui.screens.NestedNavKey
 import com.movtery.zalithlauncher.ui.screens.NormalNavKey
+import com.movtery.zalithlauncher.ui.screens.TitledNavKey
 import com.movtery.zalithlauncher.ui.screens.content.settings.layouts.CardPosition
 import com.movtery.zalithlauncher.ui.screens.content.settings.layouts.IntSliderSettingsCard
 import com.movtery.zalithlauncher.ui.screens.content.settings.layouts.ListSettingsCard
@@ -65,8 +66,8 @@ import com.movtery.zalithlauncher.utils.isAdrenoGPU
 @Composable
 fun RendererSettingsScreen(
     key: NestedNavKey.Settings,
-    settingsScreenKey: NavKey?,
-    mainScreenKey: NavKey?
+    settingsScreenKey: TitledNavKey?,
+    mainScreenKey: TitledNavKey?
 ) {
     BaseScreen(
         Triple(key, mainScreenKey, false),
@@ -111,6 +112,21 @@ fun RendererSettingsScreen(
                         getItemId = { it.id },
                         getItemSummary = {
                             DriverSummaryLayout(it)
+                        }
+                    )
+
+                    ListSettingsCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        position = CardPosition.Middle,
+                        unit = AllSettings.graphicsApi,
+                        items = GraphicsApi.entries,
+                        title = stringResource(R.string.settings_game_graphics_api_title),
+                        summary = stringResource(R.string.settings_game_graphics_api_summary),
+                        getItemText = {
+                            when (it) {
+                                GraphicsApi.DEFAULT -> stringResource(R.string.settings_game_graphics_api_default)
+                                else -> it.displayName
+                            }
                         }
                     )
 
@@ -193,6 +209,14 @@ fun RendererSettingsScreen(
                         unit = AllSettings.bigCoreAffinity,
                         title = stringResource(R.string.settings_renderer_force_big_core_title),
                         summary = stringResource(R.string.settings_renderer_force_big_core_summary)
+                    )
+
+                    SwitchSettingsCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        position = CardPosition.Middle,
+                        unit = AllSettings.useSurfaceView,
+                        title = stringResource(R.string.settings_renderer_surface_title),
+                        summary = stringResource(R.string.settings_renderer_surface_summary)
                     )
 
                     SwitchSettingsCard(

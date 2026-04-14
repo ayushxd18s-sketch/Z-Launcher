@@ -31,6 +31,7 @@ import com.movtery.zalithlauncher.utils.killProgress
 import com.movtery.zalithlauncher.utils.logging.Logger.lInfo
 import com.movtery.zalithlauncher.utils.network.openLink
 import java.io.File
+import androidx.core.net.toUri
 
 @Keep
 object ZLNativeInvoker {
@@ -42,18 +43,45 @@ object ZLNativeInvoker {
     fun openLink(link: String) {
         (GlobalContext as? Activity)?.let { activity ->
             activity.runOnUiThread {
-                var prefix = "file:"
-                if (link.startsWith(prefix)) {
-                    if (link.startsWith("file://")) prefix += "//"
-                    val newLink = link.removePrefix(prefix)
+                if (link.startsWith("file:")) {
+                    val newLink = formatFilePath(link)
                     lInfo("open link: $newLink")
 
                     val file = File(newLink)
-                    shareFile(activity, file)
-                    lInfo("In-game Share File/Folder: ${file.absolutePath}")
+                    if (link.endsWith('/')) {
+                        //可能是一个目录，创建并发起浏览目录请求
+                        file.mkdirs()
+                        staticLauncher?.openPath(file)
+                    } else {
+                        shareFile(activity, file)
+                        lInfo("In-game Share File: ${file.absolutePath}")
+                    }
                 } else {
                     activity.openLink(link, "*/*")
                 }
+            }
+        }
+    }
+
+    /**
+     * 格式化文件路径
+     */
+    private fun formatFilePath(input: String): String? {
+        return try {
+            val uri = input.toUri()
+            if (uri.scheme == "file") {
+                uri.path
+            } else {
+                null
+            }
+        } catch (_: Exception) {
+            when {
+                input.startsWith("file:") -> {
+                    input
+                        .replace(Regex("^file:/+"), "/")
+                        .replace("%20", " ")
+                }
+                else -> null
             }
         }
     }

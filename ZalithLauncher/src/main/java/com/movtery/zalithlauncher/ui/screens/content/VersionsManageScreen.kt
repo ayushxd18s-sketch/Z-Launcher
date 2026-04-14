@@ -40,7 +40,6 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -64,7 +63,6 @@ import com.movtery.zalithlauncher.game.version.installed.VersionComparator
 import com.movtery.zalithlauncher.game.version.installed.VersionType
 import com.movtery.zalithlauncher.game.version.installed.VersionsManager
 import com.movtery.zalithlauncher.game.version.installed.cleanup.GameAssetCleaner
-import com.movtery.zalithlauncher.state.MutableStates
 import com.movtery.zalithlauncher.ui.activities.MainActivity
 import com.movtery.zalithlauncher.ui.base.BaseScreen
 import com.movtery.zalithlauncher.ui.components.BackgroundCard
@@ -86,7 +84,9 @@ import com.movtery.zalithlauncher.ui.screens.content.elements.VersionsOperation
 import com.movtery.zalithlauncher.utils.animation.swapAnimateDpAsState
 import com.movtery.zalithlauncher.utils.checkStoragePermissions
 import com.movtery.zalithlauncher.viewmodel.ErrorViewModel
+import com.movtery.zalithlauncher.viewmodel.EventViewModel
 import com.movtery.zalithlauncher.viewmodel.ScreenBackStackViewModel
+import com.movtery.zalithlauncher.viewmodel.sendKeepScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -101,6 +101,9 @@ private class VersionsScreenViewModel() : ViewModel() {
     /** 版本类别分类 */
     var versionCategory by mutableStateOf(VersionCategory.ALL)
         private set
+
+    /** 游戏路径相关操作 */
+    var gamePathOperation by mutableStateOf<GamePathOperation>(GamePathOperation.None)
 
     private val _versions = MutableStateFlow<List<Version>>(emptyList())
     val versions = _versions.asStateFlow()
@@ -188,7 +191,11 @@ private class VersionsScreenViewModel() : ViewModel() {
     /** 游戏无用资源清理者 */
     var cleaner by mutableStateOf<GameAssetCleaner?>(null)
 
-    fun cleanUnusedFiles(context: Context) {
+    fun cleanUnusedFiles(
+        context: Context,
+        onStart: () -> Unit = {},
+        onStop: () -> Unit = {}
+    ) {
         cleaner = GameAssetCleaner(
             context = context,
             scope = viewModelScope
@@ -198,13 +205,16 @@ private class VersionsScreenViewModel() : ViewModel() {
                 onEnd = { count, size ->
                     cleaner = null
                     cleanupOperation = CleanupOperation.Success(count, size)
+                    onStop()
                 },
                 onThrowable = { th ->
                     cleaner = null
                     cleanupOperation = CleanupOperation.Error(th)
+                    onStop()
                 }
             )
         }
+        onStart()
     }
 
     fun cancelCleaner() {
@@ -246,6 +256,8 @@ private fun rememberVersionViewModel() : VersionsScreenViewModel {
 fun VersionsManageScreen(
     backScreenViewModel: ScreenBackStackViewModel,
     navigateToVersions: (Version) -> Unit,
+    navigateToExport: (Version) -> Unit,
+    eventViewModel: EventViewModel,
     submitError: (ErrorViewModel.ThrowableMessage) -> Unit
 ) {
     val viewModel = rememberVersionViewModel()
@@ -254,6 +266,12 @@ fun VersionsManageScreen(
     val versions by viewModel.versions.collectAsStateWithLifecycle()
     val currentVersion by VersionsManager.currentVersion.collectAsStateWithLifecycle()
     val isRefreshing by VersionsManager.isRefreshing.collectAsStateWithLifecycle()
+
+    GamePathOperation(
+        gamePathOperation = viewModel.gamePathOperation,
+        changeState = { viewModel.gamePathOperation = it },
+        submitError = submitError
+    )
 
     BaseScreen(
         screenKey = NormalNavKey.VersionsManager,
@@ -268,14 +286,18 @@ fun VersionsManageScreen(
                         startPath = path,
                         selectFile = false,
                         saveKey = NormalNavKey.VersionsManager
-                    )
+                    ) { path ->
+                        viewModel.gamePathOperation = GamePathOperation.AddNewPath(path)
+                    }
                 },
                 onCleanupGameFiles = {
                     if (viewModel.cleanupOperation == CleanupOperation.None) {
                         viewModel.cleanupOperation = CleanupOperation.Tip
                     }
                 },
-                submitError = submitError,
+                changePathOperation = {
+                    viewModel.gamePathOperation = it
+                },
                 modifier = Modifier
                     .fillMaxHeight()
                     .weight(2.5f)
@@ -292,6 +314,7 @@ fun VersionsManageScreen(
                 vanillaVersionsCount = viewModel.vanillaVersionsCount,
                 modloaderVersionsCount = viewModel.modloaderVersionsCount,
                 navigateToVersions = navigateToVersions,
+                navigateToExport = navigateToExport,
                 modifier = Modifier
                     .fillMaxHeight()
                     .weight(7.5f)
@@ -314,10 +337,19 @@ fun VersionsManageScreen(
                 changeOperation = { viewModel.cleanupOperation = it },
                 cleaner = viewModel.cleaner,
                 onClean = {
-                    viewModel.cleanUnusedFiles(context)
+                    viewModel.cleanUnusedFiles(
+                        context = context,
+                        onStart = {
+                            eventViewModel.sendKeepScreen(true)
+                        },
+                        onStop = {
+                            eventViewModel.sendKeepScreen(false)
+                        }
+                    )
                 },
                 onCancel = {
                     viewModel.cancelCleaner()
+                    eventViewModel.sendKeepScreen(false)
                 },
                 submitError = submitError
             )
@@ -331,28 +363,13 @@ private fun LeftMenu(
     isRefreshing: Boolean,
     swapToFileSelector: (path: String) -> Unit,
     onCleanupGameFiles: () -> Unit,
-    submitError: (ErrorViewModel.ThrowableMessage) -> Unit,
+    changePathOperation: (GamePathOperation) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val surfaceXOffset by swapAnimateDpAsState(
         targetValue = (-40).dp,
         swapIn = isVisible,
         isHorizontal = true
-    )
-
-    var gamePathOperation by remember { mutableStateOf<GamePathOperation>(GamePathOperation.None) }
-    LaunchedEffect(MutableStates.filePathSelector) {
-        MutableStates.filePathSelector?.let {
-            if (it.saveKey == NormalNavKey.VersionsManager) {
-                gamePathOperation = GamePathOperation.AddNewPath(it.path)
-                MutableStates.filePathSelector = null
-            }
-        }
-    }
-    GamePathOperation(
-        gamePathOperation = gamePathOperation,
-        changeState = { gamePathOperation = it },
-        submitError = submitError
     )
 
     Column(
@@ -391,10 +408,10 @@ private fun LeftMenu(
                         }
                     },
                     onDelete = {
-                        gamePathOperation = GamePathOperation.DeletePath(pathItem)
+                        changePathOperation(GamePathOperation.DeletePath(pathItem))
                     },
                     onRename = {
-                        gamePathOperation = GamePathOperation.RenamePath(pathItem)
+                        changePathOperation(GamePathOperation.RenamePath(pathItem))
                     }
                 )
             }
@@ -445,10 +462,11 @@ private fun VersionsLayout(
     vanillaVersionsCount: Int,
     modloaderVersionsCount: Int,
     navigateToVersions: (Version) -> Unit,
+    navigateToExport: (Version) -> Unit,
     submitError: (ErrorViewModel.ThrowableMessage) -> Unit,
     onRefresh: () -> Unit,
     onVersionPinned: () -> Unit,
-    onInstall: () -> Unit
+    onInstall: () -> Unit,
 ) {
     val surfaceYOffset by swapAnimateDpAsState(
         targetValue = (-40).dp,
@@ -554,6 +572,7 @@ private fun VersionsLayout(
                                 },
                                 onRenameClick = { versionsOperation = VersionsOperation.Rename(version) },
                                 onCopyClick = { versionsOperation = VersionsOperation.Copy(version) },
+                                onExportClick = { navigateToExport(version) },
                                 onDeleteClick = { versionsOperation = VersionsOperation.Delete(version) },
                                 onPinned = onVersionPinned
                             )

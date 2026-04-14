@@ -87,7 +87,7 @@ import com.movtery.zalithlauncher.ui.components.rememberMaxHeight
 import com.movtery.zalithlauncher.utils.animation.getAnimateTween
 import com.movtery.zalithlauncher.utils.formatNumberByLocale
 import com.movtery.zalithlauncher.utils.getTimeAgo
-import com.movtery.zalithlauncher.utils.string.compareVersion
+import org.jackhuang.hmcl.util.versioning.GameVersionNumber
 
 sealed interface DownloadAssetsState<T> {
     class Getting<T> : DownloadAssetsState<T>
@@ -133,6 +133,21 @@ class VersionInfoMap(
     val isAdapt: Boolean
 )
 
+suspend fun <E: PlatformVersion> List<E>.initAllGeneric(
+    currentProjectId: String,
+    also: suspend (E) -> Unit = {}
+): List<E> {
+    return mapNotNull { version ->
+        if (!version.initFile(currentProjectId)) return@mapNotNull null
+        version.also {
+            also(it)
+        }
+    }.sortedByDescending {
+        //排序：最新的版本在前
+        it.platformDatePublished()
+    }
+}
+
 /**
  * 初始化全部版本数据，并筛选出成功初始化的所有版本
  */
@@ -140,12 +155,7 @@ suspend fun List<PlatformVersion>.initAll(
     currentProjectId: String,
     also: suspend (PlatformVersion) -> Unit = {}
 ): List<PlatformVersion> {
-    return mapNotNull { version ->
-        if (!version.initFile(currentProjectId)) return@mapNotNull null
-        version.also {
-            also(it)
-        }
-    }
+    return initAllGeneric<PlatformVersion>(currentProjectId, also)
 }
 
 fun List<PlatformVersion>.mapWithVersions(classes: PlatformClasses): List<VersionInfoMap> {
@@ -178,7 +188,7 @@ fun List<PlatformVersion>.mapWithVersions(classes: PlatformClasses): List<Versio
 private fun List<VersionInfoMap>.sortedByVersionAndLoader(): List<VersionInfoMap> {
     return sortedWith { a, b ->
         // 比较版本号
-        val versionCompare = -a.gameVersion.compareVersion(b.gameVersion)
+        val versionCompare = -GameVersionNumber.compare(a.gameVersion, b.gameVersion)
         if (versionCompare != 0) {
             versionCompare
         } else {

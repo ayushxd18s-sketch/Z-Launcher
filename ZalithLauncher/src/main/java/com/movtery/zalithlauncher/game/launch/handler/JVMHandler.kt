@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.withSave
 import com.movtery.zalithlauncher.bridge.ZLBridge
-import com.movtery.zalithlauncher.game.input.AWTCharSender
 import com.movtery.zalithlauncher.game.input.AWTInputEvent
 import com.movtery.zalithlauncher.game.launch.JvmLauncher
 import com.movtery.zalithlauncher.ui.control.input.TextInputMode
@@ -47,14 +46,11 @@ class JVMHandler(
     jvmLauncher: JvmLauncher,
     errorViewModel: ErrorViewModel,
     eventViewModel: EventViewModel,
-    getWindowSize: () -> IntSize,
     onExit: (code: Int) -> Unit
 ) : AbstractHandler(
     type = HandlerType.JVM,
     errorViewModel = errorViewModel,
     eventViewModel = eventViewModel,
-    getWindowSize = getWindowSize,
-    sender = AWTCharSender,
     launcher = jvmLauncher,
     onExit = onExit
 ) {
@@ -63,49 +59,49 @@ class JVMHandler(
      */
     private var logState by mutableStateOf(LogState.CLOSE)
 
-    override suspend fun execute(surface: Surface?, scope: CoroutineScope) {
-        surface?.run {
-            val windowSize = getWindowSize()
+    override suspend fun execute(
+        surface: Surface,
+        screenSize: IntSize,
+        scope: CoroutineScope
+    ) {
+        val canvasWidth = screenSize.width
+        val canvasHeight = screenSize.height
 
-            val canvasWidth = (windowSize.width * 0.8).toInt()
-            val canvasHeight = (windowSize.height * 0.8).toInt()
+        scope.launch(Dispatchers.Default) {
+            var canvas: Canvas?
+            val rgbArrayBitmap = createBitmap(canvasWidth, canvasHeight)
+            val paint = Paint()
 
-            scope.launch(Dispatchers.Default) {
-                var canvas: Canvas?
-                val rgbArrayBitmap = createBitmap(canvasWidth, canvasHeight)
-                val paint = Paint()
+            try {
+                while (!mIsSurfaceDestroyed && surface.isValid) {
+                    canvas = surface.lockCanvas(null)
+                    canvas?.drawRGB(0, 0, 0)
 
-                try {
-                    while (!mIsSurfaceDestroyed && surface.isValid) {
-                        canvas = surface.lockCanvas(null)
-                        canvas?.drawRGB(0, 0, 0)
-
-                        ZLBridge.renderAWTScreenFrame()?.let { rgbArray ->
-                            canvas?.withSave {
-                                rgbArrayBitmap.setPixels(
-                                    rgbArray,
-                                    0,
-                                    canvasWidth,
-                                    0,
-                                    0,
-                                    canvasWidth,
-                                    canvasHeight
-                                )
-                                this.drawBitmap(rgbArrayBitmap, 0f, 0f, paint)
-                            }
+                    ZLBridge.renderAWTScreenFrame()?.let { rgbArray ->
+                        canvas?.withSave {
+                            rgbArrayBitmap.setPixels(
+                                rgbArray,
+                                0,
+                                canvasWidth,
+                                0,
+                                0,
+                                canvasWidth,
+                                canvasHeight
+                            )
+                            this.drawBitmap(rgbArrayBitmap, 0f, 0f, paint)
                         }
-
-                        canvas?.let { surface.unlockCanvasAndPost(it) }
                     }
-                } catch (throwable: Throwable) {
-                    lError("An exception occurred while rendering the AWT frame.", throwable)
-                } finally {
-                    rgbArrayBitmap.recycle()
-                    surface.release()
+
+                    canvas?.let { surface.unlockCanvasAndPost(it) }
                 }
+            } catch (throwable: Throwable) {
+                lError("An exception occurred while rendering the AWT frame.", throwable)
+            } finally {
+                rgbArrayBitmap.recycle()
+                surface.release()
             }
         }
-        super.execute(surface, scope)
+        super.execute(surface, screenSize, scope)
     }
 
     override fun onPause() {

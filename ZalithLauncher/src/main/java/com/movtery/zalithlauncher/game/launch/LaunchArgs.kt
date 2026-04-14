@@ -20,6 +20,7 @@ package com.movtery.zalithlauncher.game.launch
 
 import androidx.collection.ArrayMap
 import com.movtery.zalithlauncher.BuildConfig
+import com.movtery.zalithlauncher.bridge.LoggerBridge
 import com.movtery.zalithlauncher.game.account.Account
 import com.movtery.zalithlauncher.game.account.isAuthServerAccount
 import com.movtery.zalithlauncher.game.account.isLocalAccount
@@ -27,21 +28,25 @@ import com.movtery.zalithlauncher.game.account.offline.OfflineYggdrasilServer
 import com.movtery.zalithlauncher.game.multirt.Runtime
 import com.movtery.zalithlauncher.game.path.getAssetsHome
 import com.movtery.zalithlauncher.game.path.getLibrariesHome
+import com.movtery.zalithlauncher.game.plugin.natives.NativePluginManager
 import com.movtery.zalithlauncher.game.version.download.artifactToPath
 import com.movtery.zalithlauncher.game.version.download.filterLibrary
 import com.movtery.zalithlauncher.game.version.download.getLibraryReplacement
 import com.movtery.zalithlauncher.game.version.installed.Version
+import com.movtery.zalithlauncher.game.version.installed.VersionInfo
 import com.movtery.zalithlauncher.game.version.installed.getGameManifest
 import com.movtery.zalithlauncher.game.versioninfo.models.GameManifest
 import com.movtery.zalithlauncher.info.InfoDistributor
 import com.movtery.zalithlauncher.path.LibPath
 import com.movtery.zalithlauncher.path.PathManager
+import com.movtery.zalithlauncher.ui.screens.content.elements.QuickPlay
 import com.movtery.zalithlauncher.utils.file.child
 import com.movtery.zalithlauncher.utils.logging.Logger.lDebug
 import com.movtery.zalithlauncher.utils.logging.Logger.lInfo
 import com.movtery.zalithlauncher.utils.logging.Logger.lWarning
 import com.movtery.zalithlauncher.utils.network.ServerAddress
 import com.movtery.zalithlauncher.utils.string.insertJSONValueList
+import com.movtery.zalithlauncher.utils.string.isEmptyOrBlank
 import com.movtery.zalithlauncher.utils.string.isLowerTo
 import com.movtery.zalithlauncher.utils.string.isNotEmptyOrBlank
 import com.movtery.zalithlauncher.utils.string.toUnicodeEscaped
@@ -63,6 +68,7 @@ class LaunchArgs(
 
         argsList.addAll(getJavaArgs())
         argsList.addAll(getMinecraftJVMArgs())
+        argsList.addAll(NativePluginManager.getJVMEnv())
 
         if (runtime.javaVersion > 8) {
             argsList.add("--add-exports")
@@ -74,35 +80,74 @@ class LaunchArgs(
         argsList.addAll(getMinecraftClientArgs())
 
         version.getVersionInfo()?.let { info ->
-            val playSingle = version.quickPlaySingle?.takeIf { it.isNotEmptyOrBlank() }
-            if (playSingle != null) { //快速启动单人游戏
-                if (info.quickPlay.isQuickPlaySingleplayer) {
-                    //将不受支持的字符转换为Unicode
-                    val saveName = playSingle.toUnicodeEscaped()
-                    argsList.apply {
-                        add("--quickPlaySingleplayer")
-                        add(saveName)
+            val quickPlay = version.quickPlaySingle
+            if (quickPlay != null) {
+                when (quickPlay) {
+                    is QuickPlay.Save -> {
+                        if (quickPlay.saveName.isEmptyOrBlank()) return@let
+
+                        if (info.quickPlay.isQuickPlaySingleplayer) {
+                            //将不受支持的字符转换为Unicode
+                            val saveName = quickPlay.saveName.toUnicodeEscaped()
+                            argsList.apply {
+                                add("--quickPlaySingleplayer")
+                                add(saveName)
+                            }
+                        } else {
+                            val msg = "Quick Play for singleplayer is not supported and has been skipped."
+                            LoggerBridge.append(msg)
+                            lWarning(msg)
+                        }
                     }
-                } else {
-                    lWarning("Quick Play for singleplayer is not supported and has been skipped.")
+                    is QuickPlay.Server -> {
+                        argsList.addQuickPlayServer(
+                            address = quickPlay.serverAddress,
+                            quickPlay = info.quickPlay
+                        )
+                    }
                 }
             } else {
                 version.getServerIp()?.let { address ->
-                    val parsed = ServerAddress.parse(address)
-                    argsList += if (info.quickPlay.isQuickPlayMultiplayer) {
-                        listOf(
-                            "--quickPlayMultiplayer",
-                            if (parsed.port < 0) "$address:25565" else address
-                        )
-                    } else {
-                        val port = parsed.port.takeIf { it >= 0 } ?: 25565
-                        listOf("--server", parsed.host, "--port", port.toString())
-                    }
+                    argsList.addQuickPlayServer(
+                        address = address,
+                        quickPlay = info.quickPlay
+                    )
                 }
             }
         }
 
         return argsList
+    }
+
+    private fun MutableList<String>.addQuickPlayServer(
+        address: String,
+        quickPlay: VersionInfo.QuickPlay
+    ) {
+        runCatching {
+            ServerAddress.parse(address)
+        }.onFailure {
+            val msg = "Unable to resolve the server address: $address. The automatic server join feature is unavailable."
+            LoggerBridge.append(msg)
+            lWarning(msg, it)
+        }.getOrNull()?.let { parsed ->
+            val args = if (quickPlay.isQuickPlayMultiplayer) {
+                val port = if (parsed.port < 0) {
+                    ServerAddress.DEFAULT_PORT
+                } else {
+                    parsed.port
+                }
+
+                listOf(
+                    "--quickPlayMultiplayer",
+                    "${parsed.getASCIIHost()}:$port"
+                )
+            } else {
+                val port = parsed.port.takeIf { it >= 0 } ?: ServerAddress.DEFAULT_PORT
+                listOf("--server", parsed.getASCIIHost(), "--port", port.toString())
+            }
+
+            addAll(args)
+        }
     }
 
     private fun getLWJGL3ClassPath(): String =
@@ -120,12 +165,16 @@ class LaunchArgs(
                 offlineServer.start()
                 offlineServer.addCharacter(account)
                 offlineServer.getPort()?.let { port ->
-                    lInfo("Using offline Yggdrasil server on port $port")
+                    val msg = "Using offline Yggdrasil server on port $port"
+                    LoggerBridge.append(msg)
+                    lInfo(msg)
                     argsList.add("-javaagent:${LibPath.AUTHLIB_INJECTOR.absolutePath}=http://localhost:$port")
                     argsList.add("-Dauthlibinjector.side=client")
                 } ?: run {
                     //无法获取端口号，说明服务器未成功启动
-                    lWarning("Failed to start offline Yggdrasil server!")
+                    val msg = "Failed to start offline Yggdrasil server!"
+                    LoggerBridge.append(msg)
+                    lWarning(msg)
                     //本次启动将被忽略，为避免浪费性能，关停服务器
                     offlineServer.stop()
                 }
@@ -179,22 +228,26 @@ class LaunchArgs(
         varArgMap["natives_directory"] = runtimeLibraryPath
         setLauncherInfo(varArgMap)
 
-        fun Any.processJvmArg(): String? = (this as? String)?.let {
+        fun Any.processJvmArg(): String? = (this as? String)?.let { argument ->
+            if (argument.startsWith("-Djava.library.path=")) {
+                //26.2+ Mojang 更改到了具体的路径，需要手动重定向
+                return@let $$"-Djava.library.path=${natives_directory}"
+            }
             when {
-                it.startsWith("-DignoreList=") -> {
-                    "$it,${version.getVersionName()}.jar"
+                argument.startsWith("-DignoreList=") -> {
+                    "$argument,${version.getVersionName()}.jar"
                 }
-                it.contains("-Dio.netty.native.workdir") ||
-                it.contains("-Djna.tmpdir") ||
-                it.contains("-Dorg.lwjgl.system.SharedLibraryExtractPath") -> {
+                argument.contains("-Dio.netty.native.workdir") ||
+                argument.contains("-Djna.tmpdir") ||
+                argument.contains("-Dorg.lwjgl.system.SharedLibraryExtractPath") -> {
                     //使用一个可读的目录
-                    it.replace("\${natives_directory}", PathManager.DIR_CACHE.absolutePath)
+                    argument.replace($$"${natives_directory}", PathManager.DIR_CACHE.absolutePath)
                 }
-                it == "\${classpath}" -> {
+                argument == $$"${classpath}" -> {
                     hasClasspath = true
                     launchClassPath
                 }
-                else -> it
+                else -> argument
             }
         }
 
@@ -242,13 +295,17 @@ class LaunchArgs(
      * [Modified from PojavLauncher](https://github.com/PojavLauncherTeam/PojavLauncher/blob/a6f3fc0/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/Tools.java#L871-L882)
      */
     private fun generateLibClasspath(gameManifest: GameManifest): Array<String> {
-        val libDir: MutableList<String> = ArrayList()
+        val libSortFix = LibSortFix(version.getVersionInfo())
+        val libs = LinkedHashMap<GameManifest.Library, String>()
+
         for (libItem in gameManifest.libraries) {
             if (!(GameManifest.Rule.checkRules(libItem.rules) && !libItem.isNative)) continue
-            val libArtifactPath: String = libItem.progressLibrary() ?: continue
-            libDir.add(getLibrariesHome() + "/" + libArtifactPath)
+            val path = libItem.progressLibrary() ?: continue
+            with(libSortFix) {
+                libs.insertLib(libItem, getLibrariesHome() + "/" + path)
+            }
         }
-        return libDir.toTypedArray<String>()
+        return libs.values.toTypedArray<String>()
     }
 
     /**

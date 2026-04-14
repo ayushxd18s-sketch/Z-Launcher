@@ -39,6 +39,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.gif.GifDecoder
@@ -174,7 +175,7 @@ fun VirtualPointerLayout(
     }
 
     Box(modifier = modifier) {
-        val cursorShape = ZLBridgeStates.cursorShape
+        val cursorShape by ZLBridgeStates.cursorShape.collectAsStateWithLifecycle()
 
         if (showMousePointer) {
             MousePointer(
@@ -210,8 +211,8 @@ fun VirtualPointerLayout(
             },
             onLongPress = onLongPress,
             onLongPressEnd = onLongPressEnd,
-            onPointerMove = { offset ->
-                pointerPosition = if (controlMode == MouseControlMode.SLIDE) {
+            onPointerMove = { offset, isMoveOnly ->
+                pointerPosition = if (isMoveOnly || controlMode == MouseControlMode.SLIDE) {
                     updateMousePointer(true)
                     Offset(
                         x = (pointerPosition.x + offset.x * speedFactor).coerceIn(0f, screenWidth),

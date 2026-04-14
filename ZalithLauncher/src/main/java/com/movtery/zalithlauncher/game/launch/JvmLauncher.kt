@@ -42,17 +42,17 @@ import java.io.IOException
 
 open class JvmLauncher(
     private val context: Context,
-    private val getWindowSize: () -> IntSize,
     private val jvmLaunchInfo: JvmLaunchInfo,
-    onExit: (code: Int, isSignal: Boolean) -> Unit
-) : Launcher(onExit) {
+    onExit: (code: Int, isSignal: Boolean) -> Unit,
+    openPath: (folder: File) -> Unit
+) : Launcher(onExit, openPath) {
     override fun exit() {
 
     }
 
-    override suspend fun launch(): Int {
+    override suspend fun launch(screenSize: IntSize): Int {
         generateLauncherProfiles(jvmLaunchInfo.userHome)
-        val (runtime, argList) = getStartupNeeded()
+        val (runtime, argList) = getStartupNeeded(screenSize)
 
         this.runtime = runtime
 
@@ -61,7 +61,8 @@ open class JvmLauncher(
             jvmArgs = argList,
             userHome = jvmLaunchInfo.userHome,
             userArgs = AllSettings.jvmArgs.getValue(),
-            getWindowSize = getWindowSize
+            screenSize = screenSize,
+            useLocalLanguage = false
         )
     }
 
@@ -71,7 +72,9 @@ open class JvmLauncher(
 
     override fun getLogName(): String = LogName.JVM.fileName
 
-    private fun getStartupNeeded(): Pair<Runtime, List<String>> {
+    private fun getStartupNeeded(
+        screenSize: IntSize
+    ): Pair<Runtime, List<String>> {
         val args = jvmLaunchInfo.jvmArgs.splitPreservingQuotes()
 
         val runtime = jvmLaunchInfo.jreName?.let { jreName ->
@@ -80,9 +83,8 @@ open class JvmLauncher(
             RuntimesManager.forceReload(AllSettings.javaRuntime.getValue())
         }
 
-        val windowSize = getWindowSize()
         val argList: MutableList<String> = ArrayList(
-            getCacioJavaArgs(windowSize.width, windowSize.height, runtime.javaVersion == 8)
+            getCacioJavaArgs(screenSize, runtime.javaVersion == 8)
         ).apply {
             addAll(args)
         }

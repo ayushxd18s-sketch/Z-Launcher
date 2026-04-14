@@ -28,19 +28,23 @@ import android.os.Build
 import android.os.Process
 import android.util.Log
 import android.view.KeyEvent
+import android.widget.Toast
 import com.google.gson.GsonBuilder
 import com.movtery.zalithlauncher.BuildConfig
 import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.info.InfoDistributor
+import com.movtery.zalithlauncher.utils.device.Architecture
 import com.movtery.zalithlauncher.utils.logging.Logger.lDebug
 import com.movtery.zalithlauncher.utils.logging.Logger.lError
 import com.movtery.zalithlauncher.utils.logging.Logger.lWarning
+import com.xhinliang.lunarcalendar.LunarCalendar
 import java.io.File
 import java.io.PrintStream
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -154,14 +158,40 @@ fun getTimeAgo(
     return context.getString(R.string.just_now)
 }
 
-fun copyText(label: String?, text: String?, context: Context) {
-    val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    clipboardManager.setPrimaryClip(ClipData.newPlainText(label, text))
+/**
+ * 检查是否为给定的日期
+ */
+fun LocalDate.checkDate(month: Int, day: Int): Boolean {
+    return monthValue == month && dayOfMonth == day
 }
 
-fun getSystemLanguage(): String {
-    val locale = Locale.getDefault()
-    return locale.language + "_" + locale.country.lowercase(Locale.getDefault())
+/**
+ * 检查是否为给定的日期范围
+ */
+fun LocalDate.checkDateRange(month: Int, dayRange: IntRange): Boolean {
+    return monthValue == month && dayOfMonth in dayRange
+}
+
+/**
+ * 检查是否为给定的日期（农历）
+ */
+fun LunarCalendar.checkDate(month: Int, day: Int): Boolean {
+    return lunar.month == month && lunar.day == day
+}
+
+/**
+ * 检查是否为给定的日期范围（农历）
+ */
+fun LunarCalendar.checkDateRange(month: Int, dayRange: IntRange): Boolean {
+    return lunar.month == month && lunar.day in dayRange
+}
+
+fun copyText(label: String?, text: String?, context: Context, showToast: Boolean = true) {
+    val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboardManager.setPrimaryClip(ClipData.newPlainText(label, text))
+    if (showToast) {
+        Toast.makeText(context, context.getString(R.string.generic_copied), Toast.LENGTH_SHORT).show()
+    }
 }
 
 fun getDisplayFriendlyRes(displaySideRes: Int, scaling: Float): Int {
@@ -324,6 +354,19 @@ private fun formatWithUnit(value: Double, unit: String): String {
     return "$displayValue$unit"
 }
 
+fun isChinaMainland(): Boolean {
+    val timeZone = TimeZone.getDefault()
+
+    if (timeZone.id == "Asia/Shanghai") return true
+
+    val offsetMillis = timeZone.getOffset(System.currentTimeMillis())
+    val isUtcPlus8 = offsetMillis == 8 * 60 * 60 * 1000
+
+    if (!isUtcPlus8) return false
+
+    return Locale.getDefault().country.equals("CN", ignoreCase = true)
+}
+
 /**
  * 检查当前环境是否为中文环境
  */
@@ -370,6 +413,7 @@ fun writeCrashFile(
             stream.append("================ ${InfoDistributor.LAUNCHER_IDENTIFIER} Crash Report ================\n")
             stream.append("- Time: ${DateFormat.getDateTimeInstance().format(Date())}\n")
             stream.append("- Device: ${Build.PRODUCT} ${Build.MODEL}\n")
+            stream.append("- Arch: ${Architecture.archAsString(Architecture.getDeviceArchitecture())}\n")
             stream.append("- Android Version: ${Build.VERSION.RELEASE}\n")
             stream.append("- Launcher Version: ${BuildConfig.VERSION_NAME}\n")
             stream.append("===================== Crash Stack Trace =====================\n")

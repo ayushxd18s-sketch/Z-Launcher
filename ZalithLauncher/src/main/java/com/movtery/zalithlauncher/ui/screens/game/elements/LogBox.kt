@@ -20,10 +20,8 @@ package com.movtery.zalithlauncher.ui.screens.game.elements
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,18 +29,24 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
 import com.movtery.zalithlauncher.bridge.LoggerBridge
 import com.movtery.zalithlauncher.setting.AllSettings
+import com.movtery.zalithlauncher.ui.screens.game.elements.log_parser.LogHighlighter
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.util.Collections
 
 @Composable
@@ -52,8 +56,10 @@ fun LogBox(
 ) {
     val scrollState = rememberLazyListState()
 
-    val logList = remember { mutableStateListOf<String>() }
-    val buffer = remember { Collections.synchronizedList(mutableListOf<String>()) }
+    val logList = remember { mutableStateListOf<AnnotatedString>() }
+    val buffer = remember { Collections.synchronizedList(mutableListOf<AnnotatedString>()) }
+
+    val logHighlighter = remember { LogHighlighter() }
 
     val config = remember {
         object {
@@ -68,24 +74,36 @@ fun LogBox(
 
             LoggerBridge.setListener { log ->
                 synchronized(buffer) {
-                    buffer.add(log)
+                    val string = logHighlighter.highlight(log)
+                    buffer.add(string)
                 }
             }
 
             launch(Dispatchers.Default) {
                 val mutex = Mutex()
                 while (isActive) {
-                    delay(config.BUFFER_FLUSH_INTERVAL)
+                    try {
+                        ensureActive()
+                        delay(config.BUFFER_FLUSH_INTERVAL)
+                        val pending = mutableListOf<AnnotatedString>()
 
-                    mutex.withLock {
-                        synchronized(buffer) {
-                            if (buffer.isNotEmpty()) {
-                                logList.addAll(buffer)
-                                buffer.clear()
+                        mutex.withLock {
+                            synchronized(buffer) {
+                                if (buffer.isNotEmpty()) {
+                                    pending.addAll(buffer)
+                                    buffer.clear()
+                                }
+                            }
+                        }
+                        if (pending.isNotEmpty()) {
+                            withContext(Dispatchers.Main) {
+                                logList.addAll(pending)
                                 //尝试进行滚动
                                 scrollChannel.trySend(Unit)
                             }
                         }
+                    } catch (_: CancellationException) {
+                        break
                     }
                 }
             }
@@ -93,8 +111,11 @@ fun LogBox(
             //自动滚动部分
             launch(Dispatchers.Main) {
                 scrollChannel.consumeAsFlow().collect {
-                    if (logList.isNotEmpty()) {
-                        scrollState.animateScrollToItem(logList.lastIndex)
+                    runCatching {
+                        val targetIndex = logList.lastIndex
+                        if (targetIndex >= 0 && targetIndex < logList.size) {
+                            scrollState.animateScrollToItem(targetIndex)
+                        }
                     }
                 }
             }
@@ -108,34 +129,31 @@ fun LogBox(
     if (enableLog) {
         Surface(
             modifier = modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
-            contentColor = MaterialTheme.colorScheme.onSurface
+            color = Color.Black.copy(alpha = 0.5f),
+            contentColor = Color.White
         ) {
-            LogList(
+            LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                logs = logList,
-                scrollState = scrollState
-            )
-        }
-    }
-}
+                state = scrollState
+            ) {
+                items(logList) { log ->
+                    val textSize = AllSettings.logTextSize.state
+                    val fontSize = remember(textSize) {
+                        TextUnit(textSize.toFloat(), TextUnitType.Sp)
+                    }
+                    val lineHeight = remember(textSize) {
+                        val height = textSize.toFloat() * 1.1f
+                        TextUnit(height, TextUnitType.Sp)
+                    }
 
-@Composable
-private fun LogList(
-    modifier: Modifier = Modifier,
-    logs: List<String>,
-    scrollState: LazyListState
-) {
-    LazyColumn(
-        modifier = modifier,
-        state = scrollState
-    ) {
-        items(logs) { log ->
-            Text(
-                text = log,
-                modifier = Modifier.fillParentMaxWidth(),
-                fontSize = TextUnit(AllSettings.logTextSize.state.toFloat(), TextUnitType.Sp)
-            )
+                    Text(
+                        text = log,
+                        modifier = Modifier.fillParentMaxWidth(),
+                        fontSize = fontSize,
+                        lineHeight = lineHeight
+                    )
+                }
+            }
         }
     }
 }

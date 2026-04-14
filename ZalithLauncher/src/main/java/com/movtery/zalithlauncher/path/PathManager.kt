@@ -19,6 +19,7 @@
 package com.movtery.zalithlauncher.path
 
 import android.content.Context
+import android.os.Environment
 import java.io.File
 
 class PathManager {
@@ -40,6 +41,7 @@ class PathManager {
         lateinit var DIR_BACKGROUND: File
         lateinit var DIR_CACHE_GAME_DOWNLOADER: File
         lateinit var DIR_CACHE_MODPACK_DOWNLOADER: File
+        lateinit var DIR_CACHE_MODPACK_EXPORTER: File
         lateinit var DIR_CACHE_MOD_UPDATER: File
         lateinit var DIR_CACHE_APP_ICON: File
         lateinit var DIR_LAUNCHER_LOGS: File
@@ -57,7 +59,10 @@ class PathManager {
 
         fun refreshPaths(context: Context) {
             DIR_FILES_PRIVATE = context.filesDir
-            DIR_FILES_EXTERNAL = context.getExternalFilesDir(null)!!
+            DIR_FILES_EXTERNAL = context.getExternalFilesDir(null) ?: run {
+                //from FCL (commit 744156a)
+                File(Environment.getExternalStorageDirectory(), "Android/data/${context.packageName}/files")
+            }
             DIR_CACHE = context.cacheDir
             DIR_NATIVE_LIB = context.applicationInfo.nativeLibraryDir
             DIR_RUNTIME_MOD = context.getDir("runtime_mod", 0)
@@ -73,6 +78,7 @@ class PathManager {
             DIR_BACKGROUND = File(DIR_FILES_PRIVATE, "background")
             DIR_CACHE_GAME_DOWNLOADER = File(DIR_CACHE, "temp_game")
             DIR_CACHE_MODPACK_DOWNLOADER = File(DIR_CACHE, "temp_modpack")
+            DIR_CACHE_MODPACK_EXPORTER = File(DIR_CACHE, "temp_modpack_exporter")
             DIR_CACHE_MOD_UPDATER = File(DIR_CACHE, "temp_mod_updater")
             DIR_CACHE_APP_ICON = File(DIR_CACHE, "app_icons")
             DIR_LAUNCHER_LOGS = File(DIR_FILES_EXTERNAL, "logs")
@@ -103,6 +109,7 @@ class PathManager {
             DIR_BACKGROUND.mkdirs()
             DIR_CACHE_GAME_DOWNLOADER.mkdirs()
             DIR_CACHE_MODPACK_DOWNLOADER.mkdirs()
+            DIR_CACHE_MODPACK_EXPORTER.mkdirs()
             DIR_CACHE_MOD_UPDATER.mkdirs()
             DIR_CACHE_APP_ICON.mkdirs()
             DIR_LAUNCHER_LOGS.mkdirs()

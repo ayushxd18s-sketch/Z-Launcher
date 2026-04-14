@@ -24,7 +24,9 @@ import androidx.compose.ui.graphics.toArgb
 import com.movtery.layer_controller.data.POSITION_RANGE
 import com.movtery.layer_controller.utils.snap.SnapMode
 import com.movtery.zalithlauncher.game.path.GamePathManager
+import com.movtery.zalithlauncher.game.version.installed.GraphicsApi
 import com.movtery.zalithlauncher.info.InfoDistributor
+import com.movtery.zalithlauncher.setting.enums.AppLanguage
 import com.movtery.zalithlauncher.setting.enums.DarkMode
 import com.movtery.zalithlauncher.setting.enums.GestureActionType
 import com.movtery.zalithlauncher.setting.enums.MirrorSourceType
@@ -51,6 +53,11 @@ object AllSettings : SettingsRegistry() {
     val vulkanDriver = stringSetting("vulkanDriver", "default turnip")
 
     /**
+     * 图形 API（Minecraft 26.2+）
+     */
+    val graphicsApi = enumSetting("graphicsApi", GraphicsApi.DEFAULT)
+
+    /**
      * 分辨率
      */
     val resolutionRatio = intSetting("resolutionRatio", 100, 25..300)
@@ -59,6 +66,11 @@ object AllSettings : SettingsRegistry() {
      * 游戏页面全屏化
      */
     val gameFullScreen = boolSetting("gameFullScreen", true)
+
+    /**
+     * 使用 SurfaceView 渲染
+     */
+    val useSurfaceView = boolSetting("useSurfaceView", false)
 
     /**
      * 持续性能模式
@@ -120,6 +132,11 @@ object AllSettings : SettingsRegistry() {
      * 自定义Jvm启动参数
      */
     val jvmArgs = stringSetting("jvmArgs", "")
+
+    /**
+     * 已禁用的原生库插件列表
+     */
+    val disableNativeLibPlugins = stringListSetting("nativeLibPlugins", emptyList())
 
     /**
      * 启动游戏时自动展示日志，直到游戏开始渲染
@@ -233,6 +250,11 @@ object AllSettings : SettingsRegistry() {
     val gamepadDeadZoneScale = intSetting("gamepadDeadZoneScale", 100, 50..200)
 
     /**
+     * 手柄映射配置
+     */
+    val gamepadMappingConfig = stringSetting("gamepadMappingConfig", "default")
+
+    /**
      * 摇杆控制模式
      */
     val joystickControlMode = enumSetting("joystickControlMode", JoystickMode.LeftMovement)
@@ -324,9 +346,19 @@ object AllSettings : SettingsRegistry() {
     val launcherDarkMode = enumSetting("launcherDarkMode", DarkMode.FollowSystem)
 
     /**
+     * 启动器语言
+     */
+    val launcherLanguage = enumSetting("launcherLanguage", AppLanguage.FOLLOW_SYSTEM)
+
+    /**
      * 启动器部分屏幕全屏
      */
     val launcherFullScreen = boolSetting("launcherFullScreen", true)
+
+    /**
+     * 持续型节日彩蛋效果
+     */
+    val launcherFestivalEffects = boolSetting("launcherFestivalEffects", true)
 
     /**
      * 动画倍速
@@ -372,6 +404,16 @@ object AllSettings : SettingsRegistry() {
      * 文件下载镜像源类型
      */
     val fileDownloadSource = enumSetting("fileDownloadSource", MirrorSourceType.OFFICIAL_FIRST)
+
+    /**
+     * 资源搜索镜像源类型
+     */
+    val assetSearchSource = enumSetting("assetSearchSource", MirrorSourceType.OFFICIAL_FIRST)
+
+    /**
+     * 资源下载镜像源类型
+     */
+    val assetDownloadSource = enumSetting("assetDownloadSource", MirrorSourceType.OFFICIAL_FIRST)
 
     //Control
     /**
@@ -502,6 +544,11 @@ object AllSettings : SettingsRegistry() {
     val joystickDeadZoneRatio = intSetting("joystickDeadZoneRatio", 30, 10..50)
 
     /**
+     * 摇杆前进锁判定范围
+     */
+    val joystickLockThreshold = intSetting("joystickLockThreshold", 30, 5..100)
+
+    /**
      * 游戏中摇杆移动组件是否可锁定
      */
     val joystickControlCanLock = boolSetting("joystickControlCanLock", true)
@@ -523,4 +570,14 @@ object AllSettings : SettingsRegistry() {
      * 上次检查更新的时间戳
      */
     val lastUpgradeCheck = longSetting("lastUpgradeCheck", 0L)
+
+    /**
+     * 玩家结束运行游戏的次数
+     */
+    val finishedGame = intSetting("finishedGame", 0)
+
+    /**
+     * 是否在打开启动器时，根据特定的运行游戏次数，显示赞助支持弹窗
+     */
+    val showSponsorship = boolSetting("showSponsorship", true)
 }

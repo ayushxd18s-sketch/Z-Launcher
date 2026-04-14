@@ -19,15 +19,17 @@
 package com.movtery.zalithlauncher.ui.screens.content.download.assets.elements
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
@@ -75,6 +77,12 @@ import com.movtery.zalithlauncher.ui.screens.content.elements.CommonVersionInfoL
  */
 sealed interface DownloadSingleOperation {
     data object None : DownloadSingleOperation
+    /** 警告用户正在使用移动网络 */
+    data class WarningForMobileData(
+        val classes: PlatformClasses,
+        val version: PlatformVersion,
+        val dependencyProjects: List<Pair<PlatformVersion.PlatformDependency, PlatformProject>>
+    ) : DownloadSingleOperation
     /** 选择版本 */
     data class SelectVersion(
         val classes: PlatformClasses,
@@ -98,6 +106,26 @@ fun DownloadSingleOperation(
 ) {
     when (operation) {
         DownloadSingleOperation.None -> {}
+        is DownloadSingleOperation.WarningForMobileData -> {
+            SimpleAlertDialog(
+                title = stringResource(R.string.generic_warning),
+                text = stringResource(R.string.download_install_warning_mobile_data),
+                confirmText = stringResource(R.string.generic_anyway),
+                onDismiss = {
+                    changeOperation(DownloadSingleOperation.None)
+                },
+                onConfirm = {
+                    //用户坚持使用移动网络
+                    changeOperation(
+                        DownloadSingleOperation.SelectVersion(
+                            classes = operation.classes,
+                            version = operation.version,
+                            dependencyProjects = operation.dependencyProjects
+                        )
+                    )
+                }
+            )
+        }
         is DownloadSingleOperation.SelectVersion -> {
             val dependencyProjects = operation.dependencyProjects
             val classes = operation.classes
@@ -161,7 +189,7 @@ private fun DownloadDialog(
                 usePlatformDefaultWidth = false
             )
         ) {
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth(
                         if (dependencyProjects.isNotEmpty()) {
@@ -174,7 +202,10 @@ private fun DownloadDialog(
                 contentAlignment = Alignment.Center
             ) {
                 Surface(
-                    modifier = Modifier.padding(all = 6.dp),
+                    modifier = Modifier
+                        .padding(all = 6.dp)
+                        .heightIn(max = maxHeight - 12.dp)
+                        .wrapContentHeight(),
                     shape = MaterialTheme.shapes.extraLarge,
                     shadowElevation = 6.dp
                 ) {
@@ -239,8 +270,12 @@ private fun DownloadDialog(
                                 val listState = rememberLazyListState()
 
                                 LaunchedEffect(Unit) {
-                                    versions.indexOf(selectedVersions[0]).takeIf { it != -1 }?.let { index ->
-                                        listState.animateScrollToItem(index)
+                                    val target = selectedVersions.firstOrNull() ?: return@LaunchedEffect
+                                    runCatching {
+                                        val index = versions.indexOf(target)
+                                        if (index >= 0) {
+                                            listState.scrollToItem(index)
+                                        }
                                     }
                                 }
 
