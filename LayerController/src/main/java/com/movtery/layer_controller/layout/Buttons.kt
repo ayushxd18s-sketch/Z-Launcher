@@ -23,6 +23,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.LocalTextStyle
@@ -182,8 +183,7 @@ internal fun TextButton(
             if (isEditMode && showResizeCursor) {
                 ResizeCursor(
                     modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .offset(x = 6.dp, y = 6.dp),
+                        .align(Alignment.BottomEnd),
                     onDrag = { dragAmount ->
                         data.resizeByDrag(
                             dragAmount = dragAmount,
@@ -220,11 +220,11 @@ private fun ResizeCursor(
                 )
             }
     ) {
-        Canvas(modifier = Modifier.matchParentSize()) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
             val path = Path().apply {
-                moveTo(size.width * 0.15f, size.height * 0.15f)
-                lineTo(size.width, size.height * 0.15f)
+                moveTo(size.width, 0f)
                 lineTo(size.width, size.height)
+                lineTo(0f, size.height)
                 close()
             }
             drawPath(path, primaryColor, alpha = 0.9f)
