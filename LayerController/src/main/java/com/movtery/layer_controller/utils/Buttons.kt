@@ -70,6 +70,7 @@ import kotlin.math.sqrt
  * @param snapThresholdValue 吸附距离阈值
  * @param drawLine 绘制吸附参考线
  * @param onLineCancel 取消吸附参考线
+ * @param onDragFinished 拖拽结束回调（用于通知外部更新选中控件）
  */
 @Composable
 internal fun Modifier.editMode(
@@ -83,7 +84,8 @@ internal fun Modifier.editMode(
     snapThresholdValue: Dp,
     drawLine: (ObservableWidget, List<GuideLine>) -> Unit,
     onLineCancel: (ObservableWidget) -> Unit,
-    onTapInEditMode: () -> Unit = {}
+    onTapInEditMode: () -> Unit = {},
+    onDragFinished: () -> Unit = {}
 ): Modifier {
     val screenSize1 by rememberUpdatedState(screenSize)
     val widgetSize by rememberUpdatedState(data.internalRenderSize)
@@ -94,8 +96,8 @@ internal fun Modifier.editMode(
     val getOtherWidgets1 by rememberUpdatedState(getOtherWidgets)
     val drawLine1 by rememberUpdatedState(drawLine)
     val onLineCancel1 by rememberUpdatedState(onLineCancel)
-
     val onTapInEditMode1 by rememberUpdatedState(onTapInEditMode)
+    val onDragFinished1 by rememberUpdatedState(onDragFinished)
 
     val density = LocalDensity.current
     val snapThreshold = with(density) { snapThresholdValue.toPx() }
@@ -109,7 +111,6 @@ internal fun Modifier.editMode(
                         onDragStart = {
                             data.isEditingPos = false
                             data.movingOffset = Offset.Zero
-                            data.wasDragged = true
                             val currentOffset = getWidgetPosition(data, widgetSize, screenSize1)
                             data.movingOffset = currentOffset
                             data.isEditingPos = true
@@ -162,6 +163,7 @@ internal fun Modifier.editMode(
                             data.isEditingPos = false
                             data.movingOffset = Offset.Zero
                             onLineCancel1(data)
+                            onDragFinished1()
                         },
                         onDragCancel = {
                             data.isEditingPos = false

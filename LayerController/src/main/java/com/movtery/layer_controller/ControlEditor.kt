@@ -48,6 +48,8 @@ import com.movtery.layer_controller.layout.TextButton
 import com.movtery.layer_controller.observable.ObservableButtonStyle
 import com.movtery.layer_controller.observable.ObservableControlLayer
 import com.movtery.layer_controller.observable.ObservableControlLayout
+import com.movtery.layer_controller.observable.ObservableNormalData
+import com.movtery.layer_controller.observable.ObservableTextData
 import com.movtery.layer_controller.observable.ObservableWidget
 import com.movtery.layer_controller.utils.getWidgetPosition
 import com.movtery.layer_controller.utils.snap.GuideLine
@@ -62,6 +64,7 @@ import com.movtery.layer_controller.utils.snap.SnapMode
  * @param focusedLayer 聚焦的层级，需要针对性对某一层级进行编辑时
  * @param localSnapRange 局部吸附范围（仅在Local模式下有效）
  * @param snapThresholdValue 吸附距离阈值
+ * @param onWidgetDragFinished 控件拖拽结束回调（用于更新选中的控件）
  */
 @Composable
 fun ControlEditorLayer(
@@ -75,7 +78,8 @@ fun ControlEditorLayer(
     isDark: Boolean = isSystemInDarkTheme(),
     localSnapRange: Dp = 20.dp,
     snapThresholdValue: Dp = 4.dp,
-    onCanvasTap: () -> Unit = {}
+    onCanvasTap: () -> Unit = {},
+    onWidgetDragFinished: (data: ObservableWidget, layer: ObservableControlLayer) -> Unit = { _, _ -> }
 ) {
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         val layers by observedLayout.layers.collectAsStateWithLifecycle()
@@ -118,7 +122,8 @@ fun ControlEditorLayer(
                 },
                 onLineCancel = { data ->
                     guideLines.remove(data)
-                }
+                },
+                onWidgetDragFinished = onWidgetDragFinished
             )
             //绘制参考线
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -170,6 +175,7 @@ private fun DrawScope.drawLine(
  * @param snapThresholdValue 吸附距离阈值
  * @param drawLine 绘制吸附参考线
  * @param onLineCancel 取消吸附参考线
+ * @param onWidgetDragFinished 控件拖拽结束回调（用于更新选中的控件）
  */
 @Composable
 private fun BoxWithConstraintsScope.ControlWidgetRenderer(
@@ -184,7 +190,8 @@ private fun BoxWithConstraintsScope.ControlWidgetRenderer(
     onButtonTap: (data: ObservableWidget, layer: ObservableControlLayer) -> Unit,
     focusedWidget: ObservableWidget?,
     drawLine: (ObservableWidget, List<GuideLine>) -> Unit,
-    onLineCancel: (ObservableWidget) -> Unit
+    onLineCancel: (ObservableWidget) -> Unit,
+    onWidgetDragFinished: (data: ObservableWidget, layer: ObservableControlLayer) -> Unit
 ) {
     val density = LocalDensity.current
     val screenSize = remember(maxWidth, maxHeight) {
@@ -203,7 +210,8 @@ private fun BoxWithConstraintsScope.ControlWidgetRenderer(
     fun RenderWidget(
         data: ObservableWidget,
         layer: ObservableControlLayer,
-        isPressed: Boolean
+        isPressed: Boolean,
+        shouldShowResizeCursor: Boolean
     ) {
         TextButton(
             isEditMode = true,
@@ -225,35 +233,58 @@ private fun BoxWithConstraintsScope.ControlWidgetRenderer(
             drawLine = drawLine,
             onLineCancel = onLineCancel,
             isPressed = isPressed,
-            showResizeCursor = focusedWidget == data,
+            showResizeCursor = shouldShowResizeCursor,
             onTapInEditMode = {
-                // 清除其他控件的 wasDragged 状态
-                allWidgetsMap.values.flatten().forEach { widget ->
-                    if (widget != data) {
-                        widget.wasDragged = false
-                    }
-                }
                 onButtonTap(data, layer)
+            },
+            onDragFinished = {
+                onWidgetDragFinished(data, layer)
             }
         )
     }
 
     Layout(
         content = {
-            //按图层顺序渲染所有可见的控件
-            renderingLayers.forEach { layer ->
+            // 收集所有层的状态
+            val collectedLayers = renderingLayers.map { layer ->
                 val normalButtons by layer.normalButtons.collectAsStateWithLifecycle()
                 val textBoxes by layer.textBoxes.collectAsStateWithLifecycle()
+                layer to (normalButtons + textBoxes)
+            }
 
-                val widgetsInLayer = normalButtons + textBoxes
-                allWidgetsMap[layer] = widgetsInLayer
+            // 统一收集所有控件
+            collectedLayers.forEach { (layer, widgets) ->
+                allWidgetsMap[layer] = widgets
+            }
+
+            // 决定哪个控件显示缩放手柄：
+            // 1. 正在拖拽的控件（拖拽过程中需要实时调整大小）
+            // 2. 被选中的控件（focusedWidget）
+            val allWidgets = collectedLayers.flatMap { it.second }
+            val currentlyDragging = allWidgets.find { it.isEditingPos }
+            val widgetToShowResize = currentlyDragging ?: focusedWidget
+
+            // 渲染所有控件
+            collectedLayers.forEach { (layer, widgets) ->
+                val normalButtons = widgets.filterIsInstance<ObservableNormalData>()
+                val textBoxes = widgets.filterIsInstance<ObservableTextData>()
 
                 textBoxes.forEach { data ->
-                    RenderWidget(data, layer, isPressed = false)
+                    RenderWidget(
+                        data = data,
+                        layer = layer,
+                        isPressed = false,
+                        shouldShowResizeCursor = widgetToShowResize == data
+                    )
                 }
 
                 normalButtons.forEach { data ->
-                    RenderWidget(data, layer, data.isPressed)
+                    RenderWidget(
+                        data = data,
+                        layer = layer,
+                        isPressed = data.isPressed,
+                        shouldShowResizeCursor = widgetToShowResize == data
+                    )
                 }
             }
         }

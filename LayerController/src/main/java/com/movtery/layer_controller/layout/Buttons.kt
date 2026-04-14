@@ -98,7 +98,8 @@ internal fun TextButton(
     onLineCancel: (ObservableWidget) -> Unit = {},
     isPressed: Boolean,
     showResizeCursor: Boolean = false,
-    onTapInEditMode: () -> Unit = {}
+    onTapInEditMode: () -> Unit = {},
+    onDragFinished: () -> Unit = {}
 ) {
     if (visible) {
         val styleId = data.styleId
@@ -124,7 +125,8 @@ internal fun TextButton(
                     snapThresholdValue = snapThresholdValue,
                     drawLine = drawLine,
                     onLineCancel = onLineCancel,
-                    onTapInEditMode = onTapInEditMode
+                    onTapInEditMode = onTapInEditMode,
+                    onDragFinished = onDragFinished
                 ),
             contentAlignment = Alignment.Center
         ) {

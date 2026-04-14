@@ -115,7 +115,14 @@ fun BoxWithConstraintsScope.ControlEditor(
             snapInAllLayers = AllSettings.editorSnapInAllLayers.state,
             snapMode = AllSettings.editorWidgetSnapMode.state,
             focusedLayer = viewModel.selectedLayer?.takeIf { viewModel.isLayerFocus },
-            isDark = isLauncherInDarkTheme()
+            isDark = isLauncherInDarkTheme(),
+            onCanvasTap = {
+                viewModel.selectedWidget = null
+                viewModel.editorOperation = EditorOperation.None
+            },
+            onWidgetDragFinished = { data, layer ->
+                viewModel.selectedWidget = SelectedWidgetData(data, layer)
+            }
         )
     }
 
