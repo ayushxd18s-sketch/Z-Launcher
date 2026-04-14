@@ -113,11 +113,6 @@ internal fun TextButton(
         Box(
             modifier = Modifier
                 .buttonSize(data, screenSize)
-                .buttonStyle(
-                    style = style,
-                    isDark = isDark,
-                    isPressed = isPressed
-                )
                 .editMode(
                     isEditMode = isEditMode,
                     data = data,
@@ -133,45 +128,56 @@ internal fun TextButton(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            val color by buttonContentColorAsState(
-                style = style,
-                isDark = isDark,
-                isPressed = isPressed
-            )
-            val fontSize by buttonFontSizeAsState(
-                style = style,
-                isDark = isDark,
-                isPressed = isPressed
-            )
-            val buttonTextStyle = when (data) {
-                is ObservableNormalData -> ButtonTextStyle(
-                    text = data.text,
-                    textAlignment = data.textAlignment,
-                    textBold = data.textBold,
-                    textItalic = data.textItalic,
-                    textUnderline = data.textUnderline
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .buttonStyle(
+                        style = style,
+                        isDark = isDark,
+                        isPressed = isPressed
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                val color by buttonContentColorAsState(
+                    style = style,
+                    isDark = isDark,
+                    isPressed = isPressed
                 )
-                is ObservableTextData -> ButtonTextStyle(
-                    text = data.text,
-                    textAlignment = data.textAlignment,
-                    textBold = data.textBold,
-                    textItalic = data.textItalic,
-                    textUnderline = data.textUnderline
+                val fontSize by buttonFontSizeAsState(
+                    style = style,
+                    isDark = isDark,
+                    isPressed = isPressed
                 )
-                else -> error("Unknown widget type")
+                val buttonTextStyle = when (data) {
+                    is ObservableNormalData -> ButtonTextStyle(
+                        text = data.text,
+                        textAlignment = data.textAlignment,
+                        textBold = data.textBold,
+                        textItalic = data.textItalic,
+                        textUnderline = data.textUnderline
+                    )
+                    is ObservableTextData -> ButtonTextStyle(
+                        text = data.text,
+                        textAlignment = data.textAlignment,
+                        textBold = data.textBold,
+                        textItalic = data.textItalic,
+                        textUnderline = data.textUnderline
+                    )
+                    else -> error("Unknown widget type")
+                }
+                RtLText(
+                    text = buttonTextStyle.text.translate(locale),
+                    color = color,
+                    fontSize = fontSize.sp,
+                    textAlign = buttonTextStyle.textAlignment.textAlign,
+                    fontWeight = if (buttonTextStyle.textBold) FontWeight.Bold else null,
+                    fontStyle = if (buttonTextStyle.textItalic) FontStyle.Italic else null,
+                    textDecoration = if (buttonTextStyle.textUnderline) TextDecoration.Underline else null,
+                    style = LocalTextStyle.current.copy(
+                        lineHeight = (fontSize * 1.1).sp
+                    )
+                )
             }
-            RtLText(
-                text = buttonTextStyle.text.translate(locale),
-                color = color,
-                fontSize = fontSize.sp,
-                textAlign = buttonTextStyle.textAlignment.textAlign,
-                fontWeight = if (buttonTextStyle.textBold) FontWeight.Bold else null,
-                fontStyle = if (buttonTextStyle.textItalic) FontStyle.Italic else null,
-                textDecoration = if (buttonTextStyle.textUnderline) TextDecoration.Underline else null,
-                style = LocalTextStyle.current.copy(
-                    lineHeight = (fontSize * 1.1).sp
-                )
-            )
 
             DisposableEffect(Unit) {
                 data.onCompositionStart(eventHandler)
@@ -210,7 +216,7 @@ private fun ResizeCursor(
     val primaryColor = MaterialTheme.colorScheme.primary
     Box(
         modifier = modifier
-            .size(24.dp)
+            .size(8.dp)
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDrag = { change, dragAmount ->

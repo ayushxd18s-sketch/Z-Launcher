@@ -19,6 +19,7 @@
 package com.movtery.layer_controller
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxWithConstraintsScope
@@ -33,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -72,7 +74,8 @@ fun ControlEditorLayer(
     focusedLayer: ObservableControlLayer? = null,
     isDark: Boolean = isSystemInDarkTheme(),
     localSnapRange: Dp = 20.dp,
-    snapThresholdValue: Dp = 4.dp
+    snapThresholdValue: Dp = 4.dp,
+    onCanvasTap: () -> Unit = {}
 ) {
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         val layers by observedLayout.layers.collectAsStateWithLifecycle()
@@ -91,7 +94,13 @@ fun ControlEditorLayer(
         }
 
         BoxWithConstraints(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures {
+                        onCanvasTap()
+                    }
+                }
         ) {
             ControlWidgetRenderer(
                 isDark = isDark,
@@ -216,7 +225,7 @@ private fun BoxWithConstraintsScope.ControlWidgetRenderer(
             drawLine = drawLine,
             onLineCancel = onLineCancel,
             isPressed = isPressed,
-            showResizeCursor = focusedWidget == data || data.isEditingPos || data.wasDragged,
+            showResizeCursor = focusedWidget == data,
             onTapInEditMode = {
                 // 清除其他控件的 wasDragged 状态
                 allWidgetsMap.values.flatten().forEach { widget ->
