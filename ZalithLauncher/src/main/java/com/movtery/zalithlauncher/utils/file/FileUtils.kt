@@ -362,14 +362,9 @@ private suspend fun <T : ZipEntryBase> extractZipEntries(
                 parent.mkdirs()
             }
 
-            inputStreamProvider(entry).use { input ->
-                targetFile.outputStream().use { output ->
-                    input.source().buffer().use { source ->
-                        output.sink().buffer().use { sink ->
-                            sink.writeAll(source)
-                            sink.flush()
-                        }
-                    }
+            inputStreamProvider(entry).source().use { source ->
+                targetFile.sink().buffer().use { sink ->
+                    sink.writeAll(source)
                 }
             }
         }
