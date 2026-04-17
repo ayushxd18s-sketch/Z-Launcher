@@ -356,7 +356,7 @@ private suspend fun <T : ZipEntryBase> extractZipEntries(
                 continue
             }
 
-            val parent = targetFile.parentFile
+            val parent = targetFile.parentFile!!
             val parentPath = parent.absolutePath
             if (createdDirs.add(parentPath)) {
                 parent.mkdirs()
