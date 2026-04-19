@@ -34,6 +34,7 @@ import com.movtery.zalithlauncher.setting.enums.MirrorSourceType
 import com.movtery.zalithlauncher.setting.enums.MouseControlMode
 import com.movtery.zalithlauncher.ui.control.HotbarRule
 import com.movtery.zalithlauncher.ui.control.gamepad.JoystickMode
+import com.movtery.zalithlauncher.ui.control.joystick.HalfScreenJoystickMode
 import com.movtery.zalithlauncher.ui.control.mouse.CENTER_HOTSPOT
 import com.movtery.zalithlauncher.ui.control.mouse.CursorHotspot
 import com.movtery.zalithlauncher.ui.control.mouse.LEFT_TOP_HOTSPOT
@@ -562,6 +563,14 @@ object AllSettings : SettingsRegistry() {
      * 游戏中摇杆移动组件在前进锁定时，是否强制疾跑
      */
     val joystickControlLockSpring = boolSetting("joystickControlLockSpring", true)
+
+    /**
+     * 半屏摇杆模式
+     * 禁用：使用固定位置摇杆
+     * 左半屏：手指在左半屏非控制按键位置按下时，以该位置为中心出现摇杆
+     * 右半屏：手指在右半屏非控制按键位置按下时，以该位置为中心出现摇杆
+     */
+    val joystickHalfScreenMode = enumSetting("joystickHalfScreenMode", HalfScreenJoystickMode.Disabled)
 
     /**
      * 上次检查更新的时间戳

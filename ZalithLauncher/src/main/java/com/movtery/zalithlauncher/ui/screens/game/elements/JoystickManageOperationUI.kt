@@ -54,7 +54,9 @@ import com.movtery.zalithlauncher.setting.AllSettings
 import com.movtery.zalithlauncher.setting.unit.floatRange
 import com.movtery.zalithlauncher.ui.components.MarqueeText
 import com.movtery.zalithlauncher.ui.components.fadeEdge
+import com.movtery.zalithlauncher.ui.control.joystick.HalfScreenJoystickMode
 import com.movtery.zalithlauncher.ui.screens.content.elements.DisabledAlpha
+import com.movtery.zalithlauncher.ui.screens.main.control_editor.InfoLayoutListItem
 import com.movtery.zalithlauncher.ui.screens.main.control_editor.InfoLayoutSliderItem
 import com.movtery.zalithlauncher.ui.screens.main.control_editor.InfoLayoutSwitchItem
 import com.movtery.zalithlauncher.ui.screens.main.control_editor.InfoLayoutTextItem
@@ -182,6 +184,16 @@ private fun JoystickManageDialog(
                                 title = stringResource(R.string.game_styles_joystick_enable),
                                 value = AllSettings.enableJoystickControl.state,
                                 onValueChange = { AllSettings.enableJoystickControl.save(it) }
+                            )
+
+                            //半屏摇杆模式
+                            InfoLayoutListItem(
+                                modifier = Modifier.fillMaxWidth(),
+                                title = stringResource(R.string.settings_control_joystick_half_screen_mode),
+                                items = HalfScreenJoystickMode.entries,
+                                selectedItem = AllSettings.joystickHalfScreenMode.state,
+                                onItemSelected = { AllSettings.joystickHalfScreenMode.save(it) },
+                                getItemText = { stringResource(it.titleRes) }
                             )
 
                             //x
