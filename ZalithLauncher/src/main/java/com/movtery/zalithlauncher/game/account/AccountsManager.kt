@@ -195,16 +195,26 @@ object AccountsManager {
     /**
      * 设置并保存当前账号
      */
-    fun setCurrentAccount(account: Account) {
+        fun setCurrentAccount(account: Account) {
         AllSettings.currentAccount.save(account.uniqueUUID)
         refreshCurrentAccountState()
     }
 
+    /**
      * 刷新当前账号
      * Patched: removed region/Microsoft-only gating so offline and
      * authlib-injector (ely.by) accounts are always usable.
      */
     private fun refreshCurrentAccountState() {
+        val currentAccount = getCurrentAccount()
+        _currentAccountFlow.update { currentAccount }
+        _isOffline.update { false }
+    }
+
+    /**
+     * 保存账号到数据库
+     */
+    fun saveAccount(account: Account) {
         val currentAccount = getCurrentAccount()
         _currentAccountFlow.update { currentAccount }
         _isOffline.update { false }
