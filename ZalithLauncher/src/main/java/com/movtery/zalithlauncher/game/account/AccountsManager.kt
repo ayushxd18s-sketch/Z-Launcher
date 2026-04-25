@@ -201,27 +201,16 @@ object AccountsManager {
     }
 
     /**
-     * 刷新当前账号，同时刷新非中国大陆地区的正版状态
+        /**
+     * 刷新当前账号
+     * Patched: removed region/Microsoft-only gating so offline and
+     * authlib-injector (ely.by) accounts are always usable.
      */
-    private fun /**
- * 刷新当前账号
- * Patched: removed region/Microsoft-only gating so offline and
- * authlib-injector (ely.by) accounts are always usable.
- */
-private fun refreshCurrentAccountState() {
-    val currentAccount = getCurrentAccount()
-    _currentAccountFlow.update { currentAccount }
-    _isOffline.update { false }
-} {
+    private fun refreshCurrentAccountState() {
         val currentAccount = getCurrentAccount()
-        val isOffline = !isInGreaterChina() && !hasMicrosoftAccount()
-        _currentAccountFlow.update {
-            //若处于非正版状态，不允许使用账号
-            if (isOffline) null else currentAccount
-        }
-        _isOffline.update { isOffline }
+        _currentAccountFlow.update { currentAccount }
+        _isOffline.update { false }
     }
-
     /**
      * 保存账号到数据库
      */
