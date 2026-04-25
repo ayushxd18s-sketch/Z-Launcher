@@ -200,8 +200,6 @@ object AccountsManager {
         refreshCurrentAccountState()
     }
 
-    /**
-        /**
      * 刷新当前账号
      * Patched: removed region/Microsoft-only gating so offline and
      * authlib-injector (ely.by) accounts are always usable.
