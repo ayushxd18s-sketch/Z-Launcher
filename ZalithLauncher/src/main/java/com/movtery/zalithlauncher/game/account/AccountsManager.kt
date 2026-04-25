@@ -195,7 +195,7 @@ object AccountsManager {
     /**
      * 设置并保存当前账号
      */
-        fun setCurrentAccount(account: Account) {
+    fun setCurrentAccount(account: Account) {
         AllSettings.currentAccount.save(account.uniqueUUID)
         refreshCurrentAccountState()
     }
@@ -211,14 +211,6 @@ object AccountsManager {
         _isOffline.update { false }
     }
 
-    /**
-     * 保存账号到数据库
-     */
-    fun saveAccount(account: Account) {
-        val currentAccount = getCurrentAccount()
-        _currentAccountFlow.update { currentAccount }
-        _isOffline.update { false }
-    }
     /**
      * 保存账号到数据库
      */
