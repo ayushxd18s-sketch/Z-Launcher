@@ -6,6 +6,9 @@ on:
       - '**'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   Build:
     uses: ./.github/workflows/build.yml
@@ -16,3 +19,32 @@ jobs:
       STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
       OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
       CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
+
+  Release:
+    needs: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compute auto version
+        run: |
+          N=$(( ${{ github.run_number }} - 29 ))
+          if [ $N -lt 1 ]; then N=1; fi
+          MAJOR=$(( (N - 1) / 10 + 1 ))
+          MINOR=$(( (N - 1) % 10 ))
+          VERSION="${MAJOR}.${MINOR}"
+          echo "AUTO_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Download all release APKs
+        uses: actions/download-artifact@v4
+        with:
+          path: apks
+          pattern: "release apk*"
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.AUTO_VERSION }}
+          name: Z LAUNCHER ${{ env.AUTO_VERSION }}
+          files: apks/*.apk
+          generate_release_notes: true
+          token: ${{ secrets.GITHUB_TOKEN }}
