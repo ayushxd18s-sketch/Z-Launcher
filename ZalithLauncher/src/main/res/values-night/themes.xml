@@ -7,7 +7,7 @@
     <style name="AppTheme.SplashScreen" parent="@style/Theme.SplashScreen">
         <item name="postSplashScreenTheme">@style/AppTheme.ZalithLauncher</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/splash_launcher</item>
-        <item name="windowSplashScreenAnimationDuration">200</item>
+        <item name="windowSplashScreenAnimationDuration">0</item>
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:windowFullscreen">true</item>
