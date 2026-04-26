@@ -123,18 +123,12 @@ fun AboutInfoScreen(
                             }
                         )
 
-                        ButtonIconItem(
-                            icon = painterResource(R.drawable.img_movtery),
-                            title = stringResource(R.string.about_launcher_author_movtery_title),
-                            text = stringResource(R.string.about_launcher_author_movtery_text, InfoDistributor.LAUNCHER_NAME),
-                            button = {
-                                OutlinedButton(
-                                    onClick = { openLink(URL_SUPPORT) }
-                                ) {
-                                    Text(text = stringResource(R.string.about_sponsor))
-                                }
-                            }
-                        )
+                        AuthorItem(
+    imageUrl = "https://github.com/ayushxd18s-sketch.png",
+    title = stringResource(R.string.about_launcher_author_movtery_title),
+    text = stringResource(R.string.about_launcher_author_movtery_text, InfoDistributor.LAUNCHER_NAME),
+    openLink = { openLink("https://github.com/ayushxd18s-sketch") }
+)
                     }
                 }
             }
