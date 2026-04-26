@@ -245,7 +245,61 @@ fun AboutInfoScreen(
         }
     }
 }
-
+@Composable
+private fun AuthorItem(
+    modifier: Modifier = Modifier,
+    imageUrl: String,
+    title: String,
+    text: String,
+    openLink: () -> Unit,
+    color: Color = itemColor(),
+    contentColor: Color = onItemColor(),
+) {
+    Surface(
+        modifier = modifier,
+        color = color,
+        contentColor = contentColor,
+        shape = MaterialTheme.shapes.large,
+        onClick = {}
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 14.dp, vertical = 8.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val context = LocalContext.current
+            val model = remember(imageUrl) {
+                ImageRequest.Builder(context)
+                    .data(imageUrl)
+                    .build()
+            }
+            AsyncImage(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(shape = RoundedCornerShape(6.dp)),
+                model = model,
+                contentDescription = null,
+                contentScale = ContentScale.Fit
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = title, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    modifier = Modifier.alpha(0.7f),
+                    text = text,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            IconButton(onClick = openLink) {
+                Icon(
+                    imageVector = Icons.Outlined.Link,
+                    contentDescription = null
+                )
+            }
+        }
+    }
+}
 @Composable
 private fun ChunkLayout(
     modifier: Modifier = Modifier,
