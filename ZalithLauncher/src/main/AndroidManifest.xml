@@ -133,6 +133,12 @@
             android:process=":jvm" />
 
         <service
+            android:name=".game.launch.GameService"
+            android:enabled="true"
+            android:foregroundServiceType="dataSync"
+            android:process=":game" />
+
+        <service
             android:name=".terracotta.TerracottaVPNService"
             android:permission="android.permission.BIND_VPN_SERVICE"
             android:exported="true"

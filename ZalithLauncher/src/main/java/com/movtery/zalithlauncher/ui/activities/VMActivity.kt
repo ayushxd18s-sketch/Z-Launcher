@@ -70,6 +70,7 @@ import com.movtery.zalithlauncher.game.input.CharacterSenderStrategy
 import com.movtery.zalithlauncher.game.input.LWJGLCharSender
 import com.movtery.zalithlauncher.game.keycodes.LwjglGlfwKeycode
 import com.movtery.zalithlauncher.game.launch.GameLauncher
+import com.movtery.zalithlauncher.game.launch.GameService
 import com.movtery.zalithlauncher.game.launch.JvmLaunchInfo
 import com.movtery.zalithlauncher.game.launch.JvmLauncher
 import com.movtery.zalithlauncher.game.launch.Launcher
@@ -334,6 +335,9 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener, SurfaceHolde
         //初始化物理鼠标连接检查器
         PhysicalMouseChecker.initChecker(this)
 
+        //启动前台服务，防止后台网络中断
+        startForegroundService(Intent(this, GameService::class.java))
+
         val bundle = intent.extras ?: throw IllegalStateException("Unknown VM launch state!")
 
         vmViewModel.initSession(
@@ -343,6 +347,7 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener, SurfaceHolde
             eventViewModel = eventViewModel,
             gamepadViewModel = gamepadViewModel,
             exitListener = { exitCode: Int, isSignal: Boolean ->
+                stopService(Intent(this, GameService::class.java))
                 if (exitCode != 0) {
                     showExitMessage(this, exitCode, isSignal)
                 } else {
@@ -534,6 +539,7 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener, SurfaceHolde
     }
 
     override fun onDestroy() {
+        stopService(Intent(this, GameService::class.java))
         withHandler { onDestroy() }
         super.onDestroy()
     }
