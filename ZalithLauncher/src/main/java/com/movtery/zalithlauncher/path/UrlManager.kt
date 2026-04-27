@@ -96,3 +96,6 @@ fun createOkHttpClientBuilder(action: (OkHttpClient.Builder) -> Unit = { }): OkH
         .callTimeout(TIME_OUT, TimeUnit.MILLISECONDS)
         .apply(action)
 }
+
+const val ZALITH_BASE_VERSION: String = "2.4.1"
+const val URL_ZALITH_LATEST: String = "https://api.github.com/repos/MovTery/ZalithLauncher2/releases/latest"

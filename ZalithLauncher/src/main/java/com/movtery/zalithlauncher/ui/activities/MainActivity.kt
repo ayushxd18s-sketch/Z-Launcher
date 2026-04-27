@@ -53,6 +53,7 @@ import com.movtery.zalithlauncher.ui.screens.main.MainScreen
 import com.movtery.zalithlauncher.ui.theme.ZalithLauncherTheme
 import com.movtery.zalithlauncher.ui.theme.feativals.FestivalEffects
 import com.movtery.zalithlauncher.upgrade.TooFrequentOperationException
+import com.movtery.zalithlauncher.upgrade.checkUpstreamUpdate
 import com.movtery.zalithlauncher.utils.compareLangTag
 import com.movtery.zalithlauncher.utils.festival.getTodayFestivals
 import com.movtery.zalithlauncher.utils.isChinese
@@ -127,6 +128,20 @@ class MainActivity : BaseAppCompatActivity() {
 
         //处理外部导入
         val isImporting = handleImportIfNeeded(intent)
+
+        //检查上游ZalithLauncher2更新
+        lifecycleScope.launch {
+            val newVersion = checkUpstreamUpdate()
+            if (newVersion != null) {
+                withContext(Dispatchers.Main) {
+                    MaterialAlertDialogBuilder(this@MainActivity)
+                        .setTitle("ZalithLauncher2 Updated!")
+                        .setMessage("ZalithLauncher2 v$newVersion is available. Z-Launcher will be updated soon!")
+                        .setPositiveButton("OK") { d, _ -> d.dismiss() }
+                        .show()
+                }
+            }
+        }
 
         //检查更新
         if (!isImporting && launcherUpgradeViewModel.operation == LauncherUpgradeOperation.None) {
@@ -316,7 +331,21 @@ class MainActivity : BaseAppCompatActivity() {
                     }
                 )
 
-                //检查更新操作流程
+                //检查上游ZalithLauncher2更新
+        lifecycleScope.launch {
+            val newVersion = checkUpstreamUpdate()
+            if (newVersion != null) {
+                withContext(Dispatchers.Main) {
+                    MaterialAlertDialogBuilder(this@MainActivity)
+                        .setTitle("ZalithLauncher2 Updated!")
+                        .setMessage("ZalithLauncher2 v$newVersion is available. Z-Launcher will be updated soon!")
+                        .setPositiveButton("OK") { d, _ -> d.dismiss() }
+                        .show()
+                }
+            }
+        }
+
+        //检查更新操作流程
                 LauncherUpgradeOperation(
                     operation = launcherUpgradeViewModel.operation,
                     onChanged = { launcherUpgradeViewModel.operation = it },
