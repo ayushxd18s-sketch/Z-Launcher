@@ -142,6 +142,7 @@ import com.movtery.zalithlauncher.ui.theme.itemColor
 import com.movtery.zalithlauncher.ui.theme.onItemColor
 import com.movtery.zalithlauncher.utils.animation.getAnimateTween
 import com.movtery.zalithlauncher.utils.animation.swapAnimateDpAsState
+import com.movtery.zalithlauncher.utils.file.FolderFileCounter
 import com.movtery.zalithlauncher.utils.file.formatFileSize
 import com.movtery.zalithlauncher.utils.string.isNotEmptyOrBlank
 import com.movtery.zalithlauncher.viewmodel.ErrorViewModel
@@ -228,6 +229,16 @@ private class ModsManageViewModel(
                 //已取消
             }
             modsState = LoadingState.None
+            job = null
+        }
+    }
+
+    /** 临时记录的模组数量 */
+    private var modsCount = FolderFileCounter(modsDir)
+    fun checkCountAndRefresh() {
+        val isUnchecked = modsCount.isUnchecked()
+        if (modsCount.checkDir() && !isUnchecked && job == null) {
+            refresh()
         }
     }
 
@@ -542,6 +553,12 @@ fun ModsManagerScreen(
     ) { isVisible ->
         val viewModel = rememberModsManageViewModel(version, modsDir)
         val updaterViewModel = rememberModsUpdaterViewModel(version, modsDir)
+
+        //页面创建时，检查一次模组数量，如果不同，则说明有增删
+        //可自动刷新一次模组列表
+        LaunchedEffect(Unit) {
+            viewModel.checkCountAndRefresh()
+        }
 
         DeleteAllOperation(
             operation = viewModel.deleteAllOperation,

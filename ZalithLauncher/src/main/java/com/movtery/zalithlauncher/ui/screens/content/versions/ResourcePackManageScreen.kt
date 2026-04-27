@@ -118,10 +118,12 @@ import com.movtery.zalithlauncher.ui.theme.itemColor
 import com.movtery.zalithlauncher.ui.theme.onItemColor
 import com.movtery.zalithlauncher.utils.animation.getAnimateTween
 import com.movtery.zalithlauncher.utils.animation.swapAnimateDpAsState
+import com.movtery.zalithlauncher.utils.file.FolderFileCounter
 import com.movtery.zalithlauncher.utils.file.formatFileSize
 import com.movtery.zalithlauncher.viewmodel.ErrorViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -171,8 +173,9 @@ private class ResourcePackManageViewModel(
         }
     }
 
+    private var job: Job? = null
     fun refresh() {
-        viewModelScope.launch {
+        job = viewModelScope.launch {
             packState = LoadingState.Loading
             selectedPacks.clear()
 
@@ -193,6 +196,17 @@ private class ResourcePackManageViewModel(
             }
 
             packState = LoadingState.None
+            job = null
+        }
+    }
+
+
+    /** 临时记录的资源包数量 */
+    private var packCount = FolderFileCounter(resourcePackDir)
+    fun checkCountAndRefresh() {
+        val isUnchecked = packCount.isUnchecked()
+        if (packCount.checkDir() && !isUnchecked && job == null) {
+            refresh()
         }
     }
 
@@ -236,6 +250,12 @@ private class ResourcePackManageViewModel(
                 }
             }
     }
+
+    override fun onCleared() {
+        super.onCleared()
+        job?.cancel()
+        job = null
+    }
 }
 
 @Composable
@@ -273,6 +293,10 @@ fun ResourcePackManageScreen(
         Triple(NormalNavKey.Versions.ResourcePackManager, versionsScreenKey, false)
     ) { isVisible ->
         val viewModel = rememberResourcePackManageViewModel(resourcePackDir, version)
+
+        LaunchedEffect(Unit) {
+            viewModel.checkCountAndRefresh()
+        }
 
         DeleteAllOperation(
             operation = viewModel.deleteAllOperation,
