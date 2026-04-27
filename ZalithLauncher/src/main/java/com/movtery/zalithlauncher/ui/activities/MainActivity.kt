@@ -331,19 +331,7 @@ class MainActivity : BaseAppCompatActivity() {
                     }
                 )
 
-                //检查上游ZalithLauncher2更新
-        lifecycleScope.launch {
-            val newVersion = checkUpstreamUpdate()
-            if (newVersion != null) {
-                withContext(Dispatchers.Main) {
-                    MaterialAlertDialogBuilder(this@MainActivity)
-                        .setTitle("ZalithLauncher2 Updated!")
-                        .setMessage("ZalithLauncher2 v$newVersion is available. Z-Launcher will be updated soon!")
-                        .setPositiveButton("OK") { d, _ -> d.dismiss() }
-                        .show()
-                }
-            }
-        }
+                
 
         //检查更新操作流程
                 LauncherUpgradeOperation(
