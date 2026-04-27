@@ -59,7 +59,8 @@ fun UpgradeDialog(
     onDismissRequest: () -> Unit,
     onFilesClick: () -> Unit,
     onIgnored: () -> Unit,
-    onLinkClick: (String) -> Unit
+    onLinkClick: (String) -> Unit,
+    onCloudDriveClick: (RemoteData.CloudDrive) -> Unit
 ) {
     val body = remember(data) {
         data.findCurrentBody(Locale.getDefault()) ?: data.defaultBody
@@ -144,7 +145,7 @@ fun UpgradeDialog(
                     } else {
                         FilledTonalButton(
                             onClick = {
-                                onLinkClick(cloudDrive.link)
+                                onCloudDriveClick(cloudDrive)
                             }
                         ) {
                             Text(text = stringResource(R.string.upgrade_cloud_drive))
