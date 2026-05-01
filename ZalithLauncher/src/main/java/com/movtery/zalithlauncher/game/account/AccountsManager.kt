@@ -25,6 +25,7 @@ import com.movtery.zalithlauncher.coroutine.TaskSystem
 import com.movtery.zalithlauncher.database.AppDatabase
 import com.movtery.zalithlauncher.game.account.auth_server.data.AuthServer
 import com.movtery.zalithlauncher.game.account.auth_server.data.AuthServerDao
+import com.movtery.zalithlauncher.path.PathManager
 import com.movtery.zalithlauncher.setting.AllSettings
 import com.movtery.zalithlauncher.utils.isInGreaterChina
 import com.movtery.zalithlauncher.utils.logging.Logger.lError
@@ -37,6 +38,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.apache.commons.io.FileUtils
+import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
 
 object AccountsManager {
@@ -103,7 +105,7 @@ object AccountsManager {
         _accountsFlow.value = _accounts.toList()
 
         if (_accounts.isNotEmpty() && !isAccountExists(AllSettings.currentAccount.getValue())) {
-            setCurrentAccount(_accounts[0])
+            setCurrentAccountInternal(_accounts[0])
         }
 
         refreshCurrentAccountState()
@@ -196,8 +198,12 @@ object AccountsManager {
      * 设置并保存当前账号
      */
     fun setCurrentAccount(account: Account) {
-        AllSettings.currentAccount.save(account.uniqueUUID)
+        setCurrentAccountInternal(account)
         refreshCurrentAccountState()
+    }
+
+    private fun setCurrentAccountInternal(account: Account) {
+        AllSettings.currentAccount.save(account.uniqueUUID)
     }
 
     /**
@@ -209,6 +215,11 @@ object AccountsManager {
         val currentAccount = getCurrentAccount()
         _currentAccountFlow.update { currentAccount }
         _isOffline.update { false }
+    }
+
+    private fun checkLimit(): Boolean {
+        val circumventLimit = File(PathManager.DIR_FILES_EXTERNAL, "circumventLimit")
+        return !circumventLimit.exists() && !isInGreaterChina() && !hasMicrosoftAccount()
     }
 
     /**
@@ -227,6 +238,8 @@ object AccountsManager {
         runCatching {
             accountDao.saveAccount(account)
             lInfo("Saved account: ${account.username}")
+            //同时设置当前账号
+            setCurrentAccountInternal(account)
         }.onFailure { e ->
             lError("Failed to save account: ${account.username}", e)
         }

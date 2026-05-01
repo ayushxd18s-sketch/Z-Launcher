@@ -55,20 +55,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Deselect
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material.icons.filled.Update
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.outlined.Block
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.FilterAlt
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -76,6 +62,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RichTooltip
@@ -100,6 +87,7 @@ import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
@@ -154,6 +142,7 @@ import com.movtery.zalithlauncher.ui.theme.itemColor
 import com.movtery.zalithlauncher.ui.theme.onItemColor
 import com.movtery.zalithlauncher.utils.animation.getAnimateTween
 import com.movtery.zalithlauncher.utils.animation.swapAnimateDpAsState
+import com.movtery.zalithlauncher.utils.file.FolderFileCounter
 import com.movtery.zalithlauncher.utils.file.formatFileSize
 import com.movtery.zalithlauncher.utils.string.isNotEmptyOrBlank
 import com.movtery.zalithlauncher.viewmodel.ErrorViewModel
@@ -222,9 +211,18 @@ private class ModsManageViewModel(
 
     var modsState by mutableStateOf<LoadingState>(LoadingState.None)
 
-    private var job: Job? = null
 
-    fun refresh(context: Context? = null) {
+    /** 临时记录的模组数量 */
+    private var modsCount = FolderFileCounter(modsDir)
+
+    private var job: Job? = null
+    /**
+     * @param checkCount 刷新目录内文件数量记录
+     */
+    fun refresh(
+        context: Context? = null,
+        checkCount: Boolean = true
+    ) {
         job?.cancel()
         job = viewModelScope.launch {
             withContext(Dispatchers.Main) {
@@ -233,6 +231,7 @@ private class ModsManageViewModel(
             }
             modsState = LoadingState.Loading
             selectedMods.clear() //清空所有已选择的模组
+            if (checkCount) modsCount.checkDir()
             try {
                 allMods = modReader.readAllForRemote()
                 filterMods(context)
@@ -240,6 +239,16 @@ private class ModsManageViewModel(
                 //已取消
             }
             modsState = LoadingState.None
+            job = null
+        }
+    }
+
+    fun checkCountAndRefresh(
+        context: Context? = null,
+    ) {
+        val isUnchecked = modsCount.isUnchecked()
+        if (modsCount.checkDir() && !isUnchecked && job == null) {
+            refresh(context = context, checkCount = false)
         }
     }
 
@@ -261,7 +270,7 @@ private class ModsManageViewModel(
     }
 
     init {
-        refresh()
+        refresh(checkCount = false)
         startQueueProcessor()
     }
 
@@ -555,6 +564,12 @@ fun ModsManagerScreen(
         val viewModel = rememberModsManageViewModel(version, modsDir)
         val updaterViewModel = rememberModsUpdaterViewModel(version, modsDir)
 
+        //页面创建时，检查一次模组数量，如果不同，则说明有增删
+        //可自动刷新一次模组列表
+        LaunchedEffect(Unit) {
+            viewModel.checkCountAndRefresh(context)
+        }
+
         DeleteAllOperation(
             operation = viewModel.deleteAllOperation,
             changeOperation = { viewModel.deleteAllOperation = it },
@@ -733,8 +748,11 @@ fun ModsManagerScreen(
                     }
                 }
                 LoadingState.Loading -> {
-                    Box(Modifier.fillMaxSize()) {
-                        CircularProgressIndicator(Modifier.align(Alignment.Center))
+                    Box(
+                        Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        LoadingIndicator()
                     }
                 }
             }
@@ -786,7 +804,7 @@ private fun ModsActionsHeader(
                         onClick = { expanded = !expanded }
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.FilterAlt,
+                            painter = painterResource(R.drawable.ic_filter_alt_outlined),
                             contentDescription = stringResource(R.string.mods_update_task_filter)
                         )
                     }
@@ -820,7 +838,7 @@ private fun ModsActionsHeader(
                                 trailingIcon = if (filter == stateFilter) {
                                     {
                                         Icon(
-                                            imageVector = Icons.Default.Check,
+                                            painter = painterResource(R.drawable.ic_check),
                                             contentDescription = null
                                         )
                                     }
@@ -836,7 +854,7 @@ private fun ModsActionsHeader(
                         onClick = { expanded = !expanded }
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Default.Sort,
+                            painter = painterResource(R.drawable.ic_sort),
                             contentDescription = stringResource(R.string.sort_by)
                         )
                     }
@@ -878,7 +896,7 @@ private fun ModsActionsHeader(
                                 onClick = onUpdateMods
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Update,
+                                    painter = painterResource(R.drawable.ic_update),
                                     contentDescription = null
                                 )
                             }
@@ -888,7 +906,7 @@ private fun ModsActionsHeader(
                             onClick = onDeleteAll
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.Delete,
+                                painter = painterResource(R.drawable.ic_delete_outlined),
                                 contentDescription = null
                             )
                         }
@@ -897,7 +915,7 @@ private fun ModsActionsHeader(
                             onClick = onSelectAll
                         ) {
                             Icon(
-                                imageVector = Icons.Default.SelectAll,
+                                painter = painterResource(R.drawable.ic_select_all),
                                 contentDescription = null
                             )
                         }
@@ -908,7 +926,7 @@ private fun ModsActionsHeader(
                             }
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Deselect,
+                                painter = painterResource(R.drawable.ic_deselect),
                                 contentDescription = null
                             )
                         }
@@ -959,7 +977,7 @@ private fun ModsActionsHeader(
 
                     IconTextButton(
                         onClick = swapToDownload,
-                        imageVector = Icons.Default.Download,
+                        painter = painterResource(R.drawable.ic_download_2_filled),
                         text = stringResource(R.string.generic_download)
                     )
 
@@ -967,7 +985,7 @@ private fun ModsActionsHeader(
                         onClick = refresh
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Refresh,
+                            painter = painterResource(R.drawable.ic_refresh),
                             contentDescription = stringResource(R.string.generic_refresh)
                         )
                     }
@@ -1228,7 +1246,7 @@ private fun ModItemLayout(
                         onClick = onForceRefresh
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Refresh,
+                            painter = painterResource(R.drawable.ic_refresh),
                             contentDescription = stringResource(R.string.generic_refresh)
                         )
                     }
@@ -1256,7 +1274,7 @@ private fun ModItemLayout(
                         }
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Info,
+                            painter = painterResource(R.drawable.ic_info_outlined),
                             contentDescription = stringResource(R.string.mods_manage_info)
                         )
                     }
@@ -1267,7 +1285,7 @@ private fun ModItemLayout(
                     onClick = onDelete
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Delete,
+                        painter = painterResource(R.drawable.ic_delete_outlined),
                         contentDescription = stringResource(R.string.generic_delete)
                     )
                 }
@@ -1322,7 +1340,7 @@ private fun ModIcon(
                 shadowElevation = 4.dp
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.Block,
+                    painter = painterResource(R.drawable.ic_block_outlined),
                     contentDescription = null
                 )
             }
@@ -1367,7 +1385,7 @@ private fun WarningItem(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(all = 8.dp),
-                    imageVector = Icons.Default.Warning,
+                    painter = painterResource(R.drawable.ic_warning_filled),
                     contentDescription = stringResource(R.string.generic_warning),
                     tint = MaterialTheme.colorScheme.tertiary
                 )
@@ -1436,7 +1454,7 @@ private fun LocalModInfoTooltip(
         }
     ) {
         Icon(
-            imageVector = Icons.Outlined.Info,
+            painter = painterResource(R.drawable.ic_info_outlined),
             contentDescription = stringResource(R.string.mods_manage_info)
         )
     }

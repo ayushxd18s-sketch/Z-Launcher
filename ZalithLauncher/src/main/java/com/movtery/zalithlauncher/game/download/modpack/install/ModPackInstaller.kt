@@ -19,10 +19,6 @@
 package com.movtery.zalithlauncher.game.download.modpack.install
 
 import android.content.Context
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Build
-import androidx.compose.material.icons.outlined.CleaningServices
-import androidx.compose.material.icons.outlined.Edit
 import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.coroutine.Task
 import com.movtery.zalithlauncher.coroutine.TaskFlowExecutor
@@ -43,6 +39,7 @@ import com.movtery.zalithlauncher.utils.logging.Logger.lInfo
 import com.movtery.zalithlauncher.utils.network.downloadFileSuspend
 import com.movtery.zalithlauncher.utils.network.downloadFromMirrorListSuspend
 import com.movtery.zalithlauncher.utils.network.isUsingMobileData
+import com.movtery.zalithlauncher.utils.network.withSpeedReport
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
@@ -137,7 +134,7 @@ class ModPackInstaller(
                 addTask(
                     id = "Download.ModPack.ClearTemp",
                     title = context.getString(R.string.download_install_clear_temp),
-                    icon = Icons.Outlined.CleaningServices
+                    icon = R.drawable.ic_auto_delete_outlined
                 ) { _ ->
                     clearTempModPackDir()
                     //清理完成缓存目录后，创建新的缓存目录
@@ -165,17 +162,27 @@ class ModPackInstaller(
                     fun updateProgress() {
                         task.updateProgress((downloadedSize.toDouble() / totalFileSize).toFloat())
                     }
-                    downloadFromMirrorListSuspend(
-                        urls = version
-                            .platformDownloadUrl()
-                            .mapMCIMMirrorUrls(),
-                        sha1 = version.platformSha1(),
-                        outputFile = installerFile,
-                        sizeCallback = { size ->
-                            downloadedSize += size
-                            updateProgress()
+                    withSpeedReport(
+                        onSpeedReport = { bytes ->
+                            task.updateSpeed(bytes)
+                        },
+                        onClear = {
+                            task.clearSpeed()
                         }
-                    )
+                    ) { report ->
+                        downloadFromMirrorListSuspend(
+                            urls = version
+                                .platformDownloadUrl()
+                                .mapMCIMMirrorUrls(),
+                            sha1 = version.platformSha1(),
+                            outputFile = installerFile,
+                            sizeCallback = { size ->
+                                downloadedSize += size
+                                updateProgress()
+                                report(size)
+                            }
+                        )
+                    }
                     //下载icon图片
                     task.updateProgress(-1f, null)
                     iconUrl?.let { iconUrl ->
@@ -190,7 +197,7 @@ class ModPackInstaller(
                 addTask(
                     id = "Parse.ModPack",
                     title = context.getString(R.string.download_modpack_install_parse),
-                    icon = Icons.Outlined.Build
+                    icon = R.drawable.ic_build_outlined
                 ) { task ->
                     modpackInfo = parserModPack(
                         file = installerFile,
@@ -204,7 +211,7 @@ class ModPackInstaller(
                 addTask(
                     id = "Download.ModPack.WaitUserForVersionName",
                     title = context.getString(R.string.download_install_input_version_name),
-                    icon = Icons.Outlined.Edit
+                    icon = R.drawable.ic_edit_outlined
                 ) { task ->
                     task.updateProgress(-1f)
                     targetVersionName = waitForVersionName(modpackInfo)
@@ -224,7 +231,7 @@ class ModPackInstaller(
                 addTask(
                     id = "ModPack.Retrieve.Loader",
                     title = context.getString(R.string.download_modpack_get_loaders),
-                    icon = Icons.Outlined.Build
+                    icon = R.drawable.ic_build_outlined
                 ) { _ ->
                     //构建游戏安装信息
                     gameDownloadInfo = modpackInfo.retrieveLoaderTask(
@@ -241,7 +248,7 @@ class ModPackInstaller(
                                 //整合包临时文件安装任务
                                 val finalTask = TitledTask(
                                     title = context.getString(R.string.download_modpack_final_move),
-                                    runningIcon = Icons.Outlined.Build,
+                                    runningIcon = R.drawable.ic_build_outlined,
                                     task = createFinalInstallTask(
                                         targetClientDir = targetClientDir,
                                         tempVersionsDir = tempVersionsDir,

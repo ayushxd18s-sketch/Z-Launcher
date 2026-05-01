@@ -35,13 +35,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.FileCopy
-import androidx.compose.material.icons.filled.FolderZip
-import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -57,6 +50,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -185,7 +179,7 @@ fun GamePathItemLayout(
                 ) {
                     Icon(
                         modifier = Modifier.size(20.dp),
-                        imageVector = Icons.Default.MoreHoriz,
+                        painter = painterResource(R.drawable.ic_more_horiz),
                         contentDescription = stringResource(R.string.generic_more),
                     )
                 }
@@ -202,7 +196,7 @@ fun GamePathItemLayout(
                         leadingIcon = {
                             Icon(
                                 modifier = Modifier.size(20.dp),
-                                imageVector = Icons.Filled.Edit,
+                                painter = painterResource(R.drawable.ic_edit_filled),
                                 contentDescription = stringResource(R.string.generic_rename)
                             )
                         },
@@ -217,7 +211,7 @@ fun GamePathItemLayout(
                         leadingIcon = {
                             Icon(
                                 modifier = Modifier.size(20.dp),
-                                imageVector = Icons.Filled.Delete,
+                                painter = painterResource(R.drawable.ic_delete_filled),
                                 contentDescription = stringResource(R.string.generic_delete)
                             )
                         },
@@ -392,7 +386,6 @@ fun VersionsOperation(
         }
         is VersionsOperation.Copy -> {
             CopyVersionDialog(
-                version = versionsOperation.version,
                 onDismissRequest = { updateVersionsOperation(VersionsOperation.None) },
                 onConfirm = { name, copyAll ->
                     updateVersionsOperation(
@@ -456,13 +449,15 @@ fun RenameVersionDialog(
     onConfirm: (value: String) -> Unit = {}
 ) {
     var name by remember { mutableStateOf(version.getVersionName()) }
-    var errorMessage by remember { mutableStateOf("") }
 
-    val isError = name.isEmpty() || isFilenameInvalid(name) { message ->
-        errorMessage = message
-    } || VersionsManager.validateVersionName(name) { message ->
-        errorMessage = message
+    val filenameInvalidMessage = key(name) {
+        isFilenameInvalid(name)
     }
+
+    val isVersionExists = remember(name) {
+        VersionsManager.isVersionExists(name, true)
+    }
+    val isError = name.isEmpty() || filenameInvalidMessage != null || isVersionExists
 
     SimpleEditDialog(
         title = stringResource(R.string.versions_manage_rename_version),
@@ -471,8 +466,9 @@ fun RenameVersionDialog(
         isError = isError,
         supportingText = {
             when {
-                name.isEmpty() -> Text(text = stringResource(R.string.generic_cannot_empty))
-                isError -> Text(text = errorMessage)
+                name.isEmpty() -> Text(stringResource(R.string.generic_cannot_empty))
+                filenameInvalidMessage != null -> Text(filenameInvalidMessage)
+                isVersionExists -> Text(stringResource(R.string.versions_manage_install_exists))
             }
         },
         singleLine = true,
@@ -487,20 +483,20 @@ fun RenameVersionDialog(
 
 @Composable
 fun CopyVersionDialog(
-    version: Version,
     onDismissRequest: () -> Unit = {},
     onConfirm: (value: String, copyAll: Boolean) -> Unit = { _, _ -> }
 ) {
     var copyAll by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
 
-    var errorMessage by remember { mutableStateOf("") }
-
-    val isError = name.isEmpty() || isFilenameInvalid(name) { message ->
-        errorMessage = message
-    } || VersionsManager.validateVersionName(name) { message ->
-        errorMessage = message
+    val filenameInvalidMessage = key(name) {
+        isFilenameInvalid(name)
     }
+
+    val isVersionExists = remember(name) {
+        VersionsManager.isVersionExists(name, true)
+    }
+    val isError = name.isEmpty() || filenameInvalidMessage != null || isVersionExists
 
     SimpleCheckEditDialog(
         title = stringResource(R.string.versions_manage_copy_version),
@@ -513,8 +509,9 @@ fun CopyVersionDialog(
         isError = isError,
         supportingText = {
             when {
-                name.isEmpty() -> Text(text = stringResource(R.string.generic_cannot_empty))
-                isError -> Text(text = errorMessage)
+                name.isEmpty() -> Text(stringResource(R.string.generic_cannot_empty))
+                filenameInvalidMessage != null -> Text(filenameInvalidMessage)
+                isVersionExists -> Text(stringResource(R.string.versions_manage_install_exists))
             }
         },
         singleLine = true,
@@ -756,7 +753,7 @@ fun VersionItemLayout(
             ) {
                 Icon(
                     modifier = Modifier.size(24.dp),
-                    imageVector = Icons.Default.Settings,
+                    painter = painterResource(R.drawable.ic_settings_filled),
                     contentDescription = stringResource(R.string.versions_manage_settings)
                 )
             }
@@ -767,7 +764,7 @@ fun VersionItemLayout(
                 IconButton(onClick = { menuExpanded = !menuExpanded }) {
                     Icon(
                         modifier = Modifier.size(24.dp),
-                        imageVector = Icons.Default.MoreHoriz,
+                        painter = painterResource(R.drawable.ic_more_horiz),
                         contentDescription = stringResource(R.string.generic_more)
                     )
                 }
@@ -783,7 +780,7 @@ fun VersionItemLayout(
                         leadingIcon = {
                             Icon(
                                 modifier = Modifier.size(20.dp),
-                                imageVector = Icons.Filled.Edit,
+                                painter = painterResource(R.drawable.ic_edit_filled),
                                 contentDescription = stringResource(R.string.generic_rename)
                             )
                         },
@@ -797,7 +794,7 @@ fun VersionItemLayout(
                         leadingIcon = {
                             Icon(
                                 modifier = Modifier.size(20.dp),
-                                imageVector = Icons.Filled.FileCopy,
+                                painter = painterResource(R.drawable.ic_file_copy_filled),
                                 contentDescription = stringResource(R.string.generic_copy)
                             )
                         },
@@ -811,7 +808,7 @@ fun VersionItemLayout(
                         leadingIcon = {
                             Icon(
                                 modifier = Modifier.size(20.dp),
-                                imageVector = Icons.Filled.FolderZip,
+                                painter = painterResource(R.drawable.ic_folder_zip_filled),
                                 contentDescription = stringResource(R.string.versions_export)
                             )
                         },
@@ -825,7 +822,7 @@ fun VersionItemLayout(
                         leadingIcon = {
                             Icon(
                                 modifier = Modifier.size(20.dp),
-                                imageVector = Icons.Filled.Delete,
+                                painter = painterResource(R.drawable.ic_delete_filled),
                                 contentDescription = stringResource(R.string.generic_delete)
                             )
                         },

@@ -57,25 +57,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Login
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropUp
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.RestartAlt
-import androidx.compose.material.icons.outlined.Checkroom
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.DeleteOutline
-import androidx.compose.material.icons.outlined.FileUpload
-import androidx.compose.material.icons.outlined.Link
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
@@ -277,7 +265,7 @@ fun AccountAvatar(
                     modifier = Modifier
                         .size(40.dp)
                         .align(Alignment.CenterHorizontally),
-                    imageVector = Icons.Default.Add,
+                    painter = painterResource(R.drawable.ic_add),
                     contentDescription = null
                 )
             }
@@ -393,7 +381,7 @@ fun AccountItem(
                     ) {
                         Icon(
                             modifier = Modifier.size(24.dp),
-                            imageVector = Icons.Outlined.Checkroom,
+                            painter = painterResource(R.drawable.ic_checkroom),
                             contentDescription = stringResource(R.string.account_change_skin)
                         )
                     }
@@ -406,7 +394,7 @@ fun AccountItem(
                 ) {
                     Icon(
                         modifier = Modifier.size(24.dp),
-                        imageVector = Icons.Default.Refresh,
+                        painter = painterResource(R.drawable.ic_refresh),
                         contentDescription = stringResource(R.string.generic_refresh)
                     )
                 }
@@ -417,7 +405,7 @@ fun AccountItem(
                 ) {
                     Icon(
                         modifier = Modifier.size(22.dp),
-                        imageVector = Icons.Default.ContentCopy,
+                        painter = painterResource(R.drawable.ic_copy_all_outlined),
                         contentDescription = stringResource(R.string.account_local_uuid_copy)
                     )
                 }
@@ -428,7 +416,7 @@ fun AccountItem(
                 ) {
                     Icon(
                         modifier = Modifier.size(24.dp),
-                        imageVector = Icons.Outlined.DeleteOutline,
+                        painter = painterResource(R.drawable.ic_delete_outlined),
                         contentDescription = stringResource(R.string.generic_delete)
                     )
                 }
@@ -530,7 +518,7 @@ fun LoginMenuDialog(
                                             }
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Outlined.Delete,
+                                                painter = painterResource(R.drawable.ic_delete_outlined),
                                                 contentDescription = stringResource(R.string.generic_delete)
                                             )
                                         }
@@ -562,7 +550,7 @@ fun LoginMenuDialog(
 @Preview(showBackground = true, widthDp = 800, heightDp = 480)
 @Composable
 private fun PreviewLoginMenuDialog() {
-    MaterialTheme {
+    MaterialExpressiveTheme {
         LoginMenuDialog(
             onDismissRequest = {},
             onMicrosoftLogin = {},
@@ -582,7 +570,7 @@ fun LoginItem(
     icon: @Composable () -> Unit = @Composable {
         Icon(
             modifier = Modifier.size(22.dp),
-            imageVector = Icons.AutoMirrored.Default.Login,
+            painter = painterResource(R.drawable.ic_login),
             contentDescription = null
         )
     },
@@ -599,7 +587,7 @@ fun LoginItem(
 @Preview(showBackground = true, widthDp = 400, heightDp = 120)
 @Composable
 private fun PreviewLoginItem() {
-    MaterialTheme {
+    MaterialExpressiveTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             LoginItem(
                 modifier = Modifier
@@ -631,7 +619,7 @@ fun MicrosoftLoginTipDialog(
                     onClick = {
                         openLink(URL_MINECRAFT_PURCHASE)
                     },
-                    imageVector = Icons.Outlined.Link,
+                    painter = painterResource(R.drawable.ic_link),
                     contentDescription = null,
                     text = stringResource(R.string.account_supporting_microsoft_tip_link_purchase)
                 )
@@ -639,7 +627,7 @@ fun MicrosoftLoginTipDialog(
                     onClick = {
                         openLink("https://www.minecraft.net/msaprofile/mygames/editprofile")
                     },
-                    imageVector = Icons.Outlined.Link,
+                    painter = painterResource(R.drawable.ic_link),
                     contentDescription = null,
                     text = stringResource(R.string.account_supporting_microsoft_tip_link_make_gameid)
                 )
@@ -808,7 +796,7 @@ fun LocalLoginDialog(
                                 onClick = {
                                     openLink(URL_MINECRAFT_PURCHASE)
                                 },
-                                imageVector = Icons.Outlined.Link,
+                                painter = painterResource(R.drawable.ic_link),
                                 contentDescription = null,
                                 text = stringResource(R.string.account_supporting_microsoft_tip_link_purchase)
                             )
@@ -828,7 +816,7 @@ fun LocalLoginDialog(
                                         modifier = iconModifier
                                             .size(24.dp)
                                             .rotate(rotate),
-                                        imageVector = Icons.Default.ArrowDropUp,
+                                        painter = painterResource(R.drawable.ic_arrow_drop_up_rounded),
                                         contentDescription = null
                                     )
                                 },
@@ -1055,7 +1043,13 @@ fun OtherServerLoginDialog(
                             trailingIcon = {
                                 IconButton(onClick = { showPassword = !showPassword }) {
                                     Icon(
-                                        imageVector = if (showPassword) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                                        painter = painterResource(
+                                            if (showPassword) {
+                                                R.drawable.ic_visibility_outlined
+                                            } else {
+                                                R.drawable.ic_visibility_off_outlined
+                                            }
+                                        ),
                                         contentDescription = stringResource(R.string.account_label_password)
                                     )
                                 }
@@ -1088,7 +1082,7 @@ fun OtherServerLoginDialog(
                                     onClick = {
                                         onRegisterClick(server.register!!)
                                     },
-                                    imageVector = Icons.Outlined.Link,
+                                    painter = painterResource(R.drawable.ic_link),
                                     contentDescription = null,
                                     text = stringResource(R.string.account_other_login_register)
                                 )
@@ -1262,7 +1256,7 @@ fun ChangeSkinDialog(
 
                             if (!pageFinished) {
                                 //加载皮肤预览中
-                                CircularProgressIndicator()
+                                LoadingIndicator()
                             }
 
                             AndroidView(
@@ -1326,7 +1320,7 @@ fun ChangeSkinDialog(
                                             } else {
                                                 Icon(
                                                     modifier = Modifier.size(22.dp),
-                                                    imageVector = Icons.Outlined.FileUpload,
+                                                    painter = painterResource(R.drawable.ic_upload),
                                                     contentDescription = null
                                                 )
                                             }
@@ -1419,7 +1413,7 @@ fun ChangeSkinDialog(
                                     icon = {
                                         Icon(
                                             modifier = Modifier.size(22.dp),
-                                            imageVector = Icons.Default.RestartAlt,
+                                            painter = painterResource(R.drawable.ic_restart_alt),
                                             contentDescription = null
                                         )
                                     },

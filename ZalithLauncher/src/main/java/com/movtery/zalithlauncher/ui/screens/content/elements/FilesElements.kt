@@ -24,20 +24,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.movtery.zalithlauncher.R
@@ -66,7 +65,13 @@ fun BaseFileItem(
     ) {
         Icon(
             modifier = Modifier.size(24.dp).align(Alignment.CenterVertically),
-            imageVector = if (file.isDirectory) Icons.Outlined.Folder else Icons.Outlined.Description,
+            painter = painterResource(
+                if (file.isDirectory) {
+                    R.drawable.ic_folder_outlined
+                } else {
+                    R.drawable.ic_description_outlined
+                }
+            ),
             contentDescription = null
         )
         Column(
@@ -109,11 +114,11 @@ fun CreateNewDirDialog(
     createDir: (name: String) -> Unit = {}
 ) {
     var value by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf("") }
 
-    val isError = value.isEmpty() || isFilenameInvalid(value) { message ->
-        errorMessage = message
+    val filenameInvalidMessage = key(value) {
+        isFilenameInvalid(value)
     }
+    val isError = value.isEmpty() || filenameInvalidMessage != null
 
     SimpleEditDialog(
         title = stringResource(R.string.files_create_dir),
@@ -123,7 +128,7 @@ fun CreateNewDirDialog(
         supportingText = {
             when {
                 value.isEmpty() -> Text(text = stringResource(R.string.generic_cannot_empty))
-                isError -> Text(text = errorMessage)
+                filenameInvalidMessage != null -> Text(text = filenameInvalidMessage)
             }
         },
         singleLine = true,
@@ -134,15 +139,13 @@ fun CreateNewDirDialog(
 
 @Composable
 fun isFilenameInvalid(
-    str: String,
-    onError: (message: String) -> Unit
-): Boolean {
+    str: String
+): String? {
     return try {
         checkFilenameValidity(str)
-        false
+        null
     } catch (e: InvalidFilenameException) {
-        onError(e.getInvalidSummary())
-        true
+        e.getInvalidSummary()
     }
 }
 

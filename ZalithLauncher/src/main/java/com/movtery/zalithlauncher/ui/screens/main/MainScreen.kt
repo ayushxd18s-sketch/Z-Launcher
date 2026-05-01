@@ -21,7 +21,6 @@ package com.movtery.zalithlauncher.ui.screens.main
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -44,15 +43,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardBackspace
-import androidx.compose.material.icons.automirrored.rounded.ArrowLeft
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Task
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -65,13 +55,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.LayoutDirection
@@ -116,6 +108,7 @@ import com.movtery.zalithlauncher.ui.theme.onBackgroundColor
 import com.movtery.zalithlauncher.ui.theme.onCardColor
 import com.movtery.zalithlauncher.utils.animation.getAnimateTween
 import com.movtery.zalithlauncher.utils.festival.LocalFestivals
+import com.movtery.zalithlauncher.utils.file.formatFileSize
 import com.movtery.zalithlauncher.viewmodel.ErrorViewModel
 import com.movtery.zalithlauncher.viewmodel.EventViewModel
 import com.movtery.zalithlauncher.viewmodel.LaunchGameViewModel
@@ -295,7 +288,7 @@ private fun <E: TitledNavKey> TopBar(
                         ) {
                             Icon(
                                 modifier = Modifier.size(24.dp),
-                                imageVector = Icons.AutoMirrored.Filled.KeyboardBackspace,
+                                painter = painterResource(R.drawable.ic_arrow_back),
                                 contentDescription = stringResource(R.string.generic_back)
                             )
                         }
@@ -310,7 +303,7 @@ private fun <E: TitledNavKey> TopBar(
                             }
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Home,
+                                painter = painterResource(R.drawable.ic_home_filled),
                                 contentDescription = stringResource(R.string.generic_main_menu)
                             )
                         }
@@ -390,7 +383,7 @@ private fun <E: TitledNavKey> TopBar(
                         LinearProgressIndicator(modifier = Modifier.weight(1f))
                         Icon(
                             modifier = Modifier.size(22.dp),
-                            imageVector = Icons.Filled.Task,
+                            painter = painterResource(R.drawable.ic_assignment_filled),
                             contentDescription = stringResource(R.string.main_task_menu)
                         )
                     }
@@ -398,7 +391,7 @@ private fun <E: TitledNavKey> TopBar(
 
                 TopBarRailItem(
                     selected = inMultiplayerScreen,
-                    icon = Icons.Filled.Group,
+                    painter = painterResource(R.drawable.ic_group_filled),
                     text = stringResource(R.string.terracotta),
                     onClick = {
                         if (!inMultiplayerScreen) toMultiplayerScreen()
@@ -407,7 +400,7 @@ private fun <E: TitledNavKey> TopBar(
 
                 TopBarRailItem(
                     selected = inDownloadScreen,
-                    icon = Icons.Filled.Download,
+                    painter = painterResource(R.drawable.ic_download_2_filled),
                     text = stringResource(R.string.generic_download),
                     onClick = {
                         if (!inDownloadScreen) toDownloadScreen()
@@ -416,7 +409,7 @@ private fun <E: TitledNavKey> TopBar(
 
                 TopBarRailItem(
                     selected = inSettingsScreen,
-                    icon = Icons.Filled.Settings,
+                    painter = painterResource(R.drawable.ic_settings_filled),
                     text = stringResource(R.string.generic_setting),
                     onClick = {
                         if (!inSettingsScreen) toSettingsScreen()
@@ -430,7 +423,7 @@ private fun <E: TitledNavKey> TopBar(
 @Composable
 private fun TopBarRailItem(
     selected: Boolean,
-    icon: ImageVector,
+    painter: Painter,
     text: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
@@ -452,7 +445,7 @@ private fun TopBarRailItem(
         },
         icon = {
             Icon(
-                imageVector = icon,
+                painter = painter,
                 contentDescription = text
             )
         },
@@ -657,7 +650,7 @@ private fun TaskMenu(
                         ) {
                             Icon(
                                 modifier = Modifier.size(28.dp),
-                                imageVector = Icons.AutoMirrored.Rounded.ArrowLeft,
+                                painter = painterResource(R.drawable.ic_arrow_left_rounded),
                                 contentDescription = stringResource(R.string.generic_collapse)
                             )
                         }
@@ -680,6 +673,7 @@ private fun TaskMenu(
                             taskProgress = task.currentProgress,
                             taskMessageRes = task.currentMessageRes,
                             taskMessageArgs = task.currentMessageArgs,
+                            taskRateBytesPerSec = task.currentRateBytesPerSec,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 6.dp)
@@ -699,6 +693,7 @@ private fun TaskItem(
     taskProgress: Float,
     taskMessageRes: Int?,
     taskMessageArgs: Array<out Any>?,
+    taskRateBytesPerSec: Long,
     modifier: Modifier = Modifier,
     shape: Shape = MaterialTheme.shapes.large,
     color: Color = cardColor(false),
@@ -723,7 +718,7 @@ private fun TaskItem(
             ) {
                 Icon(
                     modifier = Modifier.size(20.dp),
-                    imageVector = Icons.Default.Close,
+                    painter = painterResource(R.drawable.ic_close),
                     contentDescription = stringResource(R.string.generic_cancel)
                 )
             }
@@ -732,7 +727,6 @@ private fun TaskItem(
                 modifier = Modifier
                     .weight(1f)
                     .align(Alignment.CenterVertically)
-                    .animateContentSize(animationSpec = getAnimateTween())
             ) {
                 taskMessageRes?.let { messageRes ->
                     Text(
@@ -744,24 +738,33 @@ private fun TaskItem(
                         style = MaterialTheme.typography.labelMedium
                     )
                 }
+
                 if (taskProgress < 0) { //负数则代表不确定
                     LinearProgressIndicator(
                         modifier = Modifier.fillMaxWidth()
                     )
                 } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        LinearProgressIndicator(
-                            progress = { taskProgress },
-                            modifier = Modifier
-                                .weight(1f)
-                                .align(Alignment.CenterVertically)
-                        )
+                    LinearProgressIndicator(
+                        progress = { taskProgress },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    taskProgress.takeIf { it >= 0f }?.let { progress ->
                         Text(
-                            text = "${(taskProgress * 100).toInt()}%",
-                            modifier = Modifier.align(Alignment.CenterVertically),
+                            text = "${(progress * 100).toInt()}%",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                    taskRateBytesPerSec.takeIf { it >= 0L }?.let { bytes ->
+                        val text = remember(bytes) { "${formatFileSize(bytes)}/s" }
+                        Text(
+                            text = text,
                             style = MaterialTheme.typography.labelMedium
                         )
                     }

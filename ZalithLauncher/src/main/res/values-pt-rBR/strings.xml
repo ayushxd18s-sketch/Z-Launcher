@@ -376,17 +376,17 @@
     <string name="game_menu_option_force_close_text">Forçar o fechamento do jogo em execução pode corromper os dados salvos ou impedir que as configurações sejam salvas. Evite esta ação, a menos que seja necessário.</string>
     <string name="game_menu_option_switch_log">Saída de log</string>
     <string name="game_menu_option_input_method">Teclado virtual</string>
-    <string name="game_menu_option_switch_fps">CONTADOR DE FPS</string>
-    <string name="game_menu_option_switch_memory">EXIBIR USO DE MEMORIA RAM</string>
-    <string name="game_menu_option_menu_ball_opacity">Opacidade da Engrenagem Flutuante</string>
+    <string name="game_menu_option_switch_fps">Contador de FPS</string>
+    <string name="game_menu_option_switch_memory">Mostrar o uso da memória RAM</string>
+    <string name="game_menu_option_menu_ball_opacity">Opacidade do menu flutuante</string>
     <string name="game_menu_option_send_keycode">Enviar Tecla</string>
     <string name="game_menu_option_hotbar_rule">Regra de Posicionamento da Barra de Atalhos</string>
     <string name="game_menu_option_hotbar_rule_auto">Adaptativo (Pode Ser Impreciso)</string>
     <string name="game_menu_option_hotbar_rule_custom">Customizado</string>
     <string name="game_menu_option_hotbar_width">Largura Da Hotbar</string>
     <string name="game_menu_option_hotbar_height">Altura da Hotbar</string>
-    <string name="game_menu_option_show_menu">Ativar Engrenagem Flutuante</string>
-    <string name="game_menu_option_show_menu_hided">A Engrenagem Flutuante foi desativada. Você pode abrir o menu dela usando o botão de voltar do sistema do seu dispositivo.</string>
+    <string name="game_menu_option_show_menu">Ativar menu flutuante</string>
+    <string name="game_menu_option_show_menu_hided">O menu flutuante foi desativada. Você pode abrir a interface novamente usando o botão de voltar do sistema do seu dispositivo.</string>
     <string name="game_styles_joystick">Gerenciar Joystick</string>
     <string name="game_styles_joystick_enable">Ativar Joystick</string>
     <string name="game_styles_joystick_x">Posição X do joystick</string>
@@ -460,8 +460,8 @@
     <string name="account_supporting_password_invalid_empty">Senha obrigatória</string>
     <string name="account_supporting_microsoft_tip_title">Adicionar conta da Microsoft</string>
     <string name="account_supporting_microsoft_tip_link_text">Atalhos que você pode precisar:</string>
-    <string name="account_supporting_microsoft_tip_link_purchase">Compre o Minecraft</string>
-    <string name="account_supporting_microsoft_tip_link_make_gameid">Criar novo Perfil / Editar nome do Perfil</string>
+    <string name="account_supporting_microsoft_tip_link_purchase">1° - Compre o Minecraft Java</string>
+    <string name="account_supporting_microsoft_tip_link_make_gameid">2° - Vá no seu perfil do minecraft.net, coloque um Nickname e volte para o launcher</string>
     <string name="account_supporting_microsoft_tip_hint_t1">Siga os passos abaixo para adicionar sua conta:</string>
     <string name="account_supporting_microsoft_tip_hint_t2">1. Clique no botão Login - o launcher tentará recuperar um código de verificação;\n</string>
     <string name="account_supporting_microsoft_tip_hint_t3">2. Digite o código fornecido por %s na página pop-up e clique em Permitir acesso;\n</string>
@@ -609,7 +609,7 @@
     <string name="versions_overview_resource_pack_folder">Pasta do Pacote de Recursos</string>
     <string name="versions_overview_shaders_pack_folder">Pasta do Pacote de Shaders</string>
     <string name="versions_overview_mod_folder">Pasta Mod</string>
-    <string name="versions_overview_screenshot_folder">Pasta de Capturas de Tela</string>
+    <string name="versions_overview_screenshot_folder">Pasta de prints</string>
     <string name="versions_overview_logs_folder">Pasta de Logs</string>
     <string name="versions_overview_crash_report_folder">Pasta de relatório de falha</string>
     <string name="versions_config_version_settings">Configurações específicas da versão</string>
@@ -757,7 +757,7 @@
     <string name="settings_renderer_vulkan_driver_system_title">Usar o driver Vulkan do sistema</string>
     <string name="settings_renderer_vulkan_driver_system_summary">Quando ativado, o inicializador forçará o uso do driver Vulkan integrado do sistema (para GPUs Adreno) em vez do driver Turnip padrão. Essa configuração afeta apenas o backend Zink e mods relacionados que usam renderização Vulkan</string>
     <string name="settings_renderer_zink_driver_adreno">O launcher detectou que seu dispositivo possui uma GPU Adreno. Habilitar esta opção pode causar mau funcionamento do renderizador Zink. Tem certeza de que deseja habilitá-la?</string>
-    <string name="settings_renderer_vsync_in_zink_title"> Sincronização vertical do Zink</string>
+    <string name="settings_renderer_vsync_in_zink_title">Sincronização vertical do Zink</string>
     <string name="settings_renderer_vsync_in_zink_summary">Ative a sincronização vertical para o Renderizador Zink através da interface do sistema</string>
     <string name="settings_renderer_force_big_core_title">Forças núcleos de alto desempenho</string>
     <string name="settings_renderer_force_big_core_summary">Vincule o thread de renderização do Minecraft aos núcleos de alto desempenho da sua CPU (núcleos grandes). Habilitar isso pode aumentar o consumo de energia e o calor geral do seu dispositivo. (Não recomendado para CPUs com núcleos de menos de 3GHz)</string>
@@ -1174,4 +1174,15 @@
     <string name="download_game_version_overwrite_select_subtitle">Selecione a versão para sobrescrever. Você pode usar este recurso para atualizar/rebaixar a versão selecionada.</string>
     <string name="plugin_download_title">Baixar Plugin</string>
     <string name="plugin_download_summary">Baixe o plugin e instale-o como um aplicativo. Basta reabrir o launcher e ele será carregado automaticamente!</string>
+    <string name="settings_game_graphics_api_default_opengl">Defina para OpenGL somente na primeira inicialização</string>
+    <string name="account_label_server_url">Digite o endereço do servidor</string>
+    <string name="screenshots_manage">Prints</string>
+    <string name="screenshots_manage_no_screenshots">Sem nenhuma print para esta versão</string>
+    <string name="screenshots_manage_export">Exportar</string>
+    <string name="screenshots_manage_export_title">Exportar Prints</string>
+    <string name="screenshots_manage_export_success">Exportação concluída</string>
+    <string name="screenshots_manage_export_failed">Exportação falhou</string>
+    <string name="screenshots_manage_export_all_message">Exportar todas as suas print para a sua galeria?</string>
+    <string name="screenshots_manage_export_selected_message">Exportar %1$d prints selecionadas para a galeria do celular?</string>
+    <string name="unpack_screen_jna">Permite que o Minecraft chame diretamente funções de baixo nível do sistema operacional.</string>
 </resources>

@@ -33,28 +33,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -65,6 +62,7 @@ import com.movtery.zalithlauncher.ui.activities.CrashType
 import com.movtery.zalithlauncher.ui.components.BackgroundCard
 import com.movtery.zalithlauncher.ui.components.MarqueeText
 import com.movtery.zalithlauncher.ui.components.ScalingActionButton
+import com.movtery.zalithlauncher.ui.theme.backgroundColor
 import com.movtery.zalithlauncher.ui.theme.onBackgroundColor
 
 @Composable
@@ -132,10 +130,11 @@ private fun ErrorScreenLandscape(
                     .fillMaxWidth()
                     .height(40.dp),
                 crashType = crashType,
-                contentColor = onBackgroundColor()
             )
         },
         modifier = Modifier.fillMaxSize(),
+        containerColor = backgroundColor(),
+        contentColor = onBackgroundColor(),
         contentWindowInsets = if (AllSettings.launcherFullScreen.state) {
             WindowInsets()
         } else {
@@ -204,7 +203,7 @@ private fun ErrorScreenPortrait(
                         onClick = { showMenu = true }
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.MoreVert,
+                            painter = painterResource(R.drawable.ic_more_vert),
                             contentDescription = stringResource(R.string.generic_more)
                         )
                     }
@@ -292,26 +291,21 @@ private fun ErrorScreenPortrait(
 private fun TopBar(
     modifier: Modifier = Modifier,
     crashType: CrashType,
-    contentColor: Color
 ) {
-    CompositionLocalProvider(
-        LocalContentColor provides contentColor
+    Column(
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center
     ) {
-        Column(
-            modifier = modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center
-        ) {
-            val text = when (crashType) {
-                //在启动器崩溃的时候，显示一个较为严重的标题
-                CrashType.LAUNCHER_CRASH -> stringResource(R.string.crash_launcher_title, InfoDistributor.LAUNCHER_NAME)
-                //游戏运行崩溃了，大概和启动器关系不大，仅展示应用标题
-                CrashType.GAME_CRASH -> InfoDistributor.LAUNCHER_NAME
-            }
-            Text(
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-                text = text
-            )
+        val text = when (crashType) {
+            //在启动器崩溃的时候，显示一个较为严重的标题
+            CrashType.LAUNCHER_CRASH -> stringResource(R.string.crash_launcher_title, InfoDistributor.LAUNCHER_NAME)
+            //游戏运行崩溃了，大概和启动器关系不大，仅展示应用标题
+            CrashType.GAME_CRASH -> InfoDistributor.LAUNCHER_NAME
         }
+        Text(
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+            text = text
+        )
     }
 }
 
@@ -402,7 +396,7 @@ private fun ActionLayout(
 @Preview
 @Composable
 private fun PreviewErrorScreen() {
-    MaterialTheme {
+    MaterialExpressiveTheme {
         ErrorScreen(
             crashType = CrashType.LAUNCHER_CRASH,
             shareLogs = true,
