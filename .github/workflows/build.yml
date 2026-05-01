@@ -60,7 +60,7 @@ jobs:
           ./gradlew ZalithLauncher:assemble${{ inputs.variant }} -Darch=${{ matrix.arch }} -Pandroid.injected.signing.store.file=$PWD/keystore.jks -Pandroid.injected.signing.store.password=${{ secrets.STORE_PASSWORD }} -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
 
       - name: Upload Release APK for ${{ matrix.arch }}
-        if: inputs.variant == "Release"
+        if: inputs.variant == 'Release'
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
@@ -68,7 +68,7 @@ jobs:
           path: ZalithLauncher/build/outputs/apk/release/*.apk
 
       - name: Upload Debug APK for ${{ matrix.arch }}
-        if: inputs.variant == "Debug"
+        if: inputs.variant == 'Debug'
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
