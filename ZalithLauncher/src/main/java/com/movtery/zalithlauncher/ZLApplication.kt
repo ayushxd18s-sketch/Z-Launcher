@@ -142,17 +142,16 @@ class ZLApplication : Application(), SingletonImageLoader.Factory {
         val prefs = getSharedPreferences("z_launcher_prefs", MODE_PRIVATE)
         val elyByAdded = prefs.getBoolean("ely_by_added", false)
         if (!elyByAdded) {
-            val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO)
-            scope.launch {
+            Thread {
                 runCatching {
                     val server = com.movtery.zalithlauncher.game.account.auth_server.data.AuthServer(
                         baseUrl = "https://authserver.ely.by/api/authlib-injector",
                         serverName = "ely.by"
                     )
-                    AccountsManager.saveAuthServer(server)
+                    kotlinx.coroutines.runBlocking { AccountsManager.saveAuthServer(server) }
                     prefs.edit().putBoolean("ely_by_added", true).apply()
                 }
-            }
+            }.start()
         }
     }
 }
