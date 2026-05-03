@@ -43,7 +43,9 @@ import com.movtery.zalithlauncher.ui.screens.content.elements.VersionIconImage
 import kotlinx.coroutines.launch
 
 private val versionArtwork = mapOf(
+    "26" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MCV_SPR26Drop_TT_DotNet_Wallpaper_414x414.png",
     "1.21" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_TrickyTrials_414x414_01.jpg",
+    "1.21.9" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Minecraft_Fall_Drop_Campaign_Key_Art_DotNet_Downloadable_Wallpaper_414x414.png",
     "1.20" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_TrailsAndTales_414x414_01.jpg",
     "1.19" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_WildUpdate_414x414_01.jpg",
     "1.18" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_CavesAndCliffs2_414x414_01.jpg",
@@ -67,9 +69,26 @@ private val versionArtwork = mapOf(
     "1.0" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_NewSkinsLineup_414x414_01.jpg"
 )
 
-private fun getArtworkUrl(version: String): String? {
-    val major = version.split(".").take(2).joinToString(".")
+private fun getArtworkUrl(version: String): String {
+    val parts = version.split(".")
+    val majorNum = parts.firstOrNull()?.toIntOrNull() ?: 1
+    val minor = parts.getOrNull(1)?.toIntOrNull() ?: 0
+    val patch = parts.getOrNull(2)?.toIntOrNull() ?: 0
+    val major = parts.take(2).joinToString(".")
+
+    // Handle non-1.x versions like 26.x
+    if (majorNum >= 26) {
+        return versionArtwork["26"]
+            ?: "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MCV_SPR26Drop_TT_DotNet_Wallpaper_414x414.png"
+    }
+
+    // 1.21.9+ = Copper Age
+    if (major == "1.21" && patch >= 9) {
+        return versionArtwork["1.21.9"]!!
+    }
+
     return versionArtwork[major]
+        ?: "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_TrickyTrials_414x414_01.jpg"
 }
 
 @Composable
@@ -143,7 +162,7 @@ fun GameLibraryPanel(
             allVersions.filter { it.type == MinecraftVersion.Type.Release }
         }
         val installedVersions = VersionsManager.versions
-        val pagerState = rememberPagerState(pageCount = { releaseVersions.size })
+        val pagerState = rememberPagerState(pageCount = { maxOf(releaseVersions.size, 1) })
         val scope = rememberCoroutineScope()
 
         LaunchedEffect(Unit) {
@@ -224,9 +243,8 @@ fun GameLibraryPanel(
                         }
                     } else {
                         val currentVersion = releaseVersions.getOrNull(pagerState.currentPage)
-                        val artworkUrl = currentVersion?.version?.id?.let { getArtworkUrl(it) }
 
-                        // Version artwork with HorizontalPager and fade
+                        // Version artwork with HorizontalPager
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -234,34 +252,19 @@ fun GameLibraryPanel(
                         ) {
                             HorizontalPager(
                                 state = pagerState,
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier.fillMaxSize(),
+                                beyondViewportPageCount = 1
                             ) { page ->
                                 val pageVersion = releaseVersions.getOrNull(page)
                                 val pageArtworkUrl = pageVersion?.version?.id?.let { getArtworkUrl(it) }
 
                                 Box(modifier = Modifier.fillMaxSize()) {
-                                    AnimatedContent(
-                                        targetState = pageArtworkUrl,
-                                        transitionSpec = {
-                                            fadeIn() togetherWith fadeOut()
-                                        },
-                                        label = "artworkFade"
-                                    ) { url ->
-                                        if (url != null) {
-                                            AsyncImage(
-                                                model = url,
-                                                contentDescription = null,
-                                                modifier = Modifier.fillMaxSize(),
-                                                contentScale = ContentScale.Crop
-                                            )
-                                        } else {
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                                            )
-                                        }
-                                    }
+                                    AsyncImage(
+                                        model = pageArtworkUrl,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
 
                                     // Gradient overlay
                                     Box(
@@ -277,22 +280,15 @@ fun GameLibraryPanel(
                                             )
                                     )
 
-                                    // Version name overlay
-                                    AnimatedContent(
-                                        targetState = pageVersion?.version?.id ?: "",
-                                        transitionSpec = { fadeIn() togetherWith fadeOut() },
-                                        label = "versionNameFade"
-                                    ) { versionName ->
-                                        Text(
-                                            text = versionName,
-                                            style = MaterialTheme.typography.headlineMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White,
-                                            modifier = Modifier
-                                                .align(Alignment.BottomCenter)
-                                                .padding(bottom = 8.dp)
-                                        )
-                                    }
+                                    Text(
+                                        text = pageVersion?.version?.id ?: "",
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        modifier = Modifier
+                                            .align(Alignment.BottomCenter)
+                                            .padding(bottom = 8.dp)
+                                    )
                                 }
                             }
                         }
@@ -351,7 +347,7 @@ fun GameLibraryPanel(
 
                         // Download button
                         Button(
-                            onClick = { /* TODO: show loader selection */ },
+                            onClick = { /* TODO: loader selection */ },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 12.dp, vertical = 4.dp)
