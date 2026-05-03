@@ -195,8 +195,7 @@ private fun ContentMenu(
                     VersionsManager.saveCurrentVersion(version.getVersionName())
                     isLibraryOpen = false
                 },
-                onDownloadClick = {
-                    toVersionManageScreen()
+                onClose = {
                     isLibraryOpen = false
                 }
             )
