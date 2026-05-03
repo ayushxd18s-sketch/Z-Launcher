@@ -1,15 +1,20 @@
 package com.movtery.zalithlauncher.ui.screens.content
 
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,7 +32,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.movtery.zalithlauncher.R
@@ -36,19 +40,31 @@ import com.movtery.zalithlauncher.game.version.installed.VersionsManager
 import com.movtery.zalithlauncher.game.versioninfo.MinecraftVersion
 import com.movtery.zalithlauncher.game.versioninfo.MinecraftVersions
 import com.movtery.zalithlauncher.ui.screens.content.elements.VersionIconImage
+import kotlinx.coroutines.launch
 
-// Minecraft version artwork URLs
 private val versionArtwork = mapOf(
-    "1.21" to "https://www.minecraft.net/content/dam/games/minecraft/screenshots/Tricky-Trials-Key-Art.jpg",
-    "1.20" to "https://www.minecraft.net/content/dam/games/minecraft/screenshots/trails-and-tales-key-art.jpg",
-    "1.19" to "https://www.minecraft.net/content/dam/games/minecraft/screenshots/wild-update-key-art.jpg",
-    "1.18" to "https://www.minecraft.net/content/dam/games/minecraft/screenshots/caves-cliffs-key-art.jpg",
-    "1.17" to "https://www.minecraft.net/content/dam/games/minecraft/screenshots/caves-cliffs-key-art.jpg",
-    "1.16" to "https://www.minecraft.net/content/dam/games/minecraft/screenshots/nether-update-key-art.jpg",
-    "1.15" to "https://www.minecraft.net/content/dam/games/minecraft/screenshots/buzzy-bees-key-art.jpg",
-    "1.14" to "https://www.minecraft.net/content/dam/games/minecraft/screenshots/village-and-pillage-key-art.jpg",
-    "1.13" to "https://www.minecraft.net/content/dam/games/minecraft/screenshots/update-aquatic-key-art.jpg",
-    "1.12" to "https://www.minecraft.net/content/dam/games/minecraft/screenshots/world-of-color-key-art.jpg"
+    "1.21" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_TrickyTrials_414x414_01.jpg",
+    "1.20" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_TrailsAndTales_414x414_01.jpg",
+    "1.19" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_WildUpdate_414x414_01.jpg",
+    "1.18" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_CavesAndCliffs2_414x414_01.jpg",
+    "1.17" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_CavesAndCliffs1_414x414_01.jpg",
+    "1.16" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_NetherUpdate_414x414_01.jpg",
+    "1.15" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_BuzzyBeesUpdate_414x414_01.jpg",
+    "1.14" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_VillageandPillage_414x414_01.jpg",
+    "1.13" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_UpdateAquatic_414x414_01.jpg",
+    "1.12" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_WorldofColor_414x414_01.jpg",
+    "1.11" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_CatsandPandas_414x414_01.jpg",
+    "1.10" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_CatsandPandas_414x414_01.jpg",
+    "1.9" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_UpdateAquatic_414x414_01.jpg",
+    "1.8" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_BeachCabin_414x414_01.jpg",
+    "1.7" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_Mining_414x414_01.jpg",
+    "1.6" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_Mining_414x414_01.jpg",
+    "1.5" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_Mining_414x414_01.jpg",
+    "1.4" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_Mining_414x414_01.jpg",
+    "1.3" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_BoatTrip_414x414_01.jpg",
+    "1.2" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_BoatTrip_414x414_01.jpg",
+    "1.1" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_BoatTrip_414x414_01.jpg",
+    "1.0" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_NewSkinsLineup_414x414_01.jpg"
 )
 
 private fun getArtworkUrl(version: String): String? {
@@ -126,8 +142,9 @@ fun GameLibraryPanel(
         val releaseVersions = remember(allVersions) {
             allVersions.filter { it.type == MinecraftVersion.Type.Release }
         }
-        var selectedIndex by remember { mutableStateOf(0) }
         val installedVersions = VersionsManager.versions
+        val pagerState = rememberPagerState(pageCount = { releaseVersions.size })
+        val scope = rememberCoroutineScope()
 
         LaunchedEffect(Unit) {
             MinecraftVersions.refreshVersions()
@@ -206,69 +223,96 @@ fun GameLibraryPanel(
                             CircularProgressIndicator()
                         }
                     } else {
-                        val currentVersion = releaseVersions.getOrNull(selectedIndex)
+                        val currentVersion = releaseVersions.getOrNull(pagerState.currentPage)
                         val artworkUrl = currentVersion?.version?.id?.let { getArtworkUrl(it) }
 
-                        // Version artwork hero
+                        // Version artwork with HorizontalPager and fade
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxWidth()
                         ) {
-                            if (artworkUrl != null) {
-                                AsyncImage(
-                                    model = artworkUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                                )
-                            }
+                            HorizontalPager(
+                                state = pagerState,
+                                modifier = Modifier.fillMaxSize()
+                            ) { page ->
+                                val pageVersion = releaseVersions.getOrNull(page)
+                                val pageArtworkUrl = pageVersion?.version?.id?.let { getArtworkUrl(it) }
 
-                            // Gradient overlay
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        Brush.verticalGradient(
-                                            colors = listOf(
-                                                Color.Transparent,
-                                                MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                                Box(modifier = Modifier.fillMaxSize()) {
+                                    AnimatedContent(
+                                        targetState = pageArtworkUrl,
+                                        transitionSpec = {
+                                            fadeIn() togetherWith fadeOut()
+                                        },
+                                        label = "artworkFade"
+                                    ) { url ->
+                                        if (url != null) {
+                                            AsyncImage(
+                                                model = url,
+                                                contentDescription = null,
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentScale = ContentScale.Crop
                                             )
-                                        )
-                                    )
-                            )
+                                        } else {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                            )
+                                        }
+                                    }
 
-                            // Version name overlay
-                            Text(
-                                text = currentVersion?.version?.id ?: "",
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(bottom = 8.dp)
-                            )
+                                    // Gradient overlay
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(
+                                                Brush.verticalGradient(
+                                                    colors = listOf(
+                                                        Color.Transparent,
+                                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                                                    )
+                                                )
+                                            )
+                                    )
+
+                                    // Version name overlay
+                                    AnimatedContent(
+                                        targetState = pageVersion?.version?.id ?: "",
+                                        transitionSpec = { fadeIn() togetherWith fadeOut() },
+                                        label = "versionNameFade"
+                                    ) { versionName ->
+                                        Text(
+                                            text = versionName,
+                                            style = MaterialTheme.typography.headlineMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White,
+                                            modifier = Modifier
+                                                .align(Alignment.BottomCenter)
+                                                .padding(bottom = 8.dp)
+                                        )
+                                    }
+                                }
+                            }
                         }
 
-                        // Arrow navigation
+                        // Arrow navigation + version name
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 8.dp),
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             IconButton(
                                 onClick = {
-                                    if (selectedIndex > 0) selectedIndex--
+                                    scope.launch {
+                                        if (pagerState.currentPage > 0)
+                                            pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                                    }
                                 },
-                                enabled = selectedIndex > 0
+                                enabled = pagerState.currentPage > 0
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.ic_arrow_left_rounded),
@@ -276,18 +320,27 @@ fun GameLibraryPanel(
                                 )
                             }
 
-                            Text(
-                                text = currentVersion?.version?.id ?: "",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Medium,
-                                textAlign = TextAlign.Center
-                            )
+                            AnimatedContent(
+                                targetState = currentVersion?.version?.id ?: "",
+                                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                                label = "navVersionName"
+                            ) { versionName ->
+                                Text(
+                                    text = versionName,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
 
                             IconButton(
                                 onClick = {
-                                    if (selectedIndex < releaseVersions.size - 1) selectedIndex++
+                                    scope.launch {
+                                        if (pagerState.currentPage < releaseVersions.size - 1)
+                                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                    }
                                 },
-                                enabled = selectedIndex < releaseVersions.size - 1
+                                enabled = pagerState.currentPage < releaseVersions.size - 1
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.ic_arrow_right_rounded),
@@ -298,7 +351,7 @@ fun GameLibraryPanel(
 
                         // Download button
                         Button(
-                            onClick = { /* navigate to download */ },
+                            onClick = { /* TODO: show loader selection */ },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 12.dp, vertical = 4.dp)

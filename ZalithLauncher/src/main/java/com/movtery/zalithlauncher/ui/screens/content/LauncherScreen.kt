@@ -336,7 +336,6 @@ private fun VersionManagerLayout(
     Row(
         modifier = modifier
             .clip(shape = MaterialTheme.shapes.large)
-            .clickable(onClick = swapToVersionManage)
             .padding(PaddingValues(all = 8.dp))
     ) {
         if (isRefreshing) {
