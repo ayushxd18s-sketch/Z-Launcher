@@ -44,6 +44,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -87,7 +90,13 @@ fun LauncherScreen(
         ) {
             ContentMenu(
                 isVisible = isVisible,
-                modifier = Modifier.weight(7f)
+                modifier = Modifier.weight(7f),
+                toVersionManageScreen = {
+                    backStackViewModel.mainScreen.removeAndNavigateTo(
+                        remove = NestedNavKey.VersionSettings::class,
+                        screenKey = NormalNavKey.VersionsManager
+                    )
+                }
             )
 
             val toAccountManageScreen: () -> Unit = {
@@ -126,45 +135,76 @@ fun LauncherScreen(
 private fun ContentMenu(
     isVisible: Boolean,
     modifier: Modifier = Modifier,
+    toVersionManageScreen: () -> Unit = {}
 ) {
     val yOffset by swapAnimateDpAsState(
         targetValue = (-40).dp,
         swapIn = isVisible
     )
 
-    Column(
+    var isLibraryOpen by remember { mutableStateOf(false) }
+
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .offset { IntOffset(x = 0, y = yOffset.roundToPx()) }
     ) {
-        if (BuildConfig.DEBUG) {
-            //debug版本关不掉的警告，防止有人把测试版当正式版用 XD
-            BackgroundCard(
-                modifier = Modifier.padding(all = 12.dp),
-                shape = MaterialTheme.shapes.extraLarge
-            ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .offset { IntOffset(x = 0, y = yOffset.roundToPx()) }
+        ) {
+            if (BuildConfig.DEBUG) {
+                BackgroundCard(
+                    modifier = Modifier.padding(all = 12.dp),
+                    shape = MaterialTheme.shapes.extraLarge
                 ) {
-                    Text(
-                        text = stringResource(R.string.generic_warning),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = stringResource(R.string.launcher_version_debug_warning, InfoDistributor.LAUNCHER_NAME),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        modifier = Modifier
-                            .alpha(0.8f)
-                            .align(Alignment.End),
-                        text = stringResource(R.string.launcher_version_debug_warning_cant_close),
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.generic_warning),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = stringResource(R.string.launcher_version_debug_warning, InfoDistributor.LAUNCHER_NAME),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            modifier = Modifier
+                                .alpha(0.8f)
+                                .align(Alignment.End),
+                            text = stringResource(R.string.launcher_version_debug_warning_cant_close),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
+        }
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            GameLibraryPanel(
+                isOpen = isLibraryOpen,
+                onVersionSelect = { version ->
+                    VersionsManager.saveCurrentVersion(version.getVersionName())
+                    isLibraryOpen = false
+                },
+                onDownloadClick = {
+                    toVersionManageScreen()
+                    isLibraryOpen = false
+                }
+            )
+
+            GameLibraryButton(
+                onClick = { isLibraryOpen = !isLibraryOpen },
+                isOpen = isLibraryOpen
+            )
         }
     }
 }
