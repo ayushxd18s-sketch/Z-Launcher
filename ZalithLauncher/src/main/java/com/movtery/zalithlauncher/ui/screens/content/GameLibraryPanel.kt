@@ -14,7 +14,9 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,18 +31,22 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.movtery.zalithlauncher.R
+import com.movtery.zalithlauncher.game.download.game.GameDownloadInfo
 import com.movtery.zalithlauncher.game.version.installed.Version
 import com.movtery.zalithlauncher.game.version.installed.VersionsManager
 import com.movtery.zalithlauncher.game.versioninfo.MinecraftVersion
 import com.movtery.zalithlauncher.game.versioninfo.MinecraftVersions
+import com.movtery.zalithlauncher.ui.screens.content.download.GameDownloadViewModel
 import com.movtery.zalithlauncher.ui.screens.content.elements.VersionIconImage
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -156,17 +162,23 @@ fun GameLibraryPanel(
         val installedVersions = VersionsManager.versions
         var selectedIndex by remember { mutableStateOf(0) }
         var showLoaderSelection by remember { mutableStateOf(false) }
-        var isDownloading by remember { mutableStateOf(false) }
-        var downloadLabel by remember { mutableStateOf("") }
-        var downloadProgress by remember { mutableStateOf(-1f) }
         val velocityTracker = remember { VelocityTracker() }
         var dragAccumulator by remember { mutableStateOf(0f) }
+        val context = LocalContext.current
+        val downloadViewModel: GameDownloadViewModel = viewModel()
+
+        val tasks by (downloadViewModel.installer?.tasksFlow
+            ?.collectAsStateWithLifecycle(emptyList())
+            ?: remember { mutableStateOf(emptyList()) })
+
+        val isDownloading = downloadViewModel.installer != null
+        val currentTask = tasks.firstOrNull()
+        val downloadProgress = currentTask?.task?.currentProgress ?: -1f
+        val downloadTitle = currentTask?.title ?: ""
 
         LaunchedEffect(Unit) {
             MinecraftVersions.refreshVersions()
         }
-
-
 
         Box(
             modifier = Modifier
@@ -261,7 +273,11 @@ fun GameLibraryPanel(
                                     contentDescription = null,
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .then(if (showLoaderSelection) Modifier.blur(8.dp) else Modifier),
+                                        .then(
+                                            if (showLoaderSelection)
+                                                Modifier.blur(8.dp)
+                                            else Modifier
+                                        ),
                                     contentScale = ContentScale.Crop
                                 )
                             }
@@ -295,56 +311,175 @@ fun GameLibraryPanel(
                                 )
                             }
 
-                            // Loader selection overlay on artwork
+                            // Loader selection overlay
                             if (showLoaderSelection && !isDownloading) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(Color.Black.copy(alpha = 0.5f))
+                                        .background(Color.Black.copy(alpha = 0.6f))
                                         .padding(16.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Column(
+                                        modifier = Modifier.verticalScroll(rememberScrollState()),
                                         verticalArrangement = Arrangement.spacedBy(8.dp),
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
                                         Text(
-                                            text = "Select loader",
+                                            text = "Select loader for ${currentVersion?.version?.id}",
                                             style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold,
                                             color = Color.White
                                         )
-                                        val loaders = listOf(
-                                            "Vanilla", "Fabric", "Forge",
-                                            "NeoForge", "Quilt", "LegacyFabric"
-                                        )
-                                        loaders.forEach { loader ->
-                                            OutlinedButton(
-                                                onClick = {
-                                                    val versionId = currentVersion?.version?.id ?: return@OutlinedButton
-                                                    downloadLabel = "Downloading $versionId $loader..."
-                                                    isDownloading = true
-                                                    showLoaderSelection = false
-                                                },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                colors = ButtonDefaults.outlinedButtonColors(
-                                                    contentColor = Color.White
+
+                                        var includeFabricApi by remember { mutableStateOf(true) }
+                                        var includeQuiltApi by remember { mutableStateOf(true) }
+                                        var includeLegacyFabricApi by remember { mutableStateOf(true) }
+
+                                        // Vanilla
+                                        OutlinedButton(
+                                            onClick = {
+                                                val versionId = currentVersion?.version?.id ?: return@OutlinedButton
+                                                downloadViewModel.install(
+                                                    context,
+                                                    GameDownloadInfo(
+                                                        gameVersion = versionId,
+                                                        customVersionName = versionId
+                                                    )
                                                 )
-                                            ) {
-                                                Text(text = loader)
-                                            }
-                                        }
-                                        TextButton(
-                                            onClick = { showLoaderSelection = false },
+                                                showLoaderSelection = false
+                                            },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                                        ) { Text("Vanilla") }
+
+                                        // Fabric + API toggle
+                                        OutlinedButton(
+                                            onClick = {
+                                                val versionId = currentVersion?.version?.id ?: return@OutlinedButton
+                                                downloadViewModel.install(
+                                                    context,
+                                                    GameDownloadInfo(
+                                                        gameVersion = versionId,
+                                                        customVersionName = "$versionId-Fabric"
+                                                    )
+                                                )
+                                                showLoaderSelection = false
+                                            },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                                        ) { Text("Fabric") }
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.fillMaxWidth()
                                         ) {
-                                            Text(text = "Cancel", color = Color.White)
+                                            Checkbox(
+                                                checked = includeFabricApi,
+                                                onCheckedChange = { includeFabricApi = it },
+                                                colors = CheckboxDefaults.colors(checkmarkColor = Color.White)
+                                            )
+                                            Text("Include Fabric API", color = Color.White, style = MaterialTheme.typography.labelSmall)
+                                        }
+
+                                        // Forge
+                                        OutlinedButton(
+                                            onClick = {
+                                                val versionId = currentVersion?.version?.id ?: return@OutlinedButton
+                                                downloadViewModel.install(
+                                                    context,
+                                                    GameDownloadInfo(
+                                                        gameVersion = versionId,
+                                                        customVersionName = "$versionId-Forge"
+                                                    )
+                                                )
+                                                showLoaderSelection = false
+                                            },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                                        ) { Text("Forge") }
+
+                                        // NeoForge
+                                        OutlinedButton(
+                                            onClick = {
+                                                val versionId = currentVersion?.version?.id ?: return@OutlinedButton
+                                                downloadViewModel.install(
+                                                    context,
+                                                    GameDownloadInfo(
+                                                        gameVersion = versionId,
+                                                        customVersionName = "$versionId-NeoForge"
+                                                    )
+                                                )
+                                                showLoaderSelection = false
+                                            },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                                        ) { Text("NeoForge") }
+
+                                        // Quilt + API toggle
+                                        OutlinedButton(
+                                            onClick = {
+                                                val versionId = currentVersion?.version?.id ?: return@OutlinedButton
+                                                downloadViewModel.install(
+                                                    context,
+                                                    GameDownloadInfo(
+                                                        gameVersion = versionId,
+                                                        customVersionName = "$versionId-Quilt"
+                                                    )
+                                                )
+                                                showLoaderSelection = false
+                                            },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                                        ) { Text("Quilt") }
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Checkbox(
+                                                checked = includeQuiltApi,
+                                                onCheckedChange = { includeQuiltApi = it },
+                                                colors = CheckboxDefaults.colors(checkmarkColor = Color.White)
+                                            )
+                                            Text("Include Quilt API", color = Color.White, style = MaterialTheme.typography.labelSmall)
+                                        }
+
+                                        // LegacyFabric + API toggle
+                                        OutlinedButton(
+                                            onClick = {
+                                                val versionId = currentVersion?.version?.id ?: return@OutlinedButton
+                                                downloadViewModel.install(
+                                                    context,
+                                                    GameDownloadInfo(
+                                                        gameVersion = versionId,
+                                                        customVersionName = "$versionId-LegacyFabric"
+                                                    )
+                                                )
+                                                showLoaderSelection = false
+                                            },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                                        ) { Text("LegacyFabric") }
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Checkbox(
+                                                checked = includeLegacyFabricApi,
+                                                onCheckedChange = { includeLegacyFabricApi = it },
+                                                colors = CheckboxDefaults.colors(checkmarkColor = Color.White)
+                                            )
+                                            Text("Include LegacyFabric API", color = Color.White, style = MaterialTheme.typography.labelSmall)
+                                        }
+
+                                        TextButton(onClick = { showLoaderSelection = false }) {
+                                            Text("Cancel", color = Color.White)
                                         }
                                     }
                                 }
                             }
                         }
 
-                        // Arrow navigation + version name
+                        // Version nav row
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -417,7 +552,7 @@ fun GameLibraryPanel(
                             }
                         }
 
-                        // Download button / progress
+                        // Download button or progress
                         if (isDownloading) {
                             Column(
                                 modifier = Modifier
@@ -426,10 +561,10 @@ fun GameLibraryPanel(
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Text(
-                                    text = downloadLabel,
+                                    text = downloadTitle,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1
+                                    maxLines = 2
                                 )
                                 if (downloadProgress < 0f) {
                                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
@@ -438,6 +573,12 @@ fun GameLibraryPanel(
                                         progress = { downloadProgress },
                                         modifier = Modifier.fillMaxWidth()
                                     )
+                                }
+                                TextButton(
+                                    onClick = { downloadViewModel.cancel() },
+                                    modifier = Modifier.align(Alignment.End)
+                                ) {
+                                    Text("Cancel")
                                 }
                             }
                         } else {
