@@ -1,5 +1,7 @@
+
 package com.movtery.zalithlauncher.ui.screens.content
 
+import android.os.Build
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -10,11 +12,10 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,8 +25,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RenderEffect
+import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -40,12 +45,13 @@ import com.movtery.zalithlauncher.game.version.installed.VersionsManager
 import com.movtery.zalithlauncher.game.versioninfo.MinecraftVersion
 import com.movtery.zalithlauncher.game.versioninfo.MinecraftVersions
 import com.movtery.zalithlauncher.ui.screens.content.elements.VersionIconImage
-import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 private val versionArtwork = mapOf(
     "26" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MCV_SPR26Drop_TT_DotNet_Wallpaper_414x414.png",
-    "1.21" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_TrickyTrials_414x414_01.jpg",
     "1.21.9" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Minecraft_Fall_Drop_Campaign_Key_Art_DotNet_Downloadable_Wallpaper_414x414.png",
+    "1.21" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_TrickyTrials_414x414_01.jpg",
     "1.20" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_TrailsAndTales_414x414_01.jpg",
     "1.19" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_WildUpdate_414x414_01.jpg",
     "1.18" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_CavesAndCliffs2_414x414_01.jpg",
@@ -72,20 +78,11 @@ private val versionArtwork = mapOf(
 private fun getArtworkUrl(version: String): String {
     val parts = version.split(".")
     val majorNum = parts.firstOrNull()?.toIntOrNull() ?: 1
-    val minor = parts.getOrNull(1)?.toIntOrNull() ?: 0
     val patch = parts.getOrNull(2)?.toIntOrNull() ?: 0
     val major = parts.take(2).joinToString(".")
 
-    // Handle non-1.x versions like 26.x
-    if (majorNum >= 26) {
-        return versionArtwork["26"]
-            ?: "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MCV_SPR26Drop_TT_DotNet_Wallpaper_414x414.png"
-    }
-
-    // 1.21.9+ = Copper Age
-    if (major == "1.21" && patch >= 9) {
-        return versionArtwork["1.21.9"]!!
-    }
+    if (majorNum >= 26) return versionArtwork["26"]!!
+    if (major == "1.21" && patch >= 9) return versionArtwork["1.21.9"]!!
 
     return versionArtwork[major]
         ?: "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_TrickyTrials_414x414_01.jpg"
@@ -162,12 +159,29 @@ fun GameLibraryPanel(
             allVersions.filter { it.type == MinecraftVersion.Type.Release }
         }
         val installedVersions = VersionsManager.versions
-        val pagerState = rememberPagerState(pageCount = { maxOf(releaseVersions.size, 1) })
-        val scope = rememberCoroutineScope()
+        var selectedIndex by remember { mutableStateOf(0) }
+        var showLoaderSelection by remember { mutableStateOf(false) }
+        val velocityTracker = remember { VelocityTracker() }
+        var dragAccumulator by remember { mutableStateOf(0f) }
 
         LaunchedEffect(Unit) {
             MinecraftVersions.refreshVersions()
         }
+
+        // Blur behind panel
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        renderEffect = android.graphics.RenderEffect
+                            .createBlurEffect(20f, 20f, android.graphics.Shader.TileMode.CLAMP)
+                            .asComposeRenderEffect()
+                    }
+                    this.alpha = alpha
+                }
+                .background(Color.Black.copy(alpha = 0.3f))
+        )
 
         Box(
             modifier = Modifier
@@ -179,7 +193,7 @@ fun GameLibraryPanel(
                 }
                 .fillMaxSize()
                 .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surface)
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
         ) {
             Row(modifier = Modifier.fillMaxSize()) {
 
@@ -242,73 +256,101 @@ fun GameLibraryPanel(
                             CircularProgressIndicator()
                         }
                     } else {
-                        val currentVersion = releaseVersions.getOrNull(pagerState.currentPage)
+                        val currentVersion = releaseVersions.getOrNull(selectedIndex)
+                        val artworkUrl = currentVersion?.version?.id?.let { getArtworkUrl(it) }
 
-                        // Version artwork with HorizontalPager
+                        // Artwork - changes per major version
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxWidth()
                         ) {
-                            HorizontalPager(
-                                state = pagerState,
-                                modifier = Modifier.fillMaxSize(),
-                                beyondViewportPageCount = 1
-                            ) { page ->
-                                val pageVersion = releaseVersions.getOrNull(page)
-                                val pageArtworkUrl = pageVersion?.version?.id?.let { getArtworkUrl(it) }
+                            AnimatedContent(
+                                targetState = artworkUrl,
+                                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                                label = "artwork",
+                                modifier = Modifier.fillMaxSize()
+                            ) { url ->
+                                AsyncImage(
+                                    model = url,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
 
-                                Box(modifier = Modifier.fillMaxSize()) {
-                                    AsyncImage(
-                                        model = pageArtworkUrl,
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-
-                                    // Gradient overlay
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(
-                                                Brush.verticalGradient(
-                                                    colors = listOf(
-                                                        Color.Transparent,
-                                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
-                                                    )
-                                                )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.verticalGradient(
+                                            colors = listOf(
+                                                Color.Transparent,
+                                                MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
                                             )
+                                        )
                                     )
+                            )
 
-                                    Text(
-                                        text = pageVersion?.version?.id ?: "",
-                                        style = MaterialTheme.typography.headlineMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White,
-                                        modifier = Modifier
-                                            .align(Alignment.BottomCenter)
-                                            .padding(bottom = 8.dp)
-                                    )
-                                }
+                            AnimatedContent(
+                                targetState = currentVersion?.version?.id ?: "",
+                                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                                label = "versionName",
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = 8.dp)
+                            ) { name ->
+                                Text(
+                                    text = name,
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
                             }
                         }
 
-                        // Arrow navigation + version name
+                        // Version number - velocity-based drag scrolling
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                .pointerInput(releaseVersions.size) {
+                                    detectHorizontalDragGestures(
+                                        onDragStart = {
+                                            dragAccumulator = 0f
+                                            velocityTracker.resetTracking()
+                                        },
+                                        onHorizontalDrag = { change, dragAmount ->
+                                            velocityTracker.addPosition(
+                                                change.uptimeMillis,
+                                                change.position
+                                            )
+                                            dragAccumulator -= dragAmount
+                                            val threshold = 40f
+                                            if (abs(dragAccumulator) >= threshold) {
+                                                val steps = (dragAccumulator / threshold).roundToInt()
+                                                selectedIndex = (selectedIndex + steps)
+                                                    .coerceIn(0, releaseVersions.size - 1)
+                                                dragAccumulator -= steps * threshold
+                                            }
+                                        },
+                                        onDragEnd = {
+                                            val velocity = velocityTracker.calculateVelocity()
+                                            val extraSteps = (velocity.x / -2000f).roundToInt()
+                                                .coerceIn(-10, 10)
+                                            selectedIndex = (selectedIndex + extraSteps)
+                                                .coerceIn(0, releaseVersions.size - 1)
+                                        }
+                                    )
+                                },
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             IconButton(
                                 onClick = {
-                                    scope.launch {
-                                        if (pagerState.currentPage > 0)
-                                            pagerState.animateScrollToPage(pagerState.currentPage - 1)
-                                    }
+                                    if (selectedIndex > 0) selectedIndex--
                                 },
-                                enabled = pagerState.currentPage > 0
+                                enabled = selectedIndex > 0
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.ic_arrow_left_rounded),
@@ -319,10 +361,10 @@ fun GameLibraryPanel(
                             AnimatedContent(
                                 targetState = currentVersion?.version?.id ?: "",
                                 transitionSpec = { fadeIn() togetherWith fadeOut() },
-                                label = "navVersionName"
-                            ) { versionName ->
+                                label = "navVersion"
+                            ) { name ->
                                 Text(
-                                    text = versionName,
+                                    text = name,
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.Medium,
                                     textAlign = TextAlign.Center
@@ -331,12 +373,9 @@ fun GameLibraryPanel(
 
                             IconButton(
                                 onClick = {
-                                    scope.launch {
-                                        if (pagerState.currentPage < releaseVersions.size - 1)
-                                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
-                                    }
+                                    if (selectedIndex < releaseVersions.size - 1) selectedIndex++
                                 },
-                                enabled = pagerState.currentPage < releaseVersions.size - 1
+                                enabled = selectedIndex < releaseVersions.size - 1
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.ic_arrow_right_rounded),
@@ -345,20 +384,26 @@ fun GameLibraryPanel(
                             }
                         }
 
-                        // Download button
-                        Button(
-                            onClick = { /* TODO: loader selection */ },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 4.dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_download_2_outlined),
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
+                        if (!showLoaderSelection) {
+                            Button(
+                                onClick = { showLoaderSelection = true },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_download_2_outlined),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(text = "Download ${currentVersion?.version?.id ?: ""}")
+                            }
+                        } else {
+                            LoaderSelectionPanel(
+                                versionId = currentVersion?.version?.id ?: "",
+                                onBack = { showLoaderSelection = false }
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = "Download ${currentVersion?.version?.id ?: ""}")
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -366,7 +411,6 @@ fun GameLibraryPanel(
                 }
             }
 
-            // Close button
             IconButton(
                 onClick = onClose,
                 modifier = Modifier
@@ -377,6 +421,45 @@ fun GameLibraryPanel(
                     painter = painterResource(R.drawable.ic_close),
                     contentDescription = "Close"
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoaderSelectionPanel(
+    versionId: String,
+    onBack: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_arrow_back),
+                    contentDescription = "Back"
+                )
+            }
+            Text(
+                text = "Select loader for $versionId",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        val loaders = listOf("Vanilla", "Fabric", "Forge", "NeoForge", "Quilt", "LegacyFabric")
+        loaders.forEach { loader ->
+            OutlinedButton(
+                onClick = { /* TODO: trigger install */ },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = loader)
             }
         }
     }
