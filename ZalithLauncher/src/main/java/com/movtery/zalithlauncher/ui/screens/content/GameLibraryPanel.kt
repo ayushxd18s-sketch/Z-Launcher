@@ -41,6 +41,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.movtery.zalithlauncher.R
+import com.movtery.zalithlauncher.game.addons.modloader.fabriclike.fabric.FabricVersions
+import com.movtery.zalithlauncher.game.addons.modloader.fabriclike.legacyfabric.LegacyFabricVersions
+import com.movtery.zalithlauncher.game.addons.modloader.fabriclike.quilt.QuiltVersions
+import com.movtery.zalithlauncher.game.addons.modloader.forgelike.forge.ForgeVersions
+import com.movtery.zalithlauncher.game.addons.modloader.forgelike.neoforge.NeoForgeVersions
 import com.movtery.zalithlauncher.game.download.game.GameDownloadInfo
 import com.movtery.zalithlauncher.game.version.installed.Version
 import com.movtery.zalithlauncher.game.version.installed.VersionsManager
@@ -48,6 +53,7 @@ import com.movtery.zalithlauncher.game.versioninfo.MinecraftVersion
 import com.movtery.zalithlauncher.game.versioninfo.MinecraftVersions
 import com.movtery.zalithlauncher.ui.screens.content.download.GameDownloadViewModel
 import com.movtery.zalithlauncher.ui.screens.content.elements.VersionIconImage
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -64,18 +70,8 @@ private val versionArtwork = mapOf(
     "1.14" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_VillageandPillage_414x414_01.jpg",
     "1.13" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_UpdateAquatic_414x414_01.jpg",
     "1.12" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_WorldofColor_414x414_01.jpg",
-    "1.11" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_CatsandPandas_414x414_01.jpg",
-    "1.10" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_CatsandPandas_414x414_01.jpg",
-    "1.9" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_UpdateAquatic_414x414_01.jpg",
     "1.8" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_BeachCabin_414x414_01.jpg",
-    "1.7" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_Mining_414x414_01.jpg",
-    "1.6" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_Mining_414x414_01.jpg",
-    "1.5" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_Mining_414x414_01.jpg",
-    "1.4" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_Mining_414x414_01.jpg",
-    "1.3" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_BoatTrip_414x414_01.jpg",
-    "1.2" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_BoatTrip_414x414_01.jpg",
-    "1.1" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_BoatTrip_414x414_01.jpg",
-    "1.0" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_NewSkinsLineup_414x414_01.jpg"
+    "1.7" to "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_Mining_414x414_01.jpg"
 )
 
 private fun getArtworkUrl(version: String): String {
@@ -87,6 +83,14 @@ private fun getArtworkUrl(version: String): String {
     if (major == "1.21" && patch >= 9) return versionArtwork["1.21.9"]!!
     return versionArtwork[major]
         ?: "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_TrickyTrials_414x414_01.jpg"
+}
+
+private fun formatSpeed(bytesPerSec: Long): String {
+    return when {
+        bytesPerSec >= 1_000_000 -> "${"%.1f".format(bytesPerSec / 1_000_000.0)} MB/s"
+        bytesPerSec >= 1_000 -> "${"%.1f".format(bytesPerSec / 1_000.0)} KB/s"
+        else -> "$bytesPerSec B/s"
+    }
 }
 
 @Composable
@@ -162,9 +166,11 @@ fun GameLibraryPanel(
         val installedVersions = VersionsManager.versions
         var selectedIndex by remember { mutableStateOf(0) }
         var showLoaderSelection by remember { mutableStateOf(false) }
+        var versionToDelete by remember { mutableStateOf<Version?>(null) }
         val velocityTracker = remember { VelocityTracker() }
         var dragAccumulator by remember { mutableStateOf(0f) }
         val context = LocalContext.current
+        val scope = rememberCoroutineScope()
         val downloadViewModel: GameDownloadViewModel = viewModel()
 
         val tasks by (downloadViewModel.installer?.tasksFlow
@@ -174,7 +180,32 @@ fun GameLibraryPanel(
         val isDownloading = downloadViewModel.installer != null
         val currentTask = tasks.firstOrNull()
         val downloadProgress = currentTask?.task?.currentProgress ?: -1f
+        val downloadSpeed = currentTask?.task?.currentRateBytesPerSec ?: 0L
         val downloadTitle = currentTask?.title ?: ""
+
+        // Delete confirmation dialog
+        versionToDelete?.let { version ->
+            AlertDialog(
+                onDismissRequest = { versionToDelete = null },
+                title = { Text("Delete Version") },
+                text = { Text("Are you sure you want to delete "${version.getVersionName()}"? This will permanently remove all files.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            VersionsManager.deleteVersion(version)
+                            versionToDelete = null
+                        }
+                    ) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { versionToDelete = null }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
 
         LaunchedEffect(Unit) {
             MinecraftVersions.refreshVersions()
@@ -230,6 +261,9 @@ fun GameLibraryPanel(
                                     onClick = {
                                         onVersionSelect(version)
                                         onClose()
+                                    },
+                                    onDelete = {
+                                        versionToDelete = version
                                     }
                                 )
                             }
@@ -313,6 +347,9 @@ fun GameLibraryPanel(
 
                             // Loader selection overlay
                             if (showLoaderSelection && !isDownloading) {
+                                var isLoadingLoader by remember { mutableStateOf(false) }
+                                var loaderError by remember { mutableStateOf<String?>(null) }
+
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
@@ -320,159 +357,191 @@ fun GameLibraryPanel(
                                         .padding(16.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Column(
-                                        modifier = Modifier.verticalScroll(rememberScrollState()),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Text(
-                                            text = "Select loader for ${currentVersion?.version?.id}",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White
-                                        )
-
-                                        var includeFabricApi by remember { mutableStateOf(true) }
-                                        var includeQuiltApi by remember { mutableStateOf(true) }
-                                        var includeLegacyFabricApi by remember { mutableStateOf(true) }
-
-                                        // Vanilla
-                                        OutlinedButton(
-                                            onClick = {
-                                                val versionId = currentVersion?.version?.id ?: return@OutlinedButton
-                                                downloadViewModel.install(
-                                                    context,
-                                                    GameDownloadInfo(
-                                                        gameVersion = versionId,
-                                                        customVersionName = versionId
-                                                    )
-                                                )
-                                                showLoaderSelection = false
-                                            },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
-                                        ) { Text("Vanilla") }
-
-                                        // Fabric + API toggle
-                                        OutlinedButton(
-                                            onClick = {
-                                                val versionId = currentVersion?.version?.id ?: return@OutlinedButton
-                                                downloadViewModel.install(
-                                                    context,
-                                                    GameDownloadInfo(
-                                                        gameVersion = versionId,
-                                                        customVersionName = "$versionId-Fabric"
-                                                    )
-                                                )
-                                                showLoaderSelection = false
-                                            },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
-                                        ) { Text("Fabric") }
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.fillMaxWidth()
+                                    if (isLoadingLoader) {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
-                                            Checkbox(
-                                                checked = includeFabricApi,
-                                                onCheckedChange = { includeFabricApi = it },
-                                                colors = CheckboxDefaults.colors(checkmarkColor = Color.White)
-                                            )
-                                            Text("Include Fabric API", color = Color.White, style = MaterialTheme.typography.labelSmall)
+                                            CircularProgressIndicator(color = Color.White)
+                                            Text("Fetching loader versions...", color = Color.White)
                                         }
-
-                                        // Forge
-                                        OutlinedButton(
-                                            onClick = {
-                                                val versionId = currentVersion?.version?.id ?: return@OutlinedButton
-                                                downloadViewModel.install(
-                                                    context,
-                                                    GameDownloadInfo(
-                                                        gameVersion = versionId,
-                                                        customVersionName = "$versionId-Forge"
-                                                    )
-                                                )
-                                                showLoaderSelection = false
-                                            },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
-                                        ) { Text("Forge") }
-
-                                        // NeoForge
-                                        OutlinedButton(
-                                            onClick = {
-                                                val versionId = currentVersion?.version?.id ?: return@OutlinedButton
-                                                downloadViewModel.install(
-                                                    context,
-                                                    GameDownloadInfo(
-                                                        gameVersion = versionId,
-                                                        customVersionName = "$versionId-NeoForge"
-                                                    )
-                                                )
-                                                showLoaderSelection = false
-                                            },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
-                                        ) { Text("NeoForge") }
-
-                                        // Quilt + API toggle
-                                        OutlinedButton(
-                                            onClick = {
-                                                val versionId = currentVersion?.version?.id ?: return@OutlinedButton
-                                                downloadViewModel.install(
-                                                    context,
-                                                    GameDownloadInfo(
-                                                        gameVersion = versionId,
-                                                        customVersionName = "$versionId-Quilt"
-                                                    )
-                                                )
-                                                showLoaderSelection = false
-                                            },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
-                                        ) { Text("Quilt") }
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.fillMaxWidth()
+                                    } else {
+                                        Column(
+                                            modifier = Modifier.verticalScroll(rememberScrollState()),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally
                                         ) {
-                                            Checkbox(
-                                                checked = includeQuiltApi,
-                                                onCheckedChange = { includeQuiltApi = it },
-                                                colors = CheckboxDefaults.colors(checkmarkColor = Color.White)
+                                            Text(
+                                                text = "Select loader for ${currentVersion?.version?.id}",
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
                                             )
-                                            Text("Include Quilt API", color = Color.White, style = MaterialTheme.typography.labelSmall)
-                                        }
 
-                                        // LegacyFabric + API toggle
-                                        OutlinedButton(
-                                            onClick = {
-                                                val versionId = currentVersion?.version?.id ?: return@OutlinedButton
-                                                downloadViewModel.install(
-                                                    context,
-                                                    GameDownloadInfo(
-                                                        gameVersion = versionId,
-                                                        customVersionName = "$versionId-LegacyFabric"
+                                            loaderError?.let {
+                                                Text(it, color = Color.Red, style = MaterialTheme.typography.labelSmall)
+                                            }
+
+                                            // Vanilla
+                                            OutlinedButton(
+                                                onClick = {
+                                                    val versionId = currentVersion?.version?.id ?: return@OutlinedButton
+                                                    downloadViewModel.install(
+                                                        context,
+                                                        GameDownloadInfo(
+                                                            gameVersion = versionId,
+                                                            customVersionName = versionId
+                                                        )
                                                     )
-                                                )
-                                                showLoaderSelection = false
-                                            },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
-                                        ) { Text("LegacyFabric") }
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Checkbox(
-                                                checked = includeLegacyFabricApi,
-                                                onCheckedChange = { includeLegacyFabricApi = it },
-                                                colors = CheckboxDefaults.colors(checkmarkColor = Color.White)
-                                            )
-                                            Text("Include LegacyFabric API", color = Color.White, style = MaterialTheme.typography.labelSmall)
-                                        }
+                                                    showLoaderSelection = false
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                                            ) { Text("Vanilla") }
 
-                                        TextButton(onClick = { showLoaderSelection = false }) {
-                                            Text("Cancel", color = Color.White)
+                                            // Fabric
+                                            OutlinedButton(
+                                                onClick = {
+                                                    val versionId = currentVersion?.version?.id ?: return@OutlinedButton
+                                                    isLoadingLoader = true
+                                                    loaderError = null
+                                                    scope.launch {
+                                                        val fabricVersions = FabricVersions.fetchFabricLoaderList(versionId)
+                                                        isLoadingLoader = false
+                                                        if (fabricVersions.isNullOrEmpty()) {
+                                                            loaderError = "Fabric not available for $versionId"
+                                                        } else {
+                                                            downloadViewModel.install(
+                                                                context,
+                                                                GameDownloadInfo(
+                                                                    gameVersion = versionId,
+                                                                    customVersionName = "$versionId-Fabric",
+                                                                    fabric = fabricVersions.first()
+                                                                )
+                                                            )
+                                                            showLoaderSelection = false
+                                                        }
+                                                    }
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                                            ) { Text("Fabric") }
+
+                                            // Forge
+                                            OutlinedButton(
+                                                onClick = {
+                                                    val versionId = currentVersion?.version?.id ?: return@OutlinedButton
+                                                    isLoadingLoader = true
+                                                    loaderError = null
+                                                    scope.launch {
+                                                        val forgeVersions = ForgeVersions.fetchForgeList(versionId)
+                                                        isLoadingLoader = false
+                                                        if (forgeVersions.isNullOrEmpty()) {
+                                                            loaderError = "Forge not available for $versionId"
+                                                        } else {
+                                                            downloadViewModel.install(
+                                                                context,
+                                                                GameDownloadInfo(
+                                                                    gameVersion = versionId,
+                                                                    customVersionName = "$versionId-Forge",
+                                                                    forge = forgeVersions.first()
+                                                                )
+                                                            )
+                                                            showLoaderSelection = false
+                                                        }
+                                                    }
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                                            ) { Text("Forge") }
+
+                                            // NeoForge
+                                            OutlinedButton(
+                                                onClick = {
+                                                    val versionId = currentVersion?.version?.id ?: return@OutlinedButton
+                                                    isLoadingLoader = true
+                                                    loaderError = null
+                                                    scope.launch {
+                                                        val neoForgeVersions = NeoForgeVersions.fetchNeoForgeList(gameVersion = versionId)
+                                                        isLoadingLoader = false
+                                                        if (neoForgeVersions.isNullOrEmpty()) {
+                                                            loaderError = "NeoForge not available for $versionId"
+                                                        } else {
+                                                            downloadViewModel.install(
+                                                                context,
+                                                                GameDownloadInfo(
+                                                                    gameVersion = versionId,
+                                                                    customVersionName = "$versionId-NeoForge",
+                                                                    neoforge = neoForgeVersions.first()
+                                                                )
+                                                            )
+                                                            showLoaderSelection = false
+                                                        }
+                                                    }
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                                            ) { Text("NeoForge") }
+
+                                            // Quilt
+                                            OutlinedButton(
+                                                onClick = {
+                                                    val versionId = currentVersion?.version?.id ?: return@OutlinedButton
+                                                    isLoadingLoader = true
+                                                    loaderError = null
+                                                    scope.launch {
+                                                        val quiltVersions = QuiltVersions.fetchQuiltLoaderList(versionId)
+                                                        isLoadingLoader = false
+                                                        if (quiltVersions.isNullOrEmpty()) {
+                                                            loaderError = "Quilt not available for $versionId"
+                                                        } else {
+                                                            downloadViewModel.install(
+                                                                context,
+                                                                GameDownloadInfo(
+                                                                    gameVersion = versionId,
+                                                                    customVersionName = "$versionId-Quilt",
+                                                                    quilt = quiltVersions.first()
+                                                                )
+                                                            )
+                                                            showLoaderSelection = false
+                                                        }
+                                                    }
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                                            ) { Text("Quilt") }
+
+                                            // LegacyFabric
+                                            OutlinedButton(
+                                                onClick = {
+                                                    val versionId = currentVersion?.version?.id ?: return@OutlinedButton
+                                                    isLoadingLoader = true
+                                                    loaderError = null
+                                                    scope.launch {
+                                                        val legacyFabricVersions = LegacyFabricVersions.fetchFabricLoaderList(versionId)
+                                                        isLoadingLoader = false
+                                                        if (legacyFabricVersions.isNullOrEmpty()) {
+                                                            loaderError = "LegacyFabric not available for $versionId"
+                                                        } else {
+                                                            downloadViewModel.install(
+                                                                context,
+                                                                GameDownloadInfo(
+                                                                    gameVersion = versionId,
+                                                                    customVersionName = "$versionId-LegacyFabric",
+                                                                    legacyFabric = legacyFabricVersions.first()
+                                                                )
+                                                            )
+                                                            showLoaderSelection = false
+                                                        }
+                                                    }
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                                            ) { Text("LegacyFabric") }
+
+                                            TextButton(onClick = { showLoaderSelection = false }) {
+                                                Text("Cancel", color = Color.White)
+                                            }
                                         }
                                     }
                                 }
@@ -571,13 +640,22 @@ fun GameLibraryPanel(
                                         maxLines = 1,
                                         modifier = Modifier.weight(1f)
                                     )
-                                    if (downloadProgress >= 0f) {
-                                        Text(
-                                            text = "${(downloadProgress * 100).toInt()}%",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        if (downloadSpeed > 0L) {
+                                            Text(
+                                                text = formatSpeed(downloadSpeed),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.secondary
+                                            )
+                                        }
+                                        if (downloadProgress >= 0f) {
+                                            Text(
+                                                text = "${(downloadProgress * 100).toInt()}%",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
                                     }
                                 }
                                 Box(modifier = Modifier.fillMaxWidth()) {
@@ -645,7 +723,8 @@ fun GameLibraryPanel(
 @Composable
 private fun VersionLibraryItem(
     version: Version,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onDelete: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -676,7 +755,7 @@ private fun VersionLibraryItem(
             }
         }
         IconButton(
-            onClick = { VersionsManager.deleteVersion(version) },
+            onClick = onDelete,
             modifier = Modifier.size(32.dp)
         ) {
             Icon(
