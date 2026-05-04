@@ -79,7 +79,7 @@ import java.net.UnknownHostException
 import java.nio.channels.UnresolvedAddressException
 
 /** 游戏安装状态操作 */
-private sealed interface GameInstallOperation {
+internal sealed interface GameInstallOperation {
     data object None : GameInstallOperation
     /** 开始安装 */
     data object Install : GameInstallOperation
