@@ -1,7 +1,6 @@
 
 package com.movtery.zalithlauncher.ui.screens.content
 
-import android.os.Build
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -25,8 +24,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RenderEffect
-import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -172,15 +169,8 @@ fun GameLibraryPanel(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        renderEffect = android.graphics.RenderEffect
-                            .createBlurEffect(20f, 20f, android.graphics.Shader.TileMode.CLAMP)
-                            .asComposeRenderEffect()
-                    }
-                    this.alpha = alpha
-                }
-                .background(Color.Black.copy(alpha = 0.3f))
+                .graphicsLayer { this.alpha = alpha }
+                .background(Color.Black.copy(alpha = 0.4f))
         )
 
         Box(
