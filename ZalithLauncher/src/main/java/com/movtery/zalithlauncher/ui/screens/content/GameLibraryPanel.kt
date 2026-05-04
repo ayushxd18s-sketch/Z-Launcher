@@ -1,4 +1,3 @@
-
 package com.movtery.zalithlauncher.ui.screens.content
 
 import androidx.compose.animation.AnimatedContent
@@ -20,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
@@ -77,10 +77,8 @@ private fun getArtworkUrl(version: String): String {
     val majorNum = parts.firstOrNull()?.toIntOrNull() ?: 1
     val patch = parts.getOrNull(2)?.toIntOrNull() ?: 0
     val major = parts.take(2).joinToString(".")
-
     if (majorNum >= 26) return versionArtwork["26"]!!
     if (major == "1.21" && patch >= 9) return versionArtwork["1.21.9"]!!
-
     return versionArtwork[major]
         ?: "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Wallpapers_MinecraftGame-Carousel-H-0_TrickyTrials_414x414_01.jpg"
 }
@@ -158,12 +156,17 @@ fun GameLibraryPanel(
         val installedVersions = VersionsManager.versions
         var selectedIndex by remember { mutableStateOf(0) }
         var showLoaderSelection by remember { mutableStateOf(false) }
+        var isDownloading by remember { mutableStateOf(false) }
+        var downloadLabel by remember { mutableStateOf("") }
+        var downloadProgress by remember { mutableStateOf(-1f) }
         val velocityTracker = remember { VelocityTracker() }
         var dragAccumulator by remember { mutableStateOf(0f) }
 
         LaunchedEffect(Unit) {
             MinecraftVersions.refreshVersions()
         }
+
+
 
         Box(
             modifier = Modifier
@@ -241,7 +244,7 @@ fun GameLibraryPanel(
                         val currentVersion = releaseVersions.getOrNull(selectedIndex)
                         val artworkUrl = currentVersion?.version?.id?.let { getArtworkUrl(it) }
 
-                        // Artwork - changes per major version
+                        // Artwork
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -256,7 +259,9 @@ fun GameLibraryPanel(
                                 AsyncImage(
                                     model = url,
                                     contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .then(if (showLoaderSelection) Modifier.blur(8.dp) else Modifier),
                                     contentScale = ContentScale.Crop
                                 )
                             }
@@ -289,9 +294,57 @@ fun GameLibraryPanel(
                                     color = Color.White
                                 )
                             }
+
+                            // Loader selection overlay on artwork
+                            if (showLoaderSelection && !isDownloading) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Black.copy(alpha = 0.5f))
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text(
+                                            text = "Select loader",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                        val loaders = listOf(
+                                            "Vanilla", "Fabric", "Forge",
+                                            "NeoForge", "Quilt", "LegacyFabric"
+                                        )
+                                        loaders.forEach { loader ->
+                                            OutlinedButton(
+                                                onClick = {
+                                                    val versionId = currentVersion?.version?.id ?: return@OutlinedButton
+                                                    downloadLabel = "Downloading $versionId $loader..."
+                                                    isDownloading = true
+                                                    showLoaderSelection = false
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors = ButtonDefaults.outlinedButtonColors(
+                                                    contentColor = Color.White
+                                                )
+                                            ) {
+                                                Text(text = loader)
+                                            }
+                                        }
+                                        TextButton(
+                                            onClick = { showLoaderSelection = false },
+                                        ) {
+                                            Text(text = "Cancel", color = Color.White)
+                                        }
+                                    }
+                                }
+                            }
                         }
 
-                        // Version number - velocity-based drag scrolling
+                        // Arrow navigation + version name
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -329,9 +382,7 @@ fun GameLibraryPanel(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             IconButton(
-                                onClick = {
-                                    if (selectedIndex > 0) selectedIndex--
-                                },
+                                onClick = { if (selectedIndex > 0) selectedIndex-- },
                                 enabled = selectedIndex > 0
                             ) {
                                 Icon(
@@ -366,7 +417,30 @@ fun GameLibraryPanel(
                             }
                         }
 
-                        if (!showLoaderSelection) {
+                        // Download button / progress
+                        if (isDownloading) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = downloadLabel,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
+                                if (downloadProgress < 0f) {
+                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                } else {
+                                    LinearProgressIndicator(
+                                        progress = { downloadProgress },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        } else {
                             Button(
                                 onClick = { showLoaderSelection = true },
                                 modifier = Modifier
@@ -381,11 +455,6 @@ fun GameLibraryPanel(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(text = "Download ${currentVersion?.version?.id ?: ""}")
                             }
-                        } else {
-                            LoaderSelectionPanel(
-                                versionId = currentVersion?.version?.id ?: "",
-                                onBack = { showLoaderSelection = false }
-                            )
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -403,45 +472,6 @@ fun GameLibraryPanel(
                     painter = painterResource(R.drawable.ic_close),
                     contentDescription = "Close"
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun LoaderSelectionPanel(
-    versionId: String,
-    onBack: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_arrow_back),
-                    contentDescription = "Back"
-                )
-            }
-            Text(
-                text = "Select loader for $versionId",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium
-            )
-        }
-
-        val loaders = listOf("Vanilla", "Fabric", "Forge", "NeoForge", "Quilt", "LegacyFabric")
-        loaders.forEach { loader ->
-            OutlinedButton(
-                onClick = { /* TODO: trigger install */ },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(text = loader)
             }
         }
     }
