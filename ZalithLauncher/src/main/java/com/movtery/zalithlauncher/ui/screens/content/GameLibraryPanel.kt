@@ -188,7 +188,7 @@ fun GameLibraryPanel(
             AlertDialog(
                 onDismissRequest = { versionToDelete = null },
                 title = { Text("Delete Version") },
-                text = { Text("Are you sure you want to delete "${version.getVersionName()}"? This will permanently remove all files.") },
+                text = { Text("Are you sure you want to delete \"${version.getVersionName()}\"? This will permanently remove all files.") },
                 confirmButton = {
                     TextButton(
                         onClick = {
