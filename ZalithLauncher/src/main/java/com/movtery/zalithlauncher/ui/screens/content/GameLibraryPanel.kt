@@ -560,19 +560,43 @@ fun GameLibraryPanel(
                                     .padding(horizontal = 12.dp, vertical = 4.dp),
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Text(
-                                    text = downloadTitle,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 2
-                                )
-                                if (downloadProgress < 0f) {
-                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                                } else {
-                                    LinearProgressIndicator(
-                                        progress = { downloadProgress },
-                                        modifier = Modifier.fillMaxWidth()
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = downloadTitle,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        modifier = Modifier.weight(1f)
                                     )
+                                    if (downloadProgress >= 0f) {
+                                        Text(
+                                            text = "${(downloadProgress * 100).toInt()}%",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    if (downloadProgress < 0f) {
+                                        LinearProgressIndicator(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(8.dp)
+                                                .clip(RoundedCornerShape(4.dp))
+                                        )
+                                    } else {
+                                        LinearProgressIndicator(
+                                            progress = { downloadProgress },
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(8.dp)
+                                                .clip(RoundedCornerShape(4.dp))
+                                        )
+                                    }
                                 }
                                 TextButton(
                                     onClick = { downloadViewModel.cancel() },
@@ -650,6 +674,17 @@ private fun VersionLibraryItem(
                     maxLines = 1
                 )
             }
+        }
+        IconButton(
+            onClick = { VersionsManager.deleteVersion(version) },
+            modifier = Modifier.size(32.dp)
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_delete_outlined),
+                contentDescription = "Delete",
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(16.dp)
+            )
         }
     }
 }
