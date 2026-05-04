@@ -165,14 +165,6 @@ fun GameLibraryPanel(
             MinecraftVersions.refreshVersions()
         }
 
-        // Blur behind panel
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer { this.alpha = alpha }
-                .background(Color.Black.copy(alpha = 0.4f))
-        )
-
         Box(
             modifier = Modifier
                 .graphicsLayer {
@@ -183,7 +175,7 @@ fun GameLibraryPanel(
                 }
                 .fillMaxSize()
                 .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
+                .background(MaterialTheme.colorScheme.surface)
         ) {
             Row(modifier = Modifier.fillMaxSize()) {
 
