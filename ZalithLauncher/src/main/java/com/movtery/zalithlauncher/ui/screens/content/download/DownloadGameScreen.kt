@@ -98,7 +98,7 @@ class GameDownloadViewModel(): ViewModel() {
      * 用于刷新游戏下载页面版本名称的检查
      */
     var versionNameErrorCheck by mutableStateOf(false)
-    var installOperation by mutableStateOf<GameInstallOperation>(GameInstallOperation.None)
+    internal var installOperation by mutableStateOf<GameInstallOperation>(GameInstallOperation.None)
 
     /**
      * 游戏安装器
