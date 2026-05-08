@@ -38,3 +38,12 @@ Z LAUNCHER is **not affiliated with Mojang, Microsoft, or Minecraft**. Minecraft
 The launcher itself does not contain any Minecraft game files. When you launch a Minecraft version, the necessary files are downloaded directly from Mojang's public servers (the same way every Minecraft launcher does it). The launcher does not check whether you own a copy — you can play fully offline with any username, on offline-mode servers, or on servers that use authlib-injector / ely.by skin servers.
 
 Use this software at your own discretion and in accordance with the laws of your country.
+
+### Additional Terms (Pursuant to Section 7 of the GPLv3 License)
+
+1. When distributing a modified version of this program, you must reasonably modify the program's name or version number to distinguish it from the original version. (According to [GPLv3, 7(c)](https://github.com/ZalithLauncher/ZalithLauncher2/blob/969827b/LICENSE#L372-L374))
+    - Modified versions **must not include the original program name "ZalithLauncher" or its abbreviation "ZL" in their name, nor use any name that is similar enough to cause confusion with the official name**.
+    - All modified versions **must clearly indicate that they are "Unofficial Modified Versions" on the program's startup screen or main interface**.
+    - The application name of the program can be modified in [gradle.properties](./ZalithLauncher/gradle.properties).
+
+2. You must not remove the copyright notices displayed by the program. (According to [GPLv3, 7(b)](https://github.com/ZalithLauncher/ZalithLauncher2/blob/969827b/LICENSE#L368-L370))
