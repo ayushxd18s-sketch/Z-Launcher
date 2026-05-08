@@ -45,19 +45,33 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION"
 
-      - name: Build Release APK
+      - name: Build Release APKs
         run: ./gradlew :ZalithLauncher:assembleRelease
 
-      - name: Locate and rename APK
+      - name: Rename APKs
         run: |
-          APK=$(find ZalithLauncher/build/outputs/apk/release -name "*.apk" | head -1)
-          echo "Found APK: $APK"
-          mv "$APK" "Z-Launcher-${{ steps.version.outputs.version }}.apk"
+          VERSION=${{ steps.version.outputs.version }}
+          APK_DIR="ZalithLauncher/build/outputs/apk/release"
+          for APK in "$APK_DIR"/*.apk; do
+            FILENAME=$(basename "$APK")
+            if [[ "$FILENAME" == *"arm64-v8a"* ]]; then
+              mv "$APK" "Z-Launcher-${VERSION}-arm64-v8a.apk"
+            elif [[ "$FILENAME" == *"armeabi-v7a"* ]]; then
+              mv "$APK" "Z-Launcher-${VERSION}-armeabi-v7a.apk"
+            elif [[ "$FILENAME" == *"x86_64"* ]]; then
+              mv "$APK" "Z-Launcher-${VERSION}-x86_64.apk"
+            elif [[ "$FILENAME" == *"x86"* ]]; then
+              mv "$APK" "Z-Launcher-${VERSION}-x86.apk"
+            elif [[ "$FILENAME" == *"universal"* ]]; then
+              mv "$APK" "Z-Launcher-${VERSION}.apk"
+            fi
+          done
+          ls -la Z-Launcher-*.apk
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: Z-Launcher-${{ steps.version.outputs.version }}.apk
+          files: Z-Launcher-*.apk
           name: Z-Launcher ${{ steps.version.outputs.version }}
           generate_release_notes: false
         env:
