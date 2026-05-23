@@ -120,6 +120,7 @@ fun LaunchGameOperation(
     launchGameOperation: LaunchGameOperation,
     updateOperation: (LaunchGameOperation) -> Unit,
     exitActivity: () -> Unit,
+    waitForVulkanChecker: suspend () -> Unit,
     submitError: (ErrorViewModel.ThrowableMessage) -> Unit,
     toAccountManageScreen: (FirstLoginMenu) -> Unit = {},
     toVersionManageScreen: () -> Unit = {}
@@ -275,7 +276,13 @@ toAccountManageScreen(FirstLoginMenu.NORMAL)
                     offlineAccountLogin = false
                     quickPlaySingle = quickPlay
                 }
-                LaunchGame.launchGame(activity, version, exitActivity, submitError)
+                LaunchGame.launchGame(
+                    context = activity,
+                    version = version,
+                    exitActivity = exitActivity,
+                    waitForVulkanChecker = waitForVulkanChecker,
+                    submitError = submitError
+                )
                 updateOperation(LaunchGameOperation.None)
             }
         }
