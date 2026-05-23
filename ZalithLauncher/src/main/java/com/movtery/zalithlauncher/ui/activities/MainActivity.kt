@@ -104,12 +104,39 @@ import java.util.Locale
 
 @AndroidEntryPoint
 class MainActivity : BaseAppCompatActivity() {
+    /**
+     * 屏幕堆栈管理ViewModel
+     */
     private val screenBackStackModel: ScreenBackStackViewModel by viewModels()
+
+    /**
+     * 启动游戏ViewModel
+     */
     private val launchGameViewModel: LaunchGameViewModel by viewModels()
+
+    /**
+     * 错误信息ViewModel
+     */
     private val errorViewModel: ErrorViewModel by viewModels()
+
+    /**
+     * 与Compose交互的事件ViewModel
+     */
     val eventViewModel: EventViewModel by viewModels()
+
+    /**
+     * 启动器背景内容管理 ViewModel
+     */
     val backgroundViewModel: BackgroundViewModel by viewModels()
+
+    /**
+     * 整合包导入 ViewModel
+     */
     val modpackImportViewModel: ModpackImportViewModel by viewModels()
+
+    /**
+     * 启动器更新状态 ViewModel
+     */
     val launcherUpgradeViewModel: LauncherUpgradeViewModel by viewModels()
 
     /**
@@ -140,8 +167,10 @@ class MainActivity : BaseAppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        //初始化通知管理（创建渠道）
         NotificationManager.initManager(this)
 
+        //处理外部导入
         val isImporting = handleImportIfNeeded(intent)
 
         //检查上游ZalithLauncher2更新
@@ -165,14 +194,19 @@ class MainActivity : BaseAppCompatActivity() {
             }
         }
 
+        //错误信息展示
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 errorViewModel.errorEvents.collect { tm ->
-                    errorViewModel.showErrorDialog(context = this@MainActivity, tm = tm)
+                    errorViewModel.showErrorDialog(
+                        context = this@MainActivity,
+                        tm = tm
+                    )
                 }
             }
         }
 
+        //事件处理
         lifecycleScope.launch {
             eventViewModel.events.collect { event ->
                 when (event) {
@@ -223,6 +257,7 @@ class MainActivity : BaseAppCompatActivity() {
                     }
                     is EventViewModel.Event.HomePage.GenDocPage -> {
                         if (homePageViewModel.isLocalExists()) {
+                            //如果本地主页文件已存在，则警告用户是否进行覆盖
                             homePageViewModel.updateOperation(
                                 HomePageOperation.WarningOverwrite
                             )
@@ -246,12 +281,21 @@ class MainActivity : BaseAppCompatActivity() {
 
         val finishedGame = AllSettings.finishedGame
         val showSponsorship = AllSettings.showSponsorship
-        val festivals = getTodayFestivals(containsChinese = isChinese(this@MainActivity))
+
+        val festivals = getTodayFestivals(
+            containsChinese = isChinese(this@MainActivity)
+        )
 
         setContent {
-            ZalithLauncherTheme(backgroundViewModel = backgroundViewModel, festivals = festivals) {
+            ZalithLauncherTheme(
+                backgroundViewModel = backgroundViewModel,
+                festivals = festivals
+            ) {
                 Box {
-                    Background(modifier = Modifier.fillMaxSize(), viewModel = backgroundViewModel)
+                    Background(
+                        modifier = Modifier.fillMaxSize(),
+                        viewModel = backgroundViewModel
+                    )
 
                     CompositionLocalProvider(
                         LocalHomePageViewModel provides homePageViewModel
@@ -266,8 +310,13 @@ class MainActivity : BaseAppCompatActivity() {
                         )
                     }
 
-                    FestivalEffects(modifier = Modifier.fillMaxSize(), festivals = festivals)
+                    //节日彩蛋效果层
+                    FestivalEffects(
+                        modifier = Modifier.fillMaxSize(),
+                        festivals = festivals
+                    )
 
+                    //启动游戏操作流程
                     LaunchGameOperation(
                         activity = this@MainActivity,
                         launchGameOperation = launchGameViewModel.launchGameOperation,
@@ -291,52 +340,37 @@ class MainActivity : BaseAppCompatActivity() {
                             )
                         }
                     )
+                }
 
-                    if (!isImporting && finishedGame.state >= 100 && showSponsorship.state) {
-                        SimpleAlertDialog(
-                            title = stringResource(R.string.about_sponsor),
-                            text = stringResource(R.string.game_saponsorship_finished_game, finishedGame.state),
-                            dismissText = stringResource(R.string.generic_close),
-                            onDismiss = { showSponsorship.save(false) },
-                            onConfirm = {
-                                showSponsorship.save(false)
-                                eventViewModel.sendEvent(EventViewModel.Event.OpenLink(URL_SUPPORT))
-                            }
-                        )
-                    }
-
-                    ModpackImportOperation(
-                        operation = modpackImportViewModel.importOperation,
-                        changeOperation = { modpackImportViewModel.importOperation = it },
-                        importer = modpackImportViewModel.importer,
-                        onCancel = {
-                            modpackImportViewModel.cancel()
-                            lifecycleScope.launch { keepScreen(false) }
-                        }
-                    )
-
-                    ModpackVersionNameOperation(
-                        operation = modpackImportViewModel.versionNameOperation,
-                        onConfirmVersionName = { name -> modpackImportViewModel.confirmVersionName(name) },
-                        onCancel = { modpackImportViewModel.cancel() }
-                    )
-
-                    ModpackConfirmUseMobileDataOperation(
-                        operation = modpackImportViewModel.confirmMobileDataOperation,
-                        onConfirmUse = { use -> modpackImportViewModel.confirmUseMobileData(use) }
-                    )
-
-                    //启动器主页操作流程
-                    val homePageOp by homePageViewModel.pageOp.collectAsStateWithLifecycle()
-                    HomePageOperation(
-                        operation = homePageOp,
-                        onChange = {
-                            homePageViewModel.updateOperation(it)
+                //显示赞助支持的小弹窗
+                if (!isImporting && finishedGame.state >= 100 && showSponsorship.state) {
+                    SimpleAlertDialog(
+                        title = stringResource(R.string.about_sponsor),
+                        text = stringResource(R.string.game_saponsorship_finished_game, finishedGame.state),
+                        dismissText = stringResource(R.string.generic_close),
+                        onDismiss = {
+                            showSponsorship.save(false)
                         },
-                        onGenDocPage = {
-                            homePageViewModel.genDocPage(this@MainActivity)
+                        onConfirm = {
+                            showSponsorship.save(false)
+                            eventViewModel.sendEvent(
+                                EventViewModel.Event.OpenLink(URL_SUPPORT)
+                            )
                         }
                     )
+                }
+
+                ModpackImportOperation(
+                    operation = modpackImportViewModel.importOperation,
+                    changeOperation = { modpackImportViewModel.importOperation = it },
+                    importer = modpackImportViewModel.importer,
+                    onCancel = {
+                        modpackImportViewModel.cancel()
+                        lifecycleScope.launch {
+                            keepScreen(false)
+                        }
+                    }
+                )
 
                 //用户确认版本名称 操作流程
                 ModpackVersionNameOperation(
@@ -482,6 +516,7 @@ class MainActivity : BaseAppCompatActivity() {
                 )
                 if (!success) throw RuntimeException()
             } catch (_: TooFrequentOperationException) {
+                //太频繁了
                 return@launch
             } catch (_: Exception) {
                 withContext(Dispatchers.Main) {
@@ -584,13 +619,20 @@ class MainActivity : BaseAppCompatActivity() {
     private suspend fun keepScreen(on: Boolean) {
         withContext(Dispatchers.Main) {
             window?.apply {
-                if (on) addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                else clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                if (on) {
+                    addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                } else {
+                    clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                }
             }
         }
     }
 
+    /**
+     * 弹出下载插件的链接提示对话框
+     */
     private suspend fun showDownloadPlugins(link: EventViewModel.Event.DownloadPlugins.Links) {
+        //匹配当前系统语言可见的网盘链接
         val locale = Locale.getDefault()
         val cloudDrive = link.cloudDrives.sortedByDescending {
             it.language.contains("_")
@@ -618,9 +660,20 @@ class MainActivity : BaseAppCompatActivity() {
         }
     }
 
+    /**
+     * 导入控制布局
+     */
     private fun importControlFiles(uris: List<Uri>) {
-        fun showError(title: String = getString(R.string.control_manage_import_failed), message: String) {
-            errorViewModel.showError(ErrorViewModel.ThrowableMessage(title = title, message = message))
+        fun showError(
+            title: String = getString(R.string.control_manage_import_failed),
+            message: String
+        ) {
+            errorViewModel.showError(
+                ErrorViewModel.ThrowableMessage(
+                    title = title,
+                    message = message
+                )
+            )
         }
         TaskSystem.submitTask(
             Task.runTask(
@@ -635,16 +688,27 @@ class MainActivity : BaseAppCompatActivity() {
                         ControlManager.importControl(
                             inputStream = inputStream,
                             onSerializationError = {
-                                showError(message = getString(R.string.control_manage_import_failed_to_parse) + "\n" + it.getMessageOrToString())
+                                showError(
+                                    message = getString(R.string.control_manage_import_failed_to_parse) + "\n" +
+                                            it.getMessageOrToString()
+                                )
                             },
-                            catchedError = { showError(message = it.getMessageOrToString()) },
-                            onFinished = { done = true }
+                            catchedError =  {
+                                showError(message = it.getMessageOrToString())
+                            },
+                            onFinished = {
+                                done = true
+                            }
                         )
                     }
                     ControlManager.refresh()
                     if (done) {
                         withContext(Dispatchers.Main) {
-                            Toast.makeText(this@MainActivity, getString(R.string.generic_done), Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                this@MainActivity,
+                                getString(R.string.generic_done),
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     }
                 }
@@ -652,18 +716,28 @@ class MainActivity : BaseAppCompatActivity() {
         )
     }
 
+    /**
+     * 处理外部导入
+     * @return 是否有导入任务正在进行中
+     */
     private fun handleImportIfNeeded(intent: Intent?): Boolean {
         if (intent == null) return false
+
         val type = intent.getStringExtra(EXTRA_IMPORT_TYPE) ?: return false
+
         val importing = when (type) {
             IMPORT_TYPE_MODPACK -> handleModpackImport(intent)
             IMPORT_TYPE_CONTROLS -> handleControlsImport(intent)
             else -> false
         }
+
         intent.removeExtra(EXTRA_IMPORT_TYPE)
         return importing
     }
 
+    /**
+     * @return 是否已经触发了整合包导入程序
+     */
     private fun handleModpackImport(intent: Intent): Boolean {
         val uri: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra(EXTRA_IMPORT_URI, Uri::class.java)
@@ -675,13 +749,24 @@ class MainActivity : BaseAppCompatActivity() {
             modpackImportViewModel.import(
                 context = this@MainActivity,
                 uri = uri,
-                onStart = { lifecycleScope.launch { keepScreen(true) } },
-                onStop = { lifecycleScope.launch { keepScreen(false) } }
+                onStart = {
+                    lifecycleScope.launch {
+                        keepScreen(true)
+                    }
+                },
+                onStop = {
+                    lifecycleScope.launch {
+                        keepScreen(false)
+                    }
+                }
             )
         }
         return uri != null
     }
 
+    /**
+     * @return 是否已经触发了控制布局导入程序
+     */
     private fun handleControlsImport(intent: Intent): Boolean {
         val uri: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra(EXTRA_IMPORT_URI, Uri::class.java)
@@ -689,7 +774,9 @@ class MainActivity : BaseAppCompatActivity() {
             @Suppress("DEPRECATION")
             intent.getParcelableExtra(EXTRA_IMPORT_URI)
         }
-        if (uri != null) importControlFiles(listOf(uri))
+        if (uri != null) {
+            importControlFiles(listOf(uri))
+        }
         return uri != null
     }
 
