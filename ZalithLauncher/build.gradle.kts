@@ -68,7 +68,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = zalithPackageName
+        applicationId = "com.ayushxd.zlauncher"
         applicationIdSuffix = ".v2"
         minSdk = 26
         targetSdk = 35
